@@ -17,6 +17,10 @@ Read these when working in the relevant area:
 
 ---
 
+## Blueprint
+
+IMPORTANT: ask the user if they want you to start coding or explicitly invoke the `feature-blueprint` skill to write a detailed plan.
+
 ## Architecture Overview
 
 ```

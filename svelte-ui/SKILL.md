@@ -9,6 +9,10 @@ Build opinionated, visually distinctive SvelteKit interfaces with a proper desig
 
 ---
 
+## Blueprint
+
+IMPORTANT: ask the user if they want you to start coding or explicitly invoke the `feature-blueprint` skill to write a detailed plan.
+
 ## Phase 0: Design System First
 
 **Never write a component before the design system exists.** If there's no established palette or visual identity, stop and ask the user before proceeding:
@@ -21,29 +25,29 @@ Once you have direction, define the full token set in `src/app.css` (or a dedica
 
 ```css
 :root {
-	/* Primary palette — pick ONE dominant hue family, not a rainbow */
-	--color-primary: hsl(142 40% 28%); /* example: deep forest green */
-	--color-primary-light: hsl(142 30% 92%);
-	--color-primary-muted: hsl(142 20% 60%);
+  /* Primary palette — pick ONE dominant hue family, not a rainbow */
+  --color-primary: hsl(142 40% 28%); /* example: deep forest green */
+  --color-primary-light: hsl(142 30% 92%);
+  --color-primary-muted: hsl(142 20% 60%);
 
-	/* Neutral scale — derive from primary hue, not pure grey */
-	--color-surface: hsl(45 20% 97%); /* warm off-white, not #ffffff */
-	--color-surface-2: hsl(45 15% 93%);
-	--color-surface-3: hsl(45 12% 87%);
-	--color-border: hsl(45 10% 82%);
+  /* Neutral scale — derive from primary hue, not pure grey */
+  --color-surface: hsl(45 20% 97%); /* warm off-white, not #ffffff */
+  --color-surface-2: hsl(45 15% 93%);
+  --color-surface-3: hsl(45 12% 87%);
+  --color-border: hsl(45 10% 82%);
 
-	--color-text: hsl(30 10% 15%); /* warm near-black */
-	--color-text-muted: hsl(30 8% 45%);
-	--color-text-subtle: hsl(30 6% 65%);
+  --color-text: hsl(30 10% 15%); /* warm near-black */
+  --color-text-muted: hsl(30 8% 45%);
+  --color-text-subtle: hsl(30 6% 65%);
 
-	/* Semantic */
-	--color-danger: hsl(0 65% 50%);
-	--color-warning: hsl(38 90% 50%);
-	--color-success: hsl(142 45% 40%);
+  /* Semantic */
+  --color-danger: hsl(0 65% 50%);
+  --color-warning: hsl(38 90% 50%);
+  --color-success: hsl(142 45% 40%);
 
-	/* Accent — ONE punchy colour for CTAs, highlights */
-	--color-accent: hsl(38 90% 52%); /* e.g. amber */
-	--color-accent-fg: hsl(30 10% 10%); /* text on accent */
+  /* Accent — ONE punchy colour for CTAs, highlights */
+  --color-accent: hsl(38 90% 52%); /* e.g. amber */
+  --color-accent-fg: hsl(30 10% 10%); /* text on accent */
 }
 ```
 
@@ -57,32 +61,32 @@ Once you have direction, define the full token set in `src/app.css` (or a dedica
 
 ```css
 :root {
-	/* Choose TWO fonts max: one display, one body. Never use Inter/Roboto/Arial. */
-	--font-display: 'Fraunces', Georgia, serif; /* personality, headings */
-	--font-body: 'DM Sans', 'Helvetica Neue', sans-serif; /* legible, neutral */
-	--font-mono: 'JetBrains Mono', monospace;
+  /* Choose TWO fonts max: one display, one body. Never use Inter/Roboto/Arial. */
+  --font-display: "Fraunces", Georgia, serif; /* personality, headings */
+  --font-body: "DM Sans", "Helvetica Neue", sans-serif; /* legible, neutral */
+  --font-mono: "JetBrains Mono", monospace;
 
-	/* Modular scale (1.25 ratio is a good default) */
-	--text-xs: 0.75rem; /* 12px */
-	--text-sm: 0.875rem; /* 14px */
-	--text-base: 1rem; /* 16px */
-	--text-lg: 1.25rem; /* 20px */
-	--text-xl: 1.5625rem; /* 25px */
-	--text-2xl: 1.953rem; /* ~31px */
-	--text-3xl: 2.441rem; /* ~39px */
-	--text-4xl: 3.052rem; /* ~49px */
+  /* Modular scale (1.25 ratio is a good default) */
+  --text-xs: 0.75rem; /* 12px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-base: 1rem; /* 16px */
+  --text-lg: 1.25rem; /* 20px */
+  --text-xl: 1.5625rem; /* 25px */
+  --text-2xl: 1.953rem; /* ~31px */
+  --text-3xl: 2.441rem; /* ~39px */
+  --text-4xl: 3.052rem; /* ~49px */
 
-	/* Line heights */
-	--leading-tight: 1.2;
-	--leading-snug: 1.35;
-	--leading-normal: 1.5;
-	--leading-relaxed: 1.65;
+  /* Line heights */
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
 
-	/* Letter spacing */
-	--tracking-tight: -0.02em;
-	--tracking-normal: 0em;
-	--tracking-wide: 0.06em;
-	--tracking-wider: 0.12em;
+  /* Letter spacing */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.06em;
+  --tracking-wider: 0.12em;
 }
 ```
 
@@ -96,38 +100,38 @@ Once you have direction, define the full token set in `src/app.css` (or a dedica
 
 ```css
 :root {
-	/* 4px base grid */
-	--space-1: 0.25rem; /* 4px */
-	--space-2: 0.5rem; /* 8px */
-	--space-3: 0.75rem; /* 12px */
-	--space-4: 1rem; /* 16px */
-	--space-5: 1.25rem; /* 20px */
-	--space-6: 1.5rem; /* 24px */
-	--space-8: 2rem; /* 32px */
-	--space-10: 2.5rem; /* 40px */
-	--space-12: 3rem; /* 48px */
-	--space-16: 4rem; /* 64px */
-	--space-20: 5rem; /* 80px */
-	--space-24: 6rem; /* 96px */
+  /* 4px base grid */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
+  --space-10: 2.5rem; /* 40px */
+  --space-12: 3rem; /* 48px */
+  --space-16: 4rem; /* 64px */
+  --space-20: 5rem; /* 80px */
+  --space-24: 6rem; /* 96px */
 
-	/* Semantic spacing */
-	--page-padding: var(--space-6); /* consistent page gutters */
-	--card-padding: var(--space-5);
-	--section-gap: var(--space-16);
-	--stack-gap: var(--space-4);
+  /* Semantic spacing */
+  --page-padding: var(--space-6); /* consistent page gutters */
+  --card-padding: var(--space-5);
+  --section-gap: var(--space-16);
+  --stack-gap: var(--space-4);
 
-	/* Radius */
-	--radius-sm: 4px;
-	--radius-md: 8px;
-	--radius-lg: 12px;
-	--radius-xl: 16px;
-	--radius-full: 9999px;
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
 
-	/* Shadows */
-	--shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.06);
-	--shadow-md: 0 4px 12px hsl(0 0% 0% / 0.08);
-	--shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.1);
-	--shadow-card: 0 2px 8px hsl(0 0% 0% / 0.06), 0 0 0 1px var(--color-border);
+  /* Shadows */
+  --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.06);
+  --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.08);
+  --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.1);
+  --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.06), 0 0 0 1px var(--color-border);
 }
 ```
 
@@ -241,25 +245,25 @@ Pipe all tokens into Tailwind so utilities work off the design system, not Tailw
 ```js
 // tailwind.config.js
 export default {
-	content: ['./src/**/*.{html,js,svelte,ts}'],
-	theme: {
-		extend: {
-			colors: {
-				primary: 'hsl(var(--color-primary) / <alpha-value>)',
-				surface: 'hsl(var(--color-surface) / <alpha-value>)',
-				accent: 'hsl(var(--color-accent) / <alpha-value>)'
-				// etc.
-			},
-			fontFamily: {
-				display: ['var(--font-display)'],
-				body: ['var(--font-body)'],
-				mono: ['var(--font-mono)']
-			},
-			spacing: {
-				// Map to CSS vars via arbitrary values or extend scale
-			}
-		}
-	}
+  content: ["./src/**/*.{html,js,svelte,ts}"],
+  theme: {
+    extend: {
+      colors: {
+        primary: "hsl(var(--color-primary) / <alpha-value>)",
+        surface: "hsl(var(--color-surface) / <alpha-value>)",
+        accent: "hsl(var(--color-accent) / <alpha-value>)",
+        // etc.
+      },
+      fontFamily: {
+        display: ["var(--font-display)"],
+        body: ["var(--font-body)"],
+        mono: ["var(--font-mono)"],
+      },
+      spacing: {
+        // Map to CSS vars via arbitrary values or extend scale
+      },
+    },
+  },
 };
 ```
 
@@ -277,21 +281,21 @@ Map shadcn's semantic variables to your design tokens in `app.css`:
 
 ```css
 :root {
-	--background: var(--color-surface);
-	--foreground: var(--color-text);
-	--card: var(--color-surface-2);
-	--card-foreground: var(--color-text);
-	--primary: var(--color-primary);
-	--primary-foreground: white;
-	--secondary: var(--color-surface-3);
-	--secondary-foreground: var(--color-text);
-	--muted: var(--color-surface-2);
-	--muted-foreground: var(--color-text-muted);
-	--accent: var(--color-accent);
-	--accent-foreground: var(--color-accent-fg);
-	--destructive: var(--color-danger);
-	--border: var(--color-border);
-	--radius: var(--radius-md);
+  --background: var(--color-surface);
+  --foreground: var(--color-text);
+  --card: var(--color-surface-2);
+  --card-foreground: var(--color-text);
+  --primary: var(--color-primary);
+  --primary-foreground: white;
+  --secondary: var(--color-surface-3);
+  --secondary-foreground: var(--color-text);
+  --muted: var(--color-surface-2);
+  --muted-foreground: var(--color-text-muted);
+  --accent: var(--color-accent);
+  --accent-foreground: var(--color-accent-fg);
+  --destructive: var(--color-danger);
+  --border: var(--color-border);
+  --radius: var(--radius-md);
 }
 ```
 
@@ -394,10 +398,10 @@ For slow data, use streamed promises so the UI is responsive:
 // +page.server.ts
 export const load: PageServerLoad = async ({ locals }) => {
   return {
-    user: locals.user,          // fast — resolve immediately
+    user: locals.user, // fast — resolve immediately
     streamed: {
-      items: fetchItems(),      // slow — stream it
-    }
+      items: fetchItems(), // slow — stream it
+    },
   };
 };
 ```

@@ -17,6 +17,10 @@ Read these when working in the relevant area:
 
 ---
 
+## Blueprint
+
+IMPORTANT: ask the user if they want you to start coding or explicitly invoke the `feature-blueprint` skill to write a detailed plan.
+
 ## Architecture Overview
 
 ```
@@ -96,11 +100,11 @@ src/routes/
 
 ```typescript
 // src/hooks.server.ts
-import type { Handle } from '@sveltejs/kit';
-import { AppFactory } from '$lib/factories/AppFactory';
+import type { Handle } from "@sveltejs/kit";
+import { AppFactory } from "$lib/factories/AppFactory";
 
 export const handle: Handle = async ({ event, resolve }) => {
-  const sessionToken = event.cookies.get('session');
+  const sessionToken = event.cookies.get("session");
 
   if (sessionToken) {
     const authService = AppFactory.getAuthService();
@@ -120,12 +124,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 ```typescript
 // src/routes/recipes/+page.server.ts
-import type { PageServerLoad, Actions } from './$types';
-import { error, redirect } from '@sveltejs/kit';
-import { AppFactory } from '$lib/factories/AppFactory';
+import type { PageServerLoad, Actions } from "./$types";
+import { error, redirect } from "@sveltejs/kit";
+import { AppFactory } from "$lib/factories/AppFactory";
 
 export const load: PageServerLoad = async ({ locals }) => {
-  if (!locals.user) throw redirect(302, '/login');
+  if (!locals.user) throw redirect(302, "/login");
 
   const controller = AppFactory.getRecipeController();
 
@@ -136,18 +140,18 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
   create: async ({ request, locals }) => {
-    if (!locals.user) throw error(401, 'Unauthorised');
+    if (!locals.user) throw error(401, "Unauthorised");
 
     const data = await request.formData();
     const controller = AppFactory.getRecipeController();
 
     // Validate input — use a zod schema or lib/validation.ts
     const result = await controller.createRecipe(locals.user.id, {
-      title: String(data.get('title')),
+      title: String(data.get("title")),
     });
 
     return { success: true, recipe: result };
-  }
+  },
 };
 ```
 
@@ -159,7 +163,7 @@ export const actions: Actions = {
 
 ```typescript
 // src/lib/services/IRecipeService.ts
-import type { Recipe, CreateRecipeInput } from '$lib/models';
+import type { Recipe, CreateRecipeInput } from "$lib/models";
 
 export interface IRecipeService {
   getByUserId(userId: string): Promise<Recipe[]>;
@@ -206,9 +210,9 @@ function mapToRecipe(raw: components['schemas']['Recipe']): Recipe { ... }
 
 ```typescript
 // src/lib/controllers/RecipeController.ts
-import type { IRecipeService } from '$lib/services/IRecipeService';
-import type { IPantryService } from '$lib/services/IPantryService';
-import type { Recipe } from '$lib/models';
+import type { IRecipeService } from "$lib/services/IRecipeService";
+import type { IPantryService } from "$lib/services/IPantryService";
+import type { Recipe } from "$lib/models";
 
 export class RecipeController {
   constructor(
@@ -223,7 +227,7 @@ export class RecipeController {
       this.pantryService.getByUserId(userId),
     ]);
 
-    return recipes.filter(r => isCompatible(r, pantryItems));
+    return recipes.filter((r) => isCompatible(r, pantryItems));
   }
 }
 ```
@@ -236,10 +240,10 @@ Controller takes **interfaces**, not concrete classes. This is the only layer wi
 
 ```typescript
 // src/lib/factories/AppFactory.ts
-import { createApiClient } from '$lib/api/client';
-import { RecipeService } from '$lib/services/RecipeService';
-import { PantryService } from '$lib/services/PantryService';
-import { RecipeController } from '$lib/controllers/RecipeController';
+import { createApiClient } from "$lib/api/client";
+import { RecipeService } from "$lib/services/RecipeService";
+import { PantryService } from "$lib/services/PantryService";
+import { RecipeController } from "$lib/controllers/RecipeController";
 
 export class AppFactory {
   static getRecipeController(): RecipeController {
@@ -264,19 +268,30 @@ No interfaces here — concrete types only. No logic. Just assembly.
 
 ```typescript
 // src/lib/stores/recipeStore.ts
-import type { Recipe } from '$lib/models';
+import type { Recipe } from "$lib/models";
 
 function createRecipeStore() {
   let recipes = $state<Recipe[]>([]);
   let selected = $state<Recipe | null>(null);
 
   return {
-    get recipes() { return recipes; },
-    get selected() { return selected; },
+    get recipes() {
+      return recipes;
+    },
+    get selected() {
+      return selected;
+    },
 
-    setRecipes(data: Recipe[]) { recipes = data; },
-    select(recipe: Recipe) { selected = recipe; },
-    clear() { recipes = []; selected = null; },
+    setRecipes(data: Recipe[]) {
+      recipes = data;
+    },
+    select(recipe: Recipe) {
+      selected = recipe;
+    },
+    clear() {
+      recipes = [];
+      selected = null;
+    },
   };
 }
 

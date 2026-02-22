@@ -59,6 +59,7 @@ Instead, dispatch targeted exploration tasks:
 - Find existing patterns the new feature must follow
 - Identify adjacent code that the feature interacts with
 - Check for existing tests, migration patterns, and conventions
+- **IMPORTANT** manually check if the user has any domain-specific skills (e.g., `frontend-design`) that you can use to better inform your plan. If they do, read those skills and incorporate their patterns and constraints into your plan.
 
 Summarise findings concisely. The goal is to build a mental map of:
 

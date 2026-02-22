@@ -10,6 +10,12 @@ not repeat what those skills already cover — read them directly for implementa
 
 ---
 
+## Blueprint
+
+Read this skill to decide the architecture pattern and project structure. Then read the specialised skills (`python-swe`, `svelte-swe`, `svelte-ui`) for implementation details on each layer.
+
+Finally, ask the user if they want you to start coding or explicitly invoke the `feature-blueprint` skill to write a detailed plan.
+
 ## Monorepo — Always
 
 Every project is a monorepo. Even if there's only a frontend today, the structure accommodates a
@@ -104,7 +110,7 @@ services:
       POSTGRES_USER: myapp
       POSTGRES_PASSWORD: myapp
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -112,7 +118,7 @@ services:
     build: ./backend
     env_file: ./backend/.env
     ports:
-      - '8000:8000'
+      - "8000:8000"
     depends_on:
       - db
     volumes:
@@ -122,7 +128,7 @@ services:
     build: ./frontend
     env_file: ./frontend/.env
     ports:
-      - '5173:5173'
+      - "5173:5173"
     depends_on:
       - backend
     volumes:
