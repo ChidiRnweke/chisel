@@ -24,8 +24,8 @@ Feel free to use them. Let me know what worked and what didn't — I'm iterating
 Reference skills from your project's `CLAUDE.md`:
 
 ```markdown
-@path/to/chisel/fullstack-swe/SKILL.md
-@path/to/chisel/svelte-ui/SKILL.md
+@.claude/skills/fullstack-swe/SKILL.md
+@.claude/skills/svelte-ui/SKILL.md
 ```
 
 Or add them to your agent's skill/context configuration.
@@ -33,7 +33,7 @@ Or add them to your agent's skill/context configuration.
 ## Structure
 
 ```
-chisel/
+.claude/skills/
 ├── fullstack-swe/
 │   └── SKILL.md
 ├── python-swe/
