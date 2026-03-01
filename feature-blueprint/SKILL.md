@@ -127,15 +127,20 @@ the expected inputs/outputs of the new components in prose.]
 
 ## Plan
 
-Steps are semi-coarse — each one is a meaningful unit of work, not a single line change.
-The executor agent is trusted to make implementation decisions within each step.
+Steps are deliberately fine-grained. Each step targets a specific file or tightly related
+concern. Exact file paths, class names, method signatures, and patterns are specified —
+the executor should not need to make any structural decisions.
 
 - [ ] **Step 1: [Title]**
-      [What to do. What files to create or modify. What pattern to follow — reference an
-      existing file as an example. What to verify before checking this off.]
+      **Files:** `path/to/file.py` (create), `path/to/other.py` (modify)
+      **What:** [Specific instructions — exact class name, method signatures, what it does,
+      which existing file to follow as a model. Name everything.]
+      **Verify:** [Exact command to run or specific behaviour to confirm before checking off.]
 
 - [ ] **Step 2: [Title]**
-      [Same format. Each step should be completable in one agent loop.]
+      **Files:** ...
+      **What:** ...
+      **Verify:** ...
 
 - [ ] **Step N: [Title]**
       ...
@@ -153,26 +158,34 @@ Include specific commands, URLs to visit, or behaviours to confirm.]
 
 ### Step granularity
 
-This is the most important calibration in the entire skill. Steps must be:
+This is the most important calibration in the entire skill. Steps must be fine-grained
+and prescriptive:
 
-- **Semi-coarse**: Each step is a meaningful unit of work — "implement the recipe service
-  including its Protocol, repository interaction, and unit tests" — not "create file
-  recipe_service.py" followed by "add the get_by_id method" followed by "add the create method."
+- **One file or one coherent concern per step.** "Implement RecipeService" is too broad —
+  that's a domain model, a Protocol, an implementation class, and wired dependencies. Split
+  it: one step for the model, one for the Protocol, one for the implementation, one for wiring.
 
-- **Not too open-ended**: "Build the backend for recipes" is too vague. The agent will make
-  structural decisions you haven't thought through. Specify which layers to touch, which
-  patterns to follow, and reference existing files as examples.
+- **Specify exact names.** The step must name the files to create or modify, the classes and
+  methods to add, and the function signatures where they're non-obvious. The executor should
+  not have to decide what to call anything.
 
-- **Independently verifiable**: Each step should have a clear "done" state. The agent checks
-  the box when it can prove the step works — tests pass, the server starts, the component
-  renders.
+- **Reference the pattern explicitly.** Don't say "follow existing patterns." Say "follow the
+  same structure as `PantryService` in `backend/src/myapp/services/pantry_service.py` —
+  Protocol interface, dataclass implementation, repository injected via constructor,
+  module-level structlog logger."
 
-- **Ordered by dependency**: Later steps can depend on earlier ones. Never require the agent
-  to jump around.
+- **Independently verifiable.** Each step has a clear "done" state — an exact test command,
+  a UI element to confirm, a specific server response. The executor checks the box when it
+  can prove the step works, not when it thinks it's done.
 
-A good heuristic: each step should take an agent one loop iteration. If a step would require
-the agent to do five unrelated things, split it. If three steps are trivially small and
-sequential, merge them.
+- **Ordered by dependency.** Later steps can depend on earlier ones. Never require the
+  executor to jump around.
+
+A good heuristic: if you described this step to a developer, would they know exactly which
+file to open and what to type? If they'd still have to decide what to name something, which
+layer to put it in, or how to wire it — the step is too vague. Split it or add more detail.
+
+When in doubt, split. A plan with 20 sharp steps is far better than one with 8 ambiguous ones.
 
 ### Referencing existing patterns
 
@@ -214,18 +227,25 @@ You are executing this blueprint. Follow these rules:
 
 ## Calibration Notes
 
-### Trust the executor
+### Prescribe structure, leave implementation details
 
-The steps should tell the agent _what_ to build and _which patterns to follow_, but not
-dictate every line of code. The executor is a capable agent — it can make implementation
-decisions. Your job is to constrain the solution space, not eliminate it.
+Steps must specify all structural decisions: exact file paths, class and method names, which
+existing file to use as a pattern, how the pieces wire together. What they don't need to
+dictate is the internal logic — the executor can work out how to implement a method given
+a clear signature and a model to follow.
 
-Bad step: "Create a file called recipe_service.py. Add a class called RecipeService with a
-method called get_by_id that takes a string and returns a Recipe. The method should call
-self.repository.find_by_id(recipe_id)."
+Vague step (bad): "Implement RecipeService with get_by_id and create methods. Follow the
+same pattern as PantryService. Include the Protocol interface. Wire it into the factory."
 
-Good step: "Implement RecipeService with get_by_id and create methods. Follow the same
-pattern as PantryService. Include the Protocol interface. Wire it into the factory."
+This leaves too much open: which file? what exact signatures? what does the Protocol look
+like? which part of the factory?
+
+Prescriptive step (good): "Create `backend/src/myapp/services/recipe_service.py`. Define
+`RecipeServiceProtocol` with `get_by_id(recipe_id: str) -> Recipe | None` and
+`create(data: RecipeCreate) -> Recipe`. Implement `RecipeService` as a dataclass following
+the same structure as `PantryService` in `pantry_service.py` — repository injected via
+constructor, module-level structlog logger. Register it in `factory.py` alongside
+`PantryService`. Verify: `pytest tests/services/test_recipe_service.py` passes."
 
 ### Don't plan what you can't verify
 
@@ -236,7 +256,7 @@ the step is too vague or too abstract. Make it concrete.
 
 For frontend/UI work, TDD doesn't apply naturally. Instead:
 
-- Reference the design system (`AGENTS.md`) for visual decisions
+- Reference the design system (`DESIGN_SYSTEM.md`) for visual decisions
 - Point to existing components as structural examples
 - Describe the user-visible behaviour, not the implementation
 - Verification is "the page renders with the correct data and matches the design system"
