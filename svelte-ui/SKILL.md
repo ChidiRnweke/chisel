@@ -1,121 +1,223 @@
 ---
 name: svelte-ui
-description: Build distinctive, production-grade SvelteKit user interfaces with a cohesive design system.  Use this skill whenever the user asks to create, improve, or review UI in a SvelteKit project — including new pages, components, layouts, forms, or design systems. Also trigger when the user mentions shadcn-svelte, Tailwind theming, component libraries, or asks why their UI looks "bland", "generic", or "like every other SaaS". This skill establishes a design system from scratch (palette, type scale, spacing tokens) before writing any components, and enforces consistency across the entire codebase. It actively audits for and fixes generic anti-patterns.
+description: Use when the user wants to build, improve, or review UI in a SvelteKit project. Triggers include: creating a new page, component, or layout; setting up or extending a design system; theming shadcn-svelte or Tailwind; fixing UI that looks bland, generic, or inconsistent; auditing an existing codebase for style drift. Do not trigger for pure logic, routing, server actions, API work, or anything non-visual unless the user explicitly connects it to UI appearance.
 ---
 
-# SvelteKit UI Skill
+# SvelteKit UI Skill (Refactored: Style-Repo + UX-first)
 
-Build opinionated, visually distinctive SvelteKit interfaces with a proper design system underneath. Not just pretty — consistent, maintainable, and characterful.
+Build opinionated, visually distinctive SvelteKit interfaces with a coherent design system underneath.
+Not just pretty — consistent, maintainable, accessible, and characterful.
 
 ---
 
 ## Blueprint
 
-IMPORTANT: ask the user if they want you to start coding or explicitly invoke the `feature-blueprint` skill to write a detailed plan.
+**First action:** ask whether to start coding now or invoke `feature-blueprint` to plan.
 
-## Phase 0: Design System First
+If the user wants to build UI immediately, still complete **Phase 0 (Style Commit + Design System)** before writing components.
 
-**Never write a component before the design system exists.** If there's no established palette or visual identity, stop and ask the user before proceeding:
+---
 
-> "Before I build anything, I need to understand the visual direction. What's the product about? Do you have a colour palette, brand references, or a mood you're going for? Or would you like me to propose something?"
+## Phase 0: Lock Visual Direction (Style Commit)
 
-Once you have direction, define the full token set in `src/app.css` (or a dedicated `src/lib/styles/tokens.css`). The system must include:
+### 0.1 Determine context
 
-### Colour Tokens
+- **New UI / new feature** → do Phase 0 fully.
+- **Existing project / “make it less generic”** → run **Audit Mode** (later) but still do a Style Commit if none exists.
+
+### 0.2 Style Picker (curated art directions)
+
+Offer the user a constrained choice: **1 Primary style** (+ optional 1 Secondary) + optional **Modifiers**.
+
+> Ask: “Pick **1 primary** style. Optionally add **1 secondary** style and up to **2 modifiers**.”
+
+**Style registry (with reference files):**
+
+| Style                                | What it looks like                                   | Best used for                         | Reference                                                    |
+| ------------------------------------ | ---------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------ |
+| Minimalism / Swiss                   | strict grid, whitespace, typographic hierarchy       | settings, dashboards, “quiet premium” | `references/styles/minimalism-swiss.md`                      |
+| Editorial / Typography-led           | big type, rhythm, magazine-like layouts              | content-heavy products, warm brands   | `references/styles/editorial-typography-led.md`              |
+| Flat design                          | solid fills, crisp borders, minimal depth            | clarity-first product UIs             | `references/styles/flat-design.md`                           |
+| Material Design                      | layered surfaces, consistent elevation, motion rules | app shells, mobile-first              | `references/styles/material-design.md`                       |
+| Fluent Design                        | depth + translucency (acrylic), blur, light          | chrome/overlays, modern OS feel       | `references/styles/fluent-design.md`                         |
+| Card-based / Modular                 | cards/tiles, reusable blocks, feed/dash patterns     | dashboards, collections               | `references/styles/card-based-modular.md`                    |
+| Bento / Panel grid                   | calm boxed sections, varied spans, rhythm            | home hubs, overview pages             | `references/styles/bento-panel-grid.md`                      |
+| Glassmorphism (modifier)             | frosted blur panels + glow                           | hero/overlays only                    | `references/styles/glassmorphism.md`                         |
+| Neumorphism (modifier)               | soft extruded/pressed surfaces                       | widgets only, risky                   | `references/styles/neumorphism.md`                           |
+| Claymorphism / Soft 3D               | puffy shapes, chunky depth                           | playful consumer/onboarding           | `references/styles/claymorphism-soft-3d.md`                  |
+| Gradients / Aurora (modifier)        | bold gradients/iridescent backdrops                  | hero/section backdrops                | `references/styles/gradients-aurora.md`                      |
+| Skeuomorphism (selective) (modifier) | paper/tape/pins used sparingly                       | editorial pairing, storytelling       | `references/styles/skeuomorphism-selective.md`               |
+| Brutalist / Neo-brutalist            | thick borders, loud contrast, raw                    | bold brand statements                 | `references/styles/brutalist-neo-brutalist.md`               |
+| Illustration-first / Brand character | custom visuals + friendly voice                      | onboarding/empty states               | `references/styles/illustration-first-brand-character-ui.md` |
+| Motion-rich (modifier)               | microinteractions as guidance                        | feedback/orientation layer            | `references/styles/motion-rich-microinteraction-heavy.md`    |
+
+**Important classification rule:**
+
+- **Primary style** defines the _system_ (grid, type, spacing, surfaces).
+- **Secondary style** may influence _some_ tokens + select components.
+- **Modifiers** are **restricted** to specific zones (hero/overlays/widgets) and must not override UX guardrails.
+
+### 0.3 Mandatory: Style Interview (fast, commitment-driven)
+
+After the user picks styles, ask **at most 4–5 forced-choice questions total** (prioritise the primary style) to eliminate vagueness. Don't ask per-style; pick the highest-leverage unknowns only
+
+Example interview prompts (agent should adapt to chosen styles):
+
+- Editorial: type mood (bookish serif / modern serif / sans-only), layout (single-col reading / magazine 2-col / bento editorial), hierarchy (hero-first / balanced / dense)
+- Swiss: density (airy / balanced / compact), separators (rules / whitespace), accent usage (links-only / CTA+focus)
+- Fluent/Glass: transparency budget (nav+overlays only / hero too / heavy), fallback (solid mode required?)
+- Skeuo: metaphor (paper+tape / notebook / binder tabs), ornament budget (0–1 / 2 / 3 motifs per screen)
+- Gradients: where (hero only / section backdrops / subtle accents), palette (2 hues / 3 hues)
+- Motion-rich: where (nav transitions / expand-collapse / delight only), reduced-motion (strict / normal)
+
+### 0.4 Produce a Style Application Plan (required output)
+
+Before coding anything, the agent must write a concise plan:
+
+- **Primary style (≈80%)**: what it controls (type, grid, spacing, core components)
+- **Secondary style (≈20%)**: what it controls (surfaces, header patterns, select components)
+- **Modifiers**: exact placement rules (hero only / overlays only / widgets only)
+- **Banned zones** (default): **forms, tables, navigation scaffolding** stay conventional unless explicitly permitted
+- **Ornament budget** (if applicable): e.g., “max 2 skeuo motifs per screen”
+- **Dark mode**: decide explicitly — `prefers-color-scheme` auto, manual toggle, or light-only. If dark mode is in scope, add a `.dark` variant block to the token file now, not later.
+
+### 0.5 Read style specs (always)
+
+For every chosen style, the agent must open:
+
+- `references/styles/<chosen-style>.md`
+
+The agent must **extract** from each chosen style's spec:
+
+- token defaults,
+- do/don’t rules,
+- component recipes,
+- UX guardrails,
+  and incorporate them into the project’s design system + primitives.
+
+---
+
+## Phase 0b: Persist Decisions (always)
+
+Once the user confirms the Style Application Plan, write:
+
+### 1) `AGENTS.md` (project root)
+
+Must include:
+
+- chosen styles + Style Application Plan
+- final palette + typography + spacing + radii + elevation/motion policies
+- component conventions + “banned zones” decisions
+- ornament budget + any exceptions
+- project-specific anti-patterns
+
+### 2) `CLAUDE.md` (project root)
+
+Short project context + `@AGENTS.md`
+
+### 3) Tokens file
+
+Put tokens at the top of `src/app.css` (or `src/lib/styles/tokens.css`), with a header:
+
+```css
+/* ============================================================
+   DESIGN SYSTEM TOKENS — see AGENTS.md for rationale
+   ============================================================ */
+```
+
+````
+
+---
+
+## Phase 1: Tokens (Design System First)
+
+### 1.1 Token format rule (important)
+
+**Store full `hsl()` values** (not bare HSL triples). Tailwind v4 uses `@theme inline` which reads CSS variables at runtime — it needs resolvable color values, not raw triples. Alpha variants are handled by the `bg-primary/50` utility syntax (no `<alpha-value>` hack needed).
+
+✅ good:
+
+```css
+--color-primary: hsl(142 40% 28%);
+```
+
+❌ avoid:
+
+```css
+--color-primary: 142 40% 28%; /* bare triple — broken with @theme inline */
+```
+
+> **Tip:** OKLCH is also valid and provides better perceptual uniformity (`oklch(35% 0.08 142)`). Use it if the team is comfortable with it.
+
+### 1.2 Palette rules (non-negotiable)
+
+- **Brand hues:** **1–3** max (primary + optional accent + optional secondary)
+- **Neutrals:** unlimited, but **derived** (warm/cool bias) — no dead #fff/#eee soup
+- **States:** define hover/active/focus/error/success; don’t improvise per component
+
+### 1.3 Baseline token scaffold (extend per style)
+
+Agent must generate a full set, at minimum:
 
 ```css
 :root {
-  /* Primary palette — pick ONE dominant hue family, not a rainbow */
-  --color-primary: hsl(142 40% 28%); /* example: deep forest green */
-  --color-primary-light: hsl(142 30% 92%);
-  --color-primary-muted: hsl(142 20% 60%);
+  /* Brand colors */
+  --color-primary: hsl(142 40% 28%);
+  --color-accent: hsl(38 90% 52%);
+  --color-accent-fg: hsl(30 10% 10%);
 
-  /* Neutral scale — derive from primary hue, not pure grey */
-  --color-surface: hsl(45 20% 97%); /* warm off-white, not #ffffff */
+  /* Neutrals */
+  --color-surface: hsl(45 20% 97%);
   --color-surface-2: hsl(45 15% 93%);
   --color-surface-3: hsl(45 12% 87%);
   --color-border: hsl(45 10% 82%);
-
-  --color-text: hsl(30 10% 15%); /* warm near-black */
+  --color-text: hsl(30 10% 15%);
   --color-text-muted: hsl(30 8% 45%);
-  --color-text-subtle: hsl(30 6% 65%);
 
   /* Semantic */
   --color-danger: hsl(0 65% 50%);
   --color-warning: hsl(38 90% 50%);
   --color-success: hsl(142 45% 40%);
 
-  /* Accent — ONE punchy colour for CTAs, highlights */
-  --color-accent: hsl(38 90% 52%); /* e.g. amber */
-  --color-accent-fg: hsl(30 10% 10%); /* text on accent */
-}
-```
+  /* Typography */
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "DM Sans", ui-sans-serif, system-ui;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-**Anti-patterns to call out and fix:**
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.953rem;
+  --text-3xl: 2.441rem;
+  --text-4xl: 3.052rem;
 
-- `--color-primary: #3b82f6` or any default Tailwind blue → generic SaaS
-- Pure `#ffffff` backgrounds → flat and sterile
-- More than 2 hue families in the neutral scale → incoherent
-
-### Typography Tokens
-
-```css
-:root {
-  /* Choose TWO fonts max: one display, one body. Never use Inter/Roboto/Arial. */
-  --font-display: "Fraunces", Georgia, serif; /* personality, headings */
-  --font-body: "DM Sans", "Helvetica Neue", sans-serif; /* legible, neutral */
-  --font-mono: "JetBrains Mono", monospace;
-
-  /* Modular scale (1.25 ratio is a good default) */
-  --text-xs: 0.75rem; /* 12px */
-  --text-sm: 0.875rem; /* 14px */
-  --text-base: 1rem; /* 16px */
-  --text-lg: 1.25rem; /* 20px */
-  --text-xl: 1.5625rem; /* 25px */
-  --text-2xl: 1.953rem; /* ~31px */
-  --text-3xl: 2.441rem; /* ~39px */
-  --text-4xl: 3.052rem; /* ~49px */
-
-  /* Line heights */
   --leading-tight: 1.2;
   --leading-snug: 1.35;
   --leading-normal: 1.5;
   --leading-relaxed: 1.65;
 
-  /* Letter spacing */
   --tracking-tight: -0.02em;
   --tracking-normal: 0em;
   --tracking-wide: 0.06em;
   --tracking-wider: 0.12em;
-}
-```
 
-**Anti-patterns to call out and fix:**
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
 
-- `font-family: Inter` anywhere → too ubiquitous, replace with something with character
-- No letter-spacing on headings → headings need `tracking-tight` at large sizes
-- Body text `font-size: 14px` with no line-height → cramped and unreadable
-
-### Spacing Tokens
-
-```css
-:root {
-  /* 4px base grid */
-  --space-1: 0.25rem; /* 4px */
-  --space-2: 0.5rem; /* 8px */
-  --space-3: 0.75rem; /* 12px */
-  --space-4: 1rem; /* 16px */
-  --space-5: 1.25rem; /* 20px */
-  --space-6: 1.5rem; /* 24px */
-  --space-8: 2rem; /* 32px */
-  --space-10: 2.5rem; /* 40px */
-  --space-12: 3rem; /* 48px */
-  --space-16: 4rem; /* 64px */
-  --space-20: 5rem; /* 80px */
-  --space-24: 6rem; /* 96px */
-
-  /* Semantic spacing */
-  --page-padding: var(--space-6); /* consistent page gutters */
+  --page-padding: var(--space-6);
   --card-padding: var(--space-5);
   --section-gap: var(--space-16);
   --stack-gap: var(--space-4);
@@ -127,373 +229,229 @@ Once you have direction, define the full token set in `src/app.css` (or a dedica
   --radius-xl: 16px;
   --radius-full: 9999px;
 
-  /* Shadows */
+  /* Elevation (style-specific) */
   --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.06);
   --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.08);
   --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.1);
-  --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.06), 0 0 0 1px var(--color-border);
+  --shadow-card:
+    0 2px 8px hsl(0 0% 0% / 0.06), 0 0 0 1px var(--color-border);
 }
 ```
 
+**Anti-patterns to call out and fix (always):**
+
+- default Tailwind blue as primary → generic
+- pure white backgrounds by default → sterile
+- random “mt-3 p-2 rounded-md” sprinkled everywhere → no system
+- more than 3 brand hues → incoherent
+- no explicit focus style → accessibility failure
+
 ---
 
-## Phase 0b: Persisting Design Decisions
+## Phase 2: Tailwind + shadcn-svelte Theming
 
-Once the user confirms the design direction, Claude must write three files before any components are built:
+### 2.1 Tailwind mapping (tokens-first)
 
-### 1. `AGENTS.md` (project root)
-
-The design system reference for all future Claude sessions. Written once, updated when decisions change. This is what `CLAUDE.md` points to via `@AGENTS.md`.
-
-```markdown
-# Design System
-
-## Visual Direction
-
-[One paragraph: mood, references, character. E.g. "Editorial and warm — think cookbook meets
-field guide. Serif headings, generous whitespace, amber accents on a cream base."]
-
-## Palette
-
-- **Primary**: `hsl(142 40% 28%)` — deep forest green. [Reason for choice.]
-- **Accent**: `hsl(38 90% 52%)` — amber. CTAs and highlights only — never decorative.
-- **Neutrals**: Warm off-white base (`hsl 45°`). Never pure grey or `#ffffff`.
-- **Text**: Near-black with warmth (`hsl(30 10% 15%)`). Muted at `hsl(30 8% 45%)`.
-
-## Typography
-
-- **Display**: Fraunces (serif) — headings, hero text, chapter-style labels
-- **Body**: DM Sans — UI copy, labels, body text
-- **Rationale**: [Why this pairing. What it communicates.]
-- **Rules**: Headings always `tracking-tight`. Body `leading-relaxed`. No Inter.
-
-## Spacing
-
-- Base grid: 4px
-- Page gutter: `--space-6` (24px)
-- Card padding: `--space-5` (20px)
-- Section gap: `--space-16` (64px)
-
-## Radius
-
-- Cards: `--radius-lg` (12px)
-- Inputs: `--radius-md` (8px)
-- Badges/pills: `--radius-full`
-
-## Component Conventions
-
-- [Decisions made during development — update as conventions are established]
-- e.g. "Empty states always have an icon, headline, and CTA — never just text"
-- e.g. "Status badges use colour + strikethrough for depleted items, not just label change"
-
-## Anti-patterns for this project
-
-- [Project-specific things that were tried and rejected]
-```
-
-### 2. `CLAUDE.md` (project root)
-
-High-level project context. Kept brief — links to `AGENTS.md` for design detail.
-
-```markdown
-# [Project Name]
-
-## Stack
-
-- SvelteKit [version], TypeScript strict
-- [shadcn-svelte / Tailwind / other UI deps]
-- [Backend if BFF pattern]
-
-## Architecture
-
-[One line: "BFF — SvelteKit frontend + Python FastAPI backend" or "TypeScript monolith"]
-
-## Key conventions
-
-- [Any project-specific deviations from standard skill patterns]
-- [Things Claude should know that aren't in the skills]
-
-## Active skills
-
-- svelte-ui — design system and UI components
-- svelte-swe — frontend architecture
-- [python-swe — backend, if applicable]
-
-@AGENTS.md
-```
-
-The `@AGENTS.md` at the bottom pulls the design system into context automatically.
-
-### 3. CSS tokens in `src/app.css`
-
-Emit the full token block (as shown in Phase 0) as the _first thing_ in `app.css`, with a comment header:
+Tailwind v4 is **CSS-first** — no `tailwind.config.js`. Add an `@theme inline` block in `src/app.css` (after the `:root` token block) to expose tokens as Tailwind utilities:
 
 ```css
-/* ============================================================
-   DESIGN SYSTEM TOKENS — see AGENTS.md for rationale
-   ============================================================ */
+/* src/app.css */
+@import "tailwindcss";
+
+/* ... :root token block above ... */
+
+@theme inline {
+  /* Colors → bg-primary, text-primary, border-primary, ring-primary, etc.
+     Alpha variants work automatically: bg-primary/50 */
+  --color-primary: var(--color-primary);
+  --color-accent: var(--color-accent);
+  --color-surface: var(--color-surface);
+  --color-surface-2: var(--color-surface-2);
+  --color-surface-3: var(--color-surface-3);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-border: var(--color-border);
+  --color-danger: var(--color-danger);
+  --color-warning: var(--color-warning);
+  --color-success: var(--color-success);
+
+  /* Fonts → font-display, font-body, font-mono */
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  /* Radius → rounded-sm, rounded-md, rounded-lg, rounded-xl */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+}
 ```
 
-**At the start of future sessions:** Read `AGENTS.md` first. Operate within those decisions. If a new request conflicts with established decisions, flag it rather than silently overriding.
+> **No `content:` config needed** — Tailwind v4 detects source files automatically.
 
----
+### 2.2 shadcn-svelte variables (never default)
 
-## Phase 1: Tailwind Config
-
-Pipe all tokens into Tailwind so utilities work off the design system, not Tailwind defaults:
-
-```js
-// tailwind.config.js
-export default {
-  content: ["./src/**/*.{html,js,svelte,ts}"],
-  theme: {
-    extend: {
-      colors: {
-        primary: "hsl(var(--color-primary) / <alpha-value>)",
-        surface: "hsl(var(--color-surface) / <alpha-value>)",
-        accent: "hsl(var(--color-accent) / <alpha-value>)",
-        // etc.
-      },
-      fontFamily: {
-        display: ["var(--font-display)"],
-        body: ["var(--font-body)"],
-        mono: ["var(--font-mono)"],
-      },
-      spacing: {
-        // Map to CSS vars via arbitrary values or extend scale
-      },
-    },
-  },
-};
-```
-
-Prefer using CSS custom properties over Tailwind's hardcoded colour names for anything that might change between themes.
-
----
-
-## Phase 2: shadcn-svelte Setup & Theming
-
-shadcn-svelte components are the **floor**, not the ceiling. Install and then immediately override the default theme.
-
-### shadcn-svelte theming
-
-Map shadcn's semantic variables to your design tokens in `app.css`:
+Set shadcn semantic vars to your tokens (triples):
 
 ```css
 :root {
   --background: var(--color-surface);
   --foreground: var(--color-text);
+
   --card: var(--color-surface-2);
   --card-foreground: var(--color-text);
+
   --primary: var(--color-primary);
-  --primary-foreground: white;
+  --primary-foreground: hsl(0 0% 100%);
+
   --secondary: var(--color-surface-3);
   --secondary-foreground: var(--color-text);
+
   --muted: var(--color-surface-2);
   --muted-foreground: var(--color-text-muted);
+
   --accent: var(--color-accent);
   --accent-foreground: var(--color-accent-fg);
+
   --destructive: var(--color-danger);
   --border: var(--color-border);
+
   --radius: var(--radius-md);
 }
 ```
 
-**Never leave shadcn variables at their defaults.** An unthemed shadcn project is immediately recognisable — flat, blue, and sterile.
-
-### When to use shadcn vs custom
-
-| Situation                           | Use                                                         |
-| ----------------------------------- | ----------------------------------------------------------- |
-| Form inputs, selects, checkboxes    | shadcn (accessibility is hard)                              |
-| Dialogs, popovers, tooltips         | shadcn (focus trapping, ARIA)                               |
-| Buttons                             | shadcn `<Button>` — but always with custom `variant` styles |
-| Simple layout cards                 | Custom Svelte component wrapping a `<div>`                  |
-| Navigation, headers, sidebars       | Custom — shadcn has no good opinions here                   |
-| Data tables with sorting/pagination | shadcn `<Table>`                                            |
-| Toast/notifications                 | shadcn `<Sonner>`                                           |
-
 ---
 
-## Phase 3: Component Architecture
+## Phase 3: Component Architecture (Primitives enforce style)
 
-### File conventions
+### 3.1 File conventions
 
 ```
 src/lib/components/
-├── ui/           # shadcn-svelte auto-generated — don't hand-edit
-├── primitives/   # Thin wrappers around shadcn with project theming baked in
+├── ui/            # shadcn-svelte generated — don’t hand-edit
+├── primitives/    # wrappers that encode tokens + conventions
 │   ├── Button.svelte
 │   ├── Card.svelte
 │   ├── Input.svelte
-│   └── Badge.svelte
-├── layout/       # Page-level structural components
+│   ├── Badge.svelte
+│   ├── Text.svelte        # typographic ladder
+│   ├── Stack.svelte       # vertical rhythm / spacing
+│   ├── Rule.svelte        # editorial rules/dividers
+│   └── Panel.svelte       # bento/modular surface blocks
+├── layout/
 │   ├── PageHeader.svelte
 │   ├── Sidebar.svelte
-│   └── EmptyState.svelte
-└── domain/       # Feature-specific components
-    ├── RecipeCard.svelte
-    └── CupboardItem.svelte
+│   ├── EmptyState.svelte
+│   └── Skeletons.svelte
+└── domain/
+    └── feature-specific components...
 ```
 
-### Primitive wrappers
+### 3.2 Hard rules (consistency)
 
-Create thin wrappers that bake in project conventions. Example:
+- Never use raw `<button>` → always `primitives/Button`
+- Never use raw `<input>` → shadcn `Input` via `primitives/Input`
+- Never hand-roll spacing ad-hoc → use `Stack` / tokens
+- Never use Tailwind default palette as final colors → tokens only
+- If a request conflicts with `AGENTS.md`, **flag it** (don’t silently change style)
 
-```svelte
-<!-- src/lib/components/primitives/Card.svelte -->
-<script lang="ts">
-	import type { HTMLAttributes } from 'svelte/elements';
+### 3.3 Style repository integration in primitives
 
-	interface Props extends HTMLAttributes<HTMLDivElement> {
-		padding?: 'sm' | 'md' | 'lg';
-		elevated?: boolean;
-	}
+When styles are chosen:
 
-	let { padding = 'md', elevated = false, class: className, children, ...rest }: Props = $props();
+1. read the style spec `.md` files
+2. incorporate their rules into:
+   - tokens (where appropriate)
+   - primitive variants (Button/Card/Panel)
+   - layout patterns (PageHeader/EmptyState)
 
-	const padMap = { sm: 'p-4', md: 'p-5', lg: 'p-8' };
-</script>
-
-<div
-	class="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface-2)]
-         {padMap[padding]} {elevated ? 'shadow-[var(--shadow-md)]' : 'shadow-[var(--shadow-card)]'}
-         {className}"
-	{...rest}
->
-	{@render children?.()}
-</div>
-```
-
-**Rules:**
-
-- Never use raw `<div class="rounded-lg bg-white border p-4">` in a page — that's what `<Card>` is for
-- Never use `<button>` directly — always `<Button>` from primitives
-- Never use `<input>` directly — always `<Input>` from shadcn/primitives
-- Never use `<p>` for UI chrome text — wrap in a typed text component or at minimum use semantic Tailwind prose classes
-
-### Svelte 5 patterns
-
-Use runes throughout:
-
-```svelte
-<script lang="ts">
-	let { items = [] }: { items: Item[] } = $props();
-	let query = $state('');
-	let filtered = $derived(items.filter((i) => i.name.includes(query)));
-</script>
-```
-
-For event handling, prefer `onclick` over `on:click` (Svelte 5 syntax).
+3. keep UX guardrails intact (focus rings, contrast, tap targets)
 
 ---
 
-## Phase 4: SvelteKit Patterns
+## Phase 4: Svelte 5 + SvelteKit patterns (production-grade)
 
-### Streaming data
+### 4.1 Svelte 5 runes
 
-For slow data, use streamed promises so the UI is responsive:
+Use runes consistently (`$props`, `$state`, `$derived`). Prefer `onclick` etc.
 
-```ts
-// +page.server.ts
-export const load: PageServerLoad = async ({ locals }) => {
-  return {
-    user: locals.user, // fast — resolve immediately
-    streamed: {
-      items: fetchItems(), // slow — stream it
-    },
-  };
-};
-```
+### 4.2 Streaming + skeletons
 
-```svelte
-<!-- +page.svelte -->
-<script lang="ts">
-	import { page } from '$app/stores';
-	let { data } = $props();
-</script>
+Prefer streamed promises with **skeleton UIs** that match final layout.
 
-{#await data.streamed.items}
-	<SkeletonList /> <!-- Always show a skeleton, never a spinner alone -->
-{:then items}
-	<ItemList {items} />
-{:catch}
-	<ErrorState />
-{/await}
-```
+### 4.3 Form actions + progressive enhancement
 
-### Form actions
-
-Prefer SvelteKit form actions over manual fetch for mutations. Use `enhance` for progressive enhancement:
-
-```svelte
-<form method="POST" action="?/addItem" use:enhance>
-	<Input name="name" placeholder="Item name" />
-	<Button type="submit">Add</Button>
-</form>
-```
+Prefer SvelteKit actions + `use:enhance`.
 
 ---
 
-## Phase 5: Blandness Audit
+## Phase 5: UX Guardrails (always on)
 
-When reviewing or building UI, actively check for these and fix them without being asked:
+Regardless of style:
 
-### Anti-pattern checklist
+- **Focus rings** are visible and consistent
+- **Contrast** targets AA for text
+- **Tap targets** ≥ 44×44px
+- **States** exist for hover/active/disabled/error/success
+- **Keyboard** navigation works for menus/dialogs/forms
+- **Reduced motion** respected (especially if Motion-rich modifier is used)
 
-| Anti-pattern                       | Fix                                                               |
-| ---------------------------------- | ----------------------------------------------------------------- |
-| `font-family: Inter`               | Replace with characterful font from design system                 |
-| `bg-white` or `bg-gray-*`          | Use `bg-[var(--color-surface)]` tokens                            |
-| `text-blue-500` as primary         | Map to `--color-primary` token                                    |
-| Raw `<button>` tag                 | Replace with `<Button>` primitive                                 |
-| Raw `<input>` tag                  | Replace with shadcn `<Input>`                                     |
-| `rounded-md` everywhere uniform    | Vary radius intentionally — small for inputs, larger for cards    |
-| Uniform 16px spacing everywhere    | Use spacing scale — sections need `--space-16`, cards `--space-5` |
-| No letter-spacing on headings      | Add `tracking-tight` to display text                              |
-| Spinner-only loading states        | Add skeleton screens that mirror the real layout                  |
-| `text-gray-500` for secondary text | Use `--color-text-muted` token                                    |
-| Default shadcn blue button         | Apply themed `--color-primary` to shadcn's `--primary` variable   |
-
-### Calling it out
-
-When you spot a generic choice, say so clearly:
-
-> "This uses `bg-white` and `text-gray-500` — that's the default Tailwind palette, which will make this feel generic. I'm replacing it with the design system tokens."
-
-Don't silently fix it and say nothing. Making the reasoning explicit helps the developer internalise the system.
+If a visual effect (glass/neo/skeuo) harms these, it must be limited, toned down, or replaced.
 
 ---
 
-## Phase 6: Visual Character
+## Phase 6: Blandness + Style Drift Audit
 
-After the system is in place and components are consistent, layer in personality. This is what separates "well-structured" from "memorable."
+When reviewing or improving UI, the agent must audit for:
 
-- **Typography contrast**: Pair a serif display font with a clean sans for body. Use the display font generously in headings — don't be shy.
-- **Colour warmth**: Neutral palettes should have a hue. Pure grey neutrals feel cold. Derive neutrals from your primary hue.
-- **Whitespace as design**: Use generous spacing in hero/header areas. Density is fine in data — not in navigation or page headers.
-- **Micro-copy**: UI labels matter. "Add Item" is fine. "Stock your cupboard" is better. Push back on generic labels if they weaken the product voice.
-- **Empty states**: Never leave an empty `<div>`. Every zero-state should have an illustration or icon, a headline, and a CTA.
-- **Status badges**: Colour-coded badges (Fresh / Use Soon / Running Low) carry meaning — make sure they're visually distinct, not just label differences.
+### 6.1 Generic anti-patterns
+
+- default Tailwind colors/typography
+- pure white/gray soup
+- inconsistent radii and shadows
+- random spacing values
+- unthemed shadcn defaults
+
+### 6.2 Style drift (new)
+
+Compare code against `AGENTS.md`:
+
+- Is the Style Application Plan being followed?
+- Are modifiers leaking into banned zones?
+- Is ornament budget exceeded?
+- Are core primitives bypassed?
+
+When calling it out, be explicit:
+
+> “This screen uses default gray text + blue actions, which conflicts with the locked style + tokens. I’m switching to the token palette and primitive components.”
 
 ---
 
 ## Audit Mode (Existing Projects)
 
-If the user asks to improve, review, or "make less generic" an existing SvelteKit codebase rather than build something new, switch to Audit Mode. Read `references/audit.md` for the full workflow.
+If the user asks to improve/review an existing codebase:
 
-The short version: read the existing code first, identify violations against the design system checklist, propose a migration plan, and only then start making changes — don't rewrite everything at once.
+- Read existing tokens, Tailwind config, shadcn mapping, primitives
+- Identify violations + propose a migration plan
+- Only then change code incrementally
+
+Use `references/audit.md` for the detailed workflow.
 
 ---
 
 ## Checklist Before Shipping Any UI
 
-- [ ] All colours reference CSS custom property tokens, not Tailwind default colours
-- [ ] Typography uses the two chosen fonts; no system font fallback used as primary
-- [ ] No raw `<button>`, `<input>`, `<p>` (for UI chrome) tags outside of primitive components
-- [ ] shadcn variables remapped to project tokens in `app.css`
-- [ ] Streamed data has skeleton loading states
-- [ ] Empty states exist for every list/grid that can be empty
-- [ ] Spacing uses the defined scale — no arbitrary `mt-3`, `p-2` sprinkled everywhere
-- [ ] Headings have `tracking-tight` and appropriate `leading-tight` / `leading-snug`
-- [ ] No default blue primary colour unless it's intentional and themed
+- [ ] Style Application Plan exists in `AGENTS.md` and matches implementation
+- [ ] Tokens are full `hsl()` (or OKLCH) values, not bare triples
+- [ ] `@theme inline` block in `app.css` exposes all color/font/radius tokens to Tailwind utilities
+- [ ] Alpha variants use `bg-primary/50` syntax — no `<alpha-value>` strings anywhere
+- [ ] All colors come from tokens (no Tailwind defaults as final)
+- [ ] shadcn variables remapped (no defaults)
+- [ ] Typography ladder exists and is used (no random `text-*` choices)
+- [ ] No raw `<button>` / `<input>` outside primitives
+- [ ] Spacing uses scale + layout helpers (no ad-hoc drift)
+- [ ] Loading states are skeletons matching final layout
+- [ ] Empty states exist and follow the style rules (and ornament budget)
+- [ ] Focus/contrast/tap targets pass UX guardrails
+````
