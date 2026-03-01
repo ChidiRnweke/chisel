@@ -101,17 +101,25 @@ The agent must **extract** from each chosen style's spec:
 
 Once the user confirms the Style Application Plan, write:
 
-### 1) `AGENTS.md` (project root)
+### 1) `DESIGN_SYSTEM.md` (project root)
 
 Must include:
 
 - chosen styles + Style Application Plan
 - final palette + typography + spacing + radii + elevation/motion policies
-- component conventions + “banned zones” decisions
+- component conventions + "banned zones" decisions
 - ornament budget + any exceptions
 - project-specific anti-patterns
 
-### 2) `CLAUDE.md` (project root)
+### 2) `AGENTS.md` (project root)
+
+Keep short — this file is loaded into every agent context, so don't pollute it with the full design system. It should only point to the right file:
+
+```md
+For UI design decisions (tokens, style, components), see @DESIGN_SYSTEM.md.
+```
+
+### 3) `CLAUDE.md` (project root)
 
 Short project context + `@AGENTS.md`
 
@@ -121,7 +129,7 @@ Put tokens at the top of `src/app.css` (or `src/lib/styles/tokens.css`), with a 
 
 ```css
 /* ============================================================
-   DESIGN SYSTEM TOKENS — see AGENTS.md for rationale
+   DESIGN SYSTEM TOKENS — see DESIGN_SYSTEM.md for rationale
    ============================================================ */
 ```
 
@@ -354,7 +362,7 @@ src/lib/components/
 - Never use raw `<input>` → shadcn `Input` via `primitives/Input`
 - Never hand-roll spacing ad-hoc → use `Stack` / tokens
 - Never use Tailwind default palette as final colors → tokens only
-- If a request conflicts with `AGENTS.md`, **flag it** (don’t silently change style)
+- If a request conflicts with `DESIGN_SYSTEM.md`, **flag it** (don't silently change style)
 
 ### 3.3 Style repository integration in primitives
 
@@ -415,7 +423,7 @@ When reviewing or improving UI, the agent must audit for:
 
 ### 6.2 Style drift (new)
 
-Compare code against `AGENTS.md`:
+Compare code against `DESIGN_SYSTEM.md`:
 
 - Is the Style Application Plan being followed?
 - Are modifiers leaking into banned zones?
@@ -442,7 +450,7 @@ Use `references/audit.md` for the detailed workflow.
 
 ## Checklist Before Shipping Any UI
 
-- [ ] Style Application Plan exists in `AGENTS.md` and matches implementation
+- [ ] Style Application Plan exists in `DESIGN_SYSTEM.md` and matches implementation
 - [ ] Tokens are full `hsl()` (or OKLCH) values, not bare triples
 - [ ] `@theme inline` block in `app.css` exposes all color/font/radius tokens to Tailwind utilities
 - [ ] Alpha variants use `bg-primary/50` syntax — no `<alpha-value>` strings anywhere

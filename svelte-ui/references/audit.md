@@ -9,15 +9,14 @@ Use this workflow when the user wants to improve an existing SvelteKit project r
 
 Before suggesting any changes, read the following files:
 
-1. `src/app.css` — does a design token system exist? Or raw Tailwind defaults?
-2. `tailwind.config.js` — is the theme extended with custom tokens, or stock Tailwind?
-3. A representative page component (e.g. `src/routes/+page.svelte`)
-4. 2–3 shared components from `src/lib/components/`
-5. `DESIGN_SYSTEM.md` if it exists
+1. `src/app.css` — does a token system exist in `:root`? Is there an `@theme inline` block wiring tokens to Tailwind utilities?
+2. A representative page component (e.g. `src/routes/+page.svelte`)
+3. 2–3 shared components from `src/lib/components/`
+4. `DESIGN_SYSTEM.md` if it exists
 
 Form a picture of the current state before saying anything. Don't start listing fixes yet.
 
-If DESIGN_SYSTEM.md doesn't exist, you will gather information to create it, map out the tokens and primitives you find, and propose a structure for it in the diagnosis report. You can also suggest running the `svelte-ui` skill to create one based on the audit findings.
+If `DESIGN_SYSTEM.md` doesn't exist, you will gather information to create it, map out the tokens and primitives you find, and propose a structure for it in the diagnosis report. You can also suggest running the `svelte-ui` skill to create one based on the audit findings.
 
 
 ---
@@ -33,8 +32,8 @@ Produce a structured diagnosis. Be specific — reference actual file paths and 
 - [Genuine strengths — don't skip this, it sets a constructive tone]
 
 ### Design System
-- [ ] Token system: EXISTS / MISSING / PARTIAL
-- [ ] Tailwind theme extended: YES / NO
+- [ ] Token system in `app.css` `:root`: EXISTS / MISSING / PARTIAL
+- [ ] `@theme inline` block wiring tokens to Tailwind: YES / NO
 - [ ] shadcn themed: YES / NO / NOT USED
 
 ### Anti-patterns found
@@ -44,7 +43,7 @@ Produce a structured diagnosis. Be specific — reference actual file paths and 
 | src/routes/+page.svelte:42 | Raw `<button class="bg-blue-500">` | High |
 | src/lib/components/Card.svelte | bg-white, no border-radius token | Medium |
 | src/app.css | No token system, Tailwind defaults only | High |
-| tailwind.config.js | No theme extension | High |
+| src/app.css | No `@theme inline` block — tokens not wired to Tailwind | High |
 
 ### Overall assessment
 [2–3 sentences on the dominant problems and what fixing them would achieve]
