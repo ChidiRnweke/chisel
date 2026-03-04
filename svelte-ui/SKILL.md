@@ -1,12 +1,11 @@
 ---
 name: svelte-ui
-description: Use when the user wants to build, improve, or review UI in a SvelteKit project. Triggers include: creating a new page, component, or layout; setting up or extending a design system; theming shadcn-svelte or Tailwind; fixing UI that looks bland, generic, or inconsistent; auditing an existing codebase for style drift. Do not trigger for pure logic, routing, server actions, API work, or anything non-visual unless the user explicitly connects it to UI appearance.
+description: Use when the user wants to build, improve, or review UI and UX in a SvelteKit project. Triggers include: creating a new page, component, or layout; selecting a UX pattern for a feature; setting up or extending a design system; theming shadcn-svelte or Tailwind; fixing UI that looks bland, generic, or inconsistent; auditing an existing codebase for style or UX drift. Do not trigger for pure logic, routing, server actions, API work, or anything non-visual unless the user explicitly connects it to UI/UX appearance or behavior.
 ---
 
 # SvelteKit UI Skill (Refactored: Style-Repo + UX-first)
 
-Build opinionated, visually distinctive SvelteKit interfaces with a coherent design system underneath.
-Not just pretty — consistent, maintainable, accessible, and characterful.
+Build opinionated, visually distinctive, and highly usable SvelteKit interfaces with a coherent design system and validated UX patterns underneath. Not just pretty — consistent, maintainable, accessible, and characterful.
 
 ---
 
@@ -14,11 +13,11 @@ Not just pretty — consistent, maintainable, accessible, and characterful.
 
 **First action:** ask whether to start coding now or invoke `feature-blueprint` to plan.
 
-If the user wants to build UI immediately, still complete **Phase 0 (Style Commit + Design System)** before writing components.
+If the user wants to build UI immediately, complete **Phase 0 (Style Commit)** and **Phase 1 (UX Pattern Strategy)** before writing components.
 
 ---
 
-## Phase 0: Lock Visual Direction (Style Commit)
+## Phase 0: Lock Global Visual Direction (Style Commit)
 
 ### 0.1 Determine context
 
@@ -59,7 +58,7 @@ Offer the user a constrained choice: **1 Primary style** (+ optional 1 Secondary
 
 ### 0.3 Mandatory: Style Interview (fast, commitment-driven)
 
-After the user picks styles, ask **at most 4–5 forced-choice questions total** (prioritise the primary style) to eliminate vagueness. Don't ask per-style; pick the highest-leverage unknowns only
+After the user picks styles, ask **at most 4–5 forced-choice questions total** (prioritise the primary style) to eliminate vagueness. Don't ask per-style; pick the highest-leverage unknowns only.
 
 Example interview prompts (agent should adapt to chosen styles):
 
@@ -97,9 +96,45 @@ The agent must **extract** from each chosen style's spec:
 
 ---
 
-## Phase 0b: Persist Decisions (always)
+## Phase 1: Feature UX & Layout Strategy
 
-Once the user confirms the Style Application Plan, write:
+Style dictates how things look; **UX Patterns dictate how things work.** Before building any screen or major feature, you must lock in its structural UX pattern.
+
+### 1.1 UX Pattern Registry
+
+Identify the **1 primary UX pattern** that best serves the user's feature request. Do not invent custom layouts from scratch if a proven pattern exists.
+
+| Pattern | Signature & Use Case | Reference |
+| --- | --- | --- |
+| **Canvas** | Freeform spatial workspace (Whiteboards, node editors) | `references/ux/canvas.md` |
+| **Conversational** | Persistent chronological thread (Chatbots, AI assistants) | `references/ux/conversational.md` |
+| **Dashboard** | High-density overview of metrics (Home screens, analytics) | `references/ux/dashboard.md` |
+| **Document** | Continuous linear text flow (Long-form content, wikis) | `references/ux/document.md` |
+| **Drill Down** | Strict hierarchy traversal (Deep settings, nested folders) | `references/ux/drill-down.md` |
+| **Feed** | Vertical stream of items (Timelines, activity logs) | `references/ux/feed.md` |
+| **Hub & Spoke** | Central dispatcher to isolated modes (Task-focused apps) | `references/ux/hub-spoke.md` |
+| **Kanban** | Columns representing state (Project mgmt, pipelines) | `references/ux/kanban.md` |
+| **Launcher** | Keyboard-first search overlay (Global search, cmd palettes) | `references/ux/launcher.md` |
+| **Master-Detail** | Bifurcated list + content view (Email clients, dense logs) | `references/ux/master-detail.md` |
+| **Matrix** | 2D data grid (Ledgers, bulk data entry) | `references/ux/matrix.md` |
+| **Prog. Disclosure**| Depth on demand (Complex settings, advanced forms) | `references/ux/progressive-disclosure.md`|
+| **Tabs** | Parallel contexts (Grouped peer settings) | `references/ux/tabs.md` |
+| **Timeline** | Spatial representation of time (Schedules, video editors) | `references/ux/timeline.md` |
+| **Wizard** | Linear sequential flow (Onboarding, complex forms) | `references/ux/wizard.md` |
+| **Workbench** | Omnipresent unscrollable UI (Expert devtools, IDEs) | `references/ux/workbench.md` |
+
+### 1.2 Mandatory Pattern Review
+Once a pattern is identified, you **MUST read its corresponding markdown reference file** before writing code. 
+These files contain:
+- Recommended `shadcn-svelte` components to use.
+- Strict `Do / Don't` interaction rules.
+- A fully typed Svelte 5 Component Recipe.
+
+---
+
+## Phase 2: Persist Decisions (always)
+
+Once the Style & UX plans are confirmed, write to the following files to persist state across sessions:
 
 ### 1) `DESIGN_SYSTEM.md` (project root)
 
@@ -108,6 +143,7 @@ Must include:
 - chosen styles + Style Application Plan
 - final palette + typography + spacing + radii + elevation/motion policies
 - component conventions + "banned zones" decisions
+- **Chosen UX Patterns** for core features (e.g., "Inbox uses Master-Detail, Settings uses Progressive Disclosure").
 - ornament budget + any exceptions
 - project-specific anti-patterns
 
@@ -116,14 +152,14 @@ Must include:
 Keep short — this file is loaded into every agent context, so don't pollute it with the full design system. It should only point to the right file:
 
 ```md
-For UI design decisions (tokens, style, components), see @DESIGN_SYSTEM.md.
+For UI design decisions (tokens, style, components) and UX patterns, see @DESIGN_SYSTEM.md.
 ```
 
 ### 3) `CLAUDE.md` (project root)
 
 Short project context + `@AGENTS.md`
 
-### 3) Tokens file
+### 4) Tokens file
 
 Put tokens at the top of `src/app.css` (or `src/lib/styles/tokens.css`), with a header:
 
@@ -133,13 +169,11 @@ Put tokens at the top of `src/app.css` (or `src/lib/styles/tokens.css`), with a 
    ============================================================ */
 ```
 
-````
-
 ---
 
-## Phase 1: Tokens (Design System First)
+## Phase 3: Tokens (Design System First)
 
-### 1.1 Token format rule (important)
+### 3.1 Token format rule (important)
 
 **Store full `hsl()` values** (not bare HSL triples). Tailwind v4 uses `@theme inline` which reads CSS variables at runtime — it needs resolvable color values, not raw triples. Alpha variants are handled by the `bg-primary/50` utility syntax (no `<alpha-value>` hack needed).
 
@@ -157,13 +191,13 @@ Put tokens at the top of `src/app.css` (or `src/lib/styles/tokens.css`), with a 
 
 > **Tip:** OKLCH is also valid and provides better perceptual uniformity (`oklch(35% 0.08 142)`). Use it if the team is comfortable with it.
 
-### 1.2 Palette rules (non-negotiable)
+### 3.2 Palette rules (non-negotiable)
 
 - **Brand hues:** **1–3** max (primary + optional accent + optional secondary)
 - **Neutrals:** unlimited, but **derived** (warm/cool bias) — no dead #fff/#eee soup
 - **States:** define hover/active/focus/error/success; don’t improvise per component
 
-### 1.3 Baseline token scaffold (extend per style)
+### 3.3 Baseline token scaffold (extend per style)
 
 Agent must generate a full set, at minimum:
 
@@ -256,9 +290,9 @@ Agent must generate a full set, at minimum:
 
 ---
 
-## Phase 2: Tailwind + shadcn-svelte Theming
+## Phase 4: Tailwind + shadcn-svelte Theming
 
-### 2.1 Tailwind mapping (tokens-first)
+### 4.1 Tailwind mapping (tokens-first)
 
 Tailwind v4 is **CSS-first** — no `tailwind.config.js`. Add an `@theme inline` block in `src/app.css` (after the `:root` token block) to expose tokens as Tailwind utilities:
 
@@ -298,7 +332,7 @@ Tailwind v4 is **CSS-first** — no `tailwind.config.js`. Add an `@theme inline`
 
 > **No `content:` config needed** — Tailwind v4 detects source files automatically.
 
-### 2.2 shadcn-svelte variables (never default)
+### 4.2 shadcn-svelte variables (never default)
 
 Set shadcn semantic vars to your tokens (triples):
 
@@ -331,14 +365,14 @@ Set shadcn semantic vars to your tokens (triples):
 
 ---
 
-## Phase 3: Component Architecture (Primitives enforce style)
+## Phase 5: Component Architecture (Primitives & Patterns)
 
-### 3.1 File conventions
+### 5.1 File conventions
 
 ```
 src/lib/components/
 ├── ui/            # shadcn-svelte generated — don’t hand-edit
-├── primitives/    # wrappers that encode tokens + conventions
+├── primitives/    # wrappers that encode tokens + visual conventions
 │   ├── Button.svelte
 │   ├── Card.svelte
 │   ├── Input.svelte
@@ -347,7 +381,10 @@ src/lib/components/
 │   ├── Stack.svelte       # vertical rhythm / spacing
 │   ├── Rule.svelte        # editorial rules/dividers
 │   └── Panel.svelte       # bento/modular surface blocks
-├── layout/
+├── layout/        # Pattern-driven structures (from Phase 1 UX Patterns)
+│   ├── MasterDetailLayout.svelte
+│   ├── FeedLayout.svelte
+│   ├── WizardLayout.svelte
 │   ├── PageHeader.svelte
 │   ├── Sidebar.svelte
 │   ├── EmptyState.svelte
@@ -356,15 +393,16 @@ src/lib/components/
     └── feature-specific components...
 ```
 
-### 3.2 Hard rules (consistency)
+### 5.2 Hard rules (consistency)
 
 - Never use raw `<button>` → always `primitives/Button`
 - Never use raw `<input>` → shadcn `Input` via `primitives/Input`
 - Never hand-roll spacing ad-hoc → use `Stack` / tokens
 - Never use Tailwind default palette as final colors → tokens only
-- If a request conflicts with `DESIGN_SYSTEM.md`, **flag it** (don't silently change style)
+- **Never hand-roll complex structural layouts** (like resizable panes or virtualized feeds) without consulting the matching UX Pattern spec in `references/ux/`.
+- If a visual request conflicts with `DESIGN_SYSTEM.md`, **flag it** (don't silently change style).
 
-### 3.3 Style repository integration in primitives
+### 5.3 Style repository integration in primitives
 
 When styles are chosen:
 
@@ -378,42 +416,43 @@ When styles are chosen:
 
 ---
 
-## Phase 4: Svelte 5 + SvelteKit patterns (production-grade)
+## Phase 6: Svelte 5 + SvelteKit patterns (production-grade)
 
-### 4.1 Svelte 5 runes
+### 6.1 Svelte 5 runes
 
 Use runes consistently (`$props`, `$state`, `$derived`). Prefer `onclick` etc.
 
-### 4.2 Streaming + skeletons
+### 6.2 Streaming + skeletons
 
-Prefer streamed promises with **skeleton UIs** that match final layout.
+Prefer streamed promises with **skeleton UIs** that match final layout (crucial for Feed/Dashboard patterns).
 
-### 4.3 Form actions + progressive enhancement
+### 6.3 Form actions + progressive enhancement
 
 Prefer SvelteKit actions + `use:enhance`.
 
 ---
 
-## Phase 5: UX Guardrails (always on)
+## Phase 7: UX Guardrails (always on)
 
-Regardless of style:
+Regardless of style or pattern:
 
 - **Focus rings** are visible and consistent
 - **Contrast** targets AA for text
 - **Tap targets** ≥ 44×44px
 - **States** exist for hover/active/disabled/error/success
 - **Keyboard** navigation works for menus/dialogs/forms
+- **URL Sync** is respected for structural state (like active Tabs or Drill Down depth).
 - **Reduced motion** respected (especially if Motion-rich modifier is used)
 
 If a visual effect (glass/neo/skeuo) harms these, it must be limited, toned down, or replaced.
 
 ---
 
-## Phase 6: Blandness + Style Drift Audit
+## Phase 8: Blandness, Style, and UX Drift Audit
 
 When reviewing or improving UI, the agent must audit for:
 
-### 6.1 Generic anti-patterns
+### 8.1 Generic anti-patterns
 
 - default Tailwind colors/typography
 - pure white/gray soup
@@ -421,7 +460,7 @@ When reviewing or improving UI, the agent must audit for:
 - random spacing values
 - unthemed shadcn defaults
 
-### 6.2 Style drift (new)
+### 8.2 Style & UX drift (new)
 
 Compare code against `DESIGN_SYSTEM.md`:
 
@@ -429,10 +468,11 @@ Compare code against `DESIGN_SYSTEM.md`:
 - Are modifiers leaking into banned zones?
 - Is ornament budget exceeded?
 - Are core primitives bypassed?
+- **Are UX Patterns being abused?** (e.g., nested tabs, paginated feeds instead of virtualized, master-detail scrolling coupled together).
 
 When calling it out, be explicit:
 
-> “This screen uses default gray text + blue actions, which conflicts with the locked style + tokens. I’m switching to the token palette and primitive components.”
+> “This screen nests tabs inside tabs and uses default gray text. This conflicts with our design system and the Tabs UX pattern rules. I am migrating it to a Drill Down pattern and applying the token palette.”
 
 ---
 
@@ -441,7 +481,8 @@ When calling it out, be explicit:
 If the user asks to improve/review an existing codebase:
 
 - Read existing tokens, Tailwind config, shadcn mapping, primitives
-- Identify violations + propose a migration plan
+- Identify Violations (Visual AND Behavioral).
+- Propose a migration plan referencing specific `references/styles/` and `references/ux/` files.
 - Only then change code incrementally
 
 Use `references/audit.md` for the detailed workflow.
@@ -450,16 +491,17 @@ Use `references/audit.md` for the detailed workflow.
 
 ## Checklist Before Shipping Any UI
 
-- [ ] Style Application Plan exists in `DESIGN_SYSTEM.md` and matches implementation
-- [ ] Tokens are full `hsl()` (or OKLCH) values, not bare triples
-- [ ] `@theme inline` block in `app.css` exposes all color/font/radius tokens to Tailwind utilities
-- [ ] Alpha variants use `bg-primary/50` syntax — no `<alpha-value>` strings anywhere
-- [ ] All colors come from tokens (no Tailwind defaults as final)
-- [ ] shadcn variables remapped (no defaults)
-- [ ] Typography ladder exists and is used (no random `text-*` choices)
-- [ ] No raw `<button>` / `<input>` outside primitives
-- [ ] Spacing uses scale + layout helpers (no ad-hoc drift)
-- [ ] Loading states are skeletons matching final layout
-- [ ] Empty states exist and follow the style rules (and ornament budget)
-- [ ] Focus/contrast/tap targets pass UX guardrails
-````
+- [ ] Style Application Plan exists in `DESIGN_SYSTEM.md` and matches implementation.
+- [ ] **Primary UX Pattern identified** for the feature and Reference file read.
+- [ ] UX Pattern Do/Don't rules strictly followed (e.g., proper scrolling, URL syncing, focus states).
+- [ ] Tokens are full `hsl()` (or OKLCH) values, not bare triples.
+- [ ] `@theme inline` block in `app.css` exposes all color/font/radius tokens to Tailwind utilities.
+- [ ] Alpha variants use `bg-primary/50` syntax — no `<alpha-value>` strings anywhere.
+- [ ] All colors come from tokens (no Tailwind defaults as final).
+- [ ] shadcn variables remapped (no defaults).
+- [ ] Typography ladder exists and is used (no random `text-*` choices).
+- [ ] No raw `<button>` / `<input>` outside primitives.
+- [ ] Spacing uses scale + layout helpers (no ad-hoc drift).
+- [ ] Loading states use skeleton UIs matching the layout pattern.
+- [ ] Empty states exist and follow the visual style rules (and ornament budget).
+- [ ] Focus/contrast/tap targets pass accessibility guardrails.
