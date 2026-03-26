@@ -1,6 +1,6 @@
 ---
-name: planning-features
-description: Plans new features, refactors, or significant changes. Triggered when the user mentions "plan", "feature", "blueprint", or describes building something new. Interviews the user, explores the codebase, and produces a step-by-step plan file for an executor agent to run unsupervised.
+name: feature-blueprint
+description: Use this skill whenever the user wants to plan a new feature, refactor, or significant change to an existing codebase. Trigger when the user says "plan", "feature", "blueprint", "what needs to change", "how should I implement", or describes a feature they want built. Also trigger when the user wants to break down a large task into agent-executable steps. This skill interviews the user, explores the codebase, and produces a plan file that an executor agent can run from start to finish without supervision.
 ---
 
 # Blueprint
@@ -20,17 +20,6 @@ check it off, commit, repeat. This a loop designed for a single agent in a
 loop, doing one thing per iteration, with the plan as its fixed reference point. The agent doesn't need to hold the whole project in its head. It reads the blueprint at the start of every loop, does the next thing, and trusts that the plan will guide it to completion.
 
 **The blueprint must be good enough that you can walk away.** If you can't, the plan isn't specific enough or it's missing context the agent will need.
-
----
-
-## Planner Workflow Checklist
-
-Copy this checklist into your initial response scratchpad to track your progress while building the blueprint:
-- [ ] Phase 1: Interview the user to gather context, scope, and constraints.
-- [ ] Phase 2: Perform reconnaissance using tools to map codebase patterns.
-- [ ] Phase 3: (Optional) Propose interfaces and test cases for review.
-- [ ] Phase 4: Write the Blueprint with fine-grained, verifiable steps.
-- [ ] Phase 5: Self-validate the Blueprint against the evaluation heuristics.
 
 ---
 
@@ -221,19 +210,17 @@ You are executing this blueprint. Follow these rules:
 
 1. **Read this file first.** Every loop, re-read this file before doing anything.
    After context compaction, this file is your ground truth.
-2. **Copy the Checklist.** At the start of your execution, copy the remaining unchecked steps into your response scratchpad to track your own progress.
-3. **Validate the Plan.** Before executing the first step, quickly validate that the plan's assumptions align with the current codebase constraints.
-4. **Do the next unchecked step.** Find the first `- [ ]` item. Do that. Only that.
-5. **Verify before checking off.** Run the verification described in the step.
+2. **Do the next unchecked step.** Find the first `- [ ]` item. Do that. Only that.
+3. **Verify before checking off.** Run the verification described in the step.
    If it passes, change `- [ ]` to `- [x]` and commit.
-6. **Commit after each step.** `git add -A && git commit -m "blueprint: [step title]"`
-7. **Don't skip ahead.** Steps are ordered by dependency.
-8. **Follow existing patterns.** When the step references an existing file as an example,
+4. **Commit after each step.** `git add -A && git commit -m "blueprint: [step title]"`
+5. **Don't skip ahead.** Steps are ordered by dependency.
+6. **Follow existing patterns.** When the step references an existing file as an example,
    match its structure. Don't invent new patterns.
-9. **If stuck, document and move on.** If a step is blocked, add a note under it explaining
+7. **If stuck, document and move on.** If a step is blocked, add a note under it explaining
    why, check it off as blocked, and move to the next step. Don't spiral.
-10. **Update this file.** If you discover something during execution that future steps need
-    to know, add a note in the relevant step. Keep the blueprint as the single source of truth.
+8. **Update this file.** If you discover something during execution that future steps need
+   to know, add a note in the relevant step. Keep the blueprint as the single source of truth.
 ```
 
 ---
@@ -280,13 +267,3 @@ The executor updates it as it works. Steps get checked off. Notes get added. If 
 discovers that a step needs to be split or reordered, it should update the blueprint.
 The blueprint is the single source of truth for the feature — not the conversation that
 produced it, not the git history, the blueprint.
-
----
-
-## Self-Validation Loop
-
-Before showing the final `<feature>-plan.md` to the user, you must validate your own work:
-1. **Check step granularity:** Are the steps too broad? Do they specify exact file paths, class names, and method signatures?
-2. **Check verifiability:** Does every step have a clear, objective verification command or action?
-3. **Check pattern adherence:** Do steps that create new code explicitly point to existing files as structural examples?
-If the plan fails any of these checks, autonomously revise it to be more prescriptive and fine-grained before presenting it to the user.

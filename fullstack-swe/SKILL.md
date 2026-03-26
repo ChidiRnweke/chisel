@@ -1,6 +1,6 @@
 ---
-name: architecting-fullstack
-description: Orchestrates full-stack architecture patterns (monorepo, BFF). Triggered when building or reviewing an application spanning frontend and backend, or starting a new project. Decides the pattern and hands off to specialised skills for implementation details.
+name: fullstack-swe
+description: Architecture and patterns for full-stack projects. Use this skill when the user is building or reviewing a full-stack application — frontend + backend together — or when they ask where to put something and the answer spans both layers. Also trigger when the user mentions "full-stack", "monorepo", "BFF", "which skill should I use", or starts a new project and hasn't decided on a stack yet. This skill is a lightweight orchestrator — it decides the architecture pattern and hands off to the specialised skills for implementation details.
 ---
 
 # Fullstack SWE Skill
@@ -12,9 +12,9 @@ not repeat what those skills already cover — read them directly for implementa
 
 ## Blueprint
 
-Read this skill to decide the architecture pattern and project structure. Then read the specialised skills (`building-python-backend`, `building-sveltekit-frontend`, `designing-svelte-ui`) for implementation details on each layer.
+Read this skill to decide the architecture pattern and project structure. Then read the specialised skills (`python-swe`, `svelte-swe`, `svelte-ui`) for implementation details on each layer.
 
-Finally, ask the user if they want you to start coding or explicitly invoke the `planning-features` skill to write a detailed plan.
+Finally, ask the user if they want you to start coding or explicitly invoke the `feature-blueprint` skill to write a detailed plan.
 
 ## Monorepo — Always
 
@@ -24,13 +24,14 @@ backend tomorrow without reorganising. One repo, one agent context, full 360° v
 ```
 project-root/
 ├── CLAUDE.md                # Project-level context — read first every session
-├── AGENTS.md                # Design system decisions (populated by designing-svelte-ui skill)
+├── AGENTS.md                # Design system decisions (populated by svelte-ui skill)
 ├── .github/                 # CI/CD workflows
 ├── docker-compose.yml       # Local dev: frontend + backend + postgres
 ├── frontend/                # SvelteKit app
 │   ├── package.json         # pnpm as package manager
 │   ├── pnpm-lock.yaml
 │   ├── svelte.config.js
+│   ├── tailwind.config.js
 │   ├── tsconfig.json
 │   ├── .env                 # Frontend env vars only — never shares secrets with backend
 │   └── src/
@@ -205,11 +206,11 @@ Once the pattern is decided, the relevant skills take over. Read them fully befo
 
 | What you're building              | Read                                                                                         |
 | --------------------------------- | -------------------------------------------------------------------------------------------- |
-| Pages, components, UI             | `designing-svelte-ui` skill — design system first, always                                              |
-| Loaders, actions, stores, routing | `building-sveltekit-frontend` skill — BFF patterns apply here too, minus the openapi layer                    |
-| Database schema + queries         | Use Drizzle. Follow the repository pattern from `building-sveltekit-frontend` — keep DB access out of loaders |
+| Pages, components, UI             | `svelte-ui` skill — design system first, always                                              |
+| Loaders, actions, stores, routing | `svelte-swe` skill — BFF patterns apply here too, minus the openapi layer                    |
+| Database schema + queries         | Use Drizzle. Follow the repository pattern from `svelte-swe` — keep DB access out of loaders |
 
-**Key adaptation for Pattern A:** The `building-sveltekit-frontend` skill is written for BFF with a separate
+**Key adaptation for Pattern A:** The `svelte-swe` skill is written for BFF with a separate
 backend, but the layering discipline is identical. The difference is your "service" calls Drizzle
 directly instead of an openapi-fetch client. Everything else — no business logic in loaders,
 controllers for multi-service orchestration, stores for client state — applies unchanged.
@@ -218,10 +219,10 @@ controllers for multi-service orchestration, stores for client state — applies
 
 | What you're building                        | Read                                   |
 | ------------------------------------------- | -------------------------------------- |
-| Frontend pages, components, UI              | `designing-svelte-ui` skill                      |
-| Frontend loaders, actions, stores           | `building-sveltekit-frontend` skill                     |
-| Backend services, controllers, repositories | `building-python-backend` skill                     |
-| Typed API client (frontend ↔ backend)       | `building-sveltekit-frontend` → `references/openapi.md` |
+| Frontend pages, components, UI              | `svelte-ui` skill                      |
+| Frontend loaders, actions, stores           | `svelte-swe` skill                     |
+| Backend services, controllers, repositories | `python-swe` skill                     |
+| Typed API client (frontend ↔ backend)       | `svelte-swe` → `references/openapi.md` |
 
 The contract between frontend and backend is the OpenAPI spec. The backend owns it. The
 frontend generates types from it and never hand-writes API types.
@@ -230,14 +231,13 @@ frontend generates types from it and never hand-writes API types.
 
 ## Step 3: Project Setup Checklist
 
-Regardless of pattern, do these before writing features. Copy this checklist into your initial response scratchpad to track your progress:
+Regardless of pattern, do these before writing features:
 
 ### Both patterns
 
-- [ ] Verify environment dependencies: ensure `pnpm`, `uv` (or `pip`), and `docker` are installed. Fail gracefully with instructions if they are missing.
 - [ ] Monorepo structure created as shown above
 - [ ] `CLAUDE.md` at project root (see below)
-- [ ] `AGENTS.md` at project root with design system decisions (populated by `designing-svelte-ui` skill)
+- [ ] `AGENTS.md` at project root with design system decisions (populated by `svelte-ui` skill)
 - [ ] `docker-compose.yml` for local dev (at minimum: postgres)
 - [ ] ESLint + Prettier configured in `frontend/`
 - [ ] TypeScript strict mode on
@@ -294,9 +294,9 @@ Monorepo — [Pattern A (TypeScript Monolith) / Pattern B (BFF)]
 
 ## Skills active on this project
 
-- designing-svelte-ui — UI and design system
-- building-sveltekit-frontend — Frontend architecture
-- building-python-backend — Backend architecture (Pattern B only)
+- svelte-ui — UI and design system
+- svelte-swe — Frontend architecture
+- python-swe — Backend architecture (Pattern B only)
 
 @AGENTS.md
 ```
@@ -334,12 +334,3 @@ These span both layers and neither skill covers them fully:
 - `frontend/.env` and `backend/.env` are always separate, even in Pattern A (future-proofing)
 - They should never share secrets
 - Validate all env vars at startup — `AppConfig.from_env()` on backend, startup check on frontend
-
----
-
-## Validation Loop
-
-Before handing off the project to the user or an executor agent:
-1. Validate the setup by running appropriate package installation (e.g., `pnpm install` or `uv sync`).
-2. Verify structural configuration, such as validating `docker-compose.yml` with `docker compose config`.
-3. If errors occur, autonomously fix them and repeat until the basic scaffolding checks out.
