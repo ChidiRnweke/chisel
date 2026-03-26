@@ -14,18 +14,19 @@ Feel free to use them. Let me know what worked and what didn't — I'm iterating
 
 | Skill | What it covers |
 |---|---|
-| `architecting-fullstack` | Monorepo structure, Pattern A (TS monolith) vs Pattern B (BFF), project setup, cross-cutting concerns |
-| `building-python-backend` | FastAPI backend: services, repositories, controllers, factory, config, error hierarchy, SQLAlchemy |
-| `building-sveltekit-frontend` | SvelteKit frontend: loaders, actions, stores, openapi-fetch, error handling, layer separation |
-| `designing-svelte-ui` | Design system creation, token system, shadcn theming, component architecture, blandness audit |
+| `fullstack-swe` | Monorepo structure, Pattern A (TS monolith) vs Pattern B (BFF), project setup, cross-cutting concerns |
+| `python-swe` | FastAPI backend: services, repositories, controllers, factory, config, error hierarchy, SQLAlchemy |
+| `svelte-swe` | SvelteKit frontend: loaders, actions, stores, openapi-fetch, error handling, layer separation |
+| `svelte-ui` | Design system creation, token system, shadcn theming, component architecture, blandness audit |
+| `feature-blueprint` | Feature planning workflow that produces executable implementation blueprints |
 
 ## Usage
 
 Reference skills from your project's `CLAUDE.md`:
 
 ```markdown
-@.claude/skills/architecting-fullstack/SKILL.md
-@.claude/skills/designing-svelte-ui/SKILL.md
+@.claude/skills/fullstack-swe/SKILL.md
+@.claude/skills/svelte-ui/SKILL.md
 ```
 
 Or add them to your agent's skill/context configuration.
@@ -34,7 +35,7 @@ Or add them to your agent's skill/context configuration.
 
 1. Give the model a concrete task. If you're not manually invoking a skill with `/skill-name`, include the relevant skill paths in context.
 2. If execution drifts from the plan, tell it to reread the plan and continue. That usually improves adherence quickly.
-3. For greenfield or large projects, use `architecting-fullstack` + `planning-features` to generate the high-level plan first.
+3. For greenfield or large projects, use `fullstack-swe` + `feature-blueprint` to generate the high-level plan first.
 4. Break big features into subplans with checkboxes. Keep each subplan in its own plan file and track progress with checkmarks.
 
 Recommended planning loop:
@@ -76,23 +77,26 @@ Minimal blueprint pattern (trimmed):
 
 ```
 .claude/skills/
-├── architecting-fullstack/
+├── fullstack-swe/
 │   └── SKILL.md
-├── building-python-backend/
+├── python-swe/
 │   ├── SKILL.md
 │   └── references/
 │       ├── layers.md
 │       ├── fastapi.md
 │       └── sqlalchemy.md
-├── building-sveltekit-frontend/
+├── svelte-swe/
 │   ├── SKILL.md
 │   └── references/
 │       ├── layers.md
 │       ├── openapi.md
 │       └── error-handling.md
-└── designing-svelte-ui/
-    ├── SKILL.md
-    └── references/
-        └── audit.md
+├── svelte-ui/
+│   ├── SKILL.md
+│   └── references/
+│       ├── audit.md
+│       ├── style-*.md
+│       └── ux-*.md
+└── feature-blueprint/
+    └── SKILL.md
 ```
-
