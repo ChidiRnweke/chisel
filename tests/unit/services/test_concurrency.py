@@ -52,3 +52,21 @@ class TestAsyncioGatherBan:
         )
         violations = _check_source(source)
         _assert_none(violations)
+
+    def test_detects_bare_gather_with_from_import(self):
+        source = (
+            "from __future__ import annotations\n"
+            "from asyncio import gather\n"
+            "gather()\n"
+        )
+        violations = _check_source(source)
+        _assert_one(violations, "asyncio-gather-banned")
+
+    def test_ignores_bare_gather_without_asyncio_import(self):
+        source = (
+            "from __future__ import annotations\n"
+            "def gather(): pass\n"
+            "gather()\n"
+        )
+        violations = _check_source(source)
+        _assert_none(violations)

@@ -24,32 +24,52 @@ def _check(violations: list, source_lines: dict) -> list:
 
 
 class TestRemovesSuppressedViolations:
-    def test_removes_violation_with_exact_matching_noqa(self):
+    def test_removes_violation_with_exact_matching_noqa_and_reason(self):
         v = _violation("structural:print-banned", line=1)
-        sources = {"src/f.py": "# noqa: structural:print-banned\nsource"}
+        sources = {"src/f.py": "# noqa: structural:print-banned — legacy code\nsource"}
         result = _check([v], sources)
         assert len(result) == 0
 
-    def test_removes_violation_with_prefix_matching_noqa(self):
+    def test_removes_violation_with_prefix_matching_noqa_and_reason(self):
         v = _violation("structural:print-banned", line=1)
-        sources = {"src/f.py": "# noqa: structural\nsource"}
+        sources = {"src/f.py": "# noqa: structural -- legacy code\nsource"}
         result = _check([v], sources)
         assert len(result) == 0
 
     def test_preserves_violation_without_matching_noqa(self):
         v = _violation("structural:print-banned", line=1)
-        sources = {"src/f.py": "# noqa: concurrency:gather\nsource"}
+        sources = {"src/f.py": "# noqa: concurrency:gather — reason\nsource"}
         result = _check([v], sources)
         assert len(result) == 1
 
-    def test_handles_multiple_rule_ids_in_noqa(self):
+    def test_handles_multiple_rule_ids_in_noqa_with_reason(self):
         v = _violation("structural:print-banned", line=1)
-        sources = {"src/f.py": "# noqa: concurrency, structural:print-banned\nsource"}
+        sources = {"src/f.py": "# noqa: concurrency, structural:print-banned — reason\nsource"}
         result = _check([v], sources)
         assert len(result) == 0
 
     def test_preserves_violation_on_different_line_than_noqa(self):
         v = _violation("structural:print-banned", line=3)
-        sources = {"src/f.py": "# noqa: structural:print-banned\nx = 1\ny = 2\n"}
+        sources = {"src/f.py": "# noqa: structural:print-banned — reason\nx = 1\ny = 2\n"}
         result = _check([v], sources)
         assert len(result) == 1
+
+
+class TestSuppressionWithoutReason:
+    def test_noqa_without_reason_does_not_suppress(self):
+        v = _violation("structural:print-banned", line=1)
+        sources = {"src/f.py": "# noqa: structural:print-banned\nsource"}
+        result = _check([v], sources)
+        assert any(r.rule_id == "structural:print-banned" for r in result)
+
+    def test_noqa_without_reason_produces_missing_reason_violation(self):
+        v = _violation("structural:print-banned", line=1)
+        sources = {"src/f.py": "# noqa: structural:print-banned\nsource"}
+        result = _check([v], sources)
+        assert any(r.rule_id == "suppression:missing-reason" for r in result)
+
+    def test_noqa_with_reason_suppresses_and_no_missing_reason(self):
+        v = _violation("structural:print-banned", line=1)
+        sources = {"src/f.py": "# noqa: structural:print-banned — legacy code\nsource"}
+        result = _check([v], sources)
+        assert len(result) == 0

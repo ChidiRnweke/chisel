@@ -136,3 +136,104 @@ class TestBannedImportsInTests:
             path="tests/integration/test_foo.py",
         )
         assert _count(violations, "banned-import-in-tests") == 1
+
+
+class TestMockBan:
+    def test_detects_unittest_mock_import(self):
+        violations = _check_file(
+            "from __future__ import annotations\n"
+            "from unittest.mock import MagicMock\n",
+            path="tests/unit/test_foo.py",
+        )
+        assert _count(violations, "mock-banned") == 1
+
+    def test_detects_unittest_mock_direct_import(self):
+        violations = _check_file(
+            "from __future__ import annotations\n"
+            "import unittest.mock\n",
+            path="tests/unit/test_foo.py",
+        )
+        assert _count(violations, "mock-banned") == 1
+
+    def test_accepts_test_without_mock(self):
+        violations = _check_file(
+            "from __future__ import annotations\n"
+            "import pytest\n",
+            path="tests/unit/test_foo.py",
+        )
+        assert _count(violations, "mock-banned") == 0
+
+
+class TestImplDetailAssertions:
+    def test_detects_call_count_assertion(self):
+        violations = _check_file(
+            "from __future__ import annotations\n"
+            "def test_counts_calls():\n"
+            "    assert mock.call_count == 1\n",
+            path="tests/unit/test_foo.py",
+        )
+        assert _count(violations, "impl-detail-assertion") == 1
+
+    def test_detects_assert_called_once(self):
+        violations = _check_file(
+            "from __future__ import annotations\n"
+            "def test_called_once():\n"
+            "    mock.assert_called_once()\n",
+            path="tests/unit/test_foo.py",
+        )
+        assert _count(violations, "impl-detail-assertion") == 1
+
+    def test_accepts_regular_assertions(self):
+        violations = _check_file(
+            "from __future__ import annotations\n"
+            "def test_value():\n"
+            "    assert result == 42\n",
+            path="tests/unit/test_foo.py",
+        )
+        assert _count(violations, "impl-detail-assertion") == 0
+
+
+class TestSleepBan:
+    def test_detects_time_sleep_in_unit_test(self):
+        violations = _check_file(
+            "from __future__ import annotations\n"
+            "import time\n"
+            "def test_waits():\n"
+            "    time.sleep(1)\n"
+            "    assert True\n",
+            path="tests/unit/test_foo.py",
+        )
+        assert _count(violations, "sleep-in-tests") == 1
+
+    def test_detects_asyncio_sleep_in_unit_test(self):
+        violations = _check_file(
+            "from __future__ import annotations\n"
+            "import asyncio\n"
+            "async def test_waits():\n"
+            "    await asyncio.sleep(1)\n"
+            "    assert True\n",
+            path="tests/unit/test_foo.py",
+        )
+        assert _count(violations, "sleep-in-tests") == 1
+
+    def test_accepts_sleep_in_e2e_test(self):
+        violations = _check_file(
+            "from __future__ import annotations\n"
+            "import time\n"
+            "def test_waits():\n"
+            "    time.sleep(1)\n"
+            "    assert True\n",
+            path="tests/e2e/test_foo.py",
+        )
+        assert _count(violations, "sleep-in-tests") == 0
+
+    def test_detects_bare_sleep_with_import(self):
+        violations = _check_file(
+            "from __future__ import annotations\n"
+            "from time import sleep\n"
+            "def test_waits():\n"
+            "    sleep(1)\n"
+            "    assert True\n",
+            path="tests/unit/test_foo.py",
+        )
+        assert _count(violations, "sleep-in-tests") == 1

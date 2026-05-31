@@ -48,7 +48,7 @@ class AppFileService:
 
         route_decorators = {"get", "post", "put", "delete", "patch", "route"}
         for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 for dec in node.decorator_list:
                     if isinstance(dec, ast.Attribute) and dec.attr in route_decorators:
                         return self._v(

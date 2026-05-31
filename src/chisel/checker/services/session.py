@@ -32,12 +32,21 @@ class SessionService:
 
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-                if node.func.attr == "execute":
+                if node.func.attr == "execute" and self._is_session_receiver(
+                    node.func.value
+                ):
                     return self._v(
                         file, node.lineno, "session-execute-location",
                         "session.execute() must only be called inside repositories/",
                     )
         return []
+
+    def _is_session_receiver(self, node: ast.expr) -> bool:
+        if isinstance(node, ast.Name):
+            return "session" in node.id.lower()
+        if isinstance(node, ast.Attribute):
+            return "session" in node.attr.lower()
+        return False
 
     def _v(
         self, file: FileInfo, line: int, rule_suffix: str, message: str

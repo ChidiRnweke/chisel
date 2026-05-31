@@ -29,6 +29,9 @@ class CheckTestStructureService:
             violations.extend(self._check_test_naming(file))
             violations.extend(self._check_skip_reason(file))
             violations.extend(self._check_banned_imports(file))
+            violations.extend(self._check_mock_ban(file))
+            violations.extend(self._check_impl_detail_assertions(file))
+            violations.extend(self._check_sleep_ban(file))
         return violations
 
     def _is_test_file(self, file: FileInfo) -> bool:
@@ -181,3 +184,102 @@ class CheckTestStructureService:
                     f"— use only in tests/e2e/",
                 )
         return None
+
+    def _check_mock_ban(self, file: FileInfo) -> list[Violation]:
+        tree = file.ast_tree
+        if tree is None:
+            return []
+
+        banned_mock = {"unittest.mock", "pytest_mock", "mock"}
+        violations: list[Violation] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    for prefix in banned_mock:
+                        if alias.name == prefix or alias.name.startswith(
+                            prefix + "."
+                        ):
+                            violations.extend(
+                                self._v(
+                                    file, node.lineno, "mock-banned",
+                                    f"Mocking library '{alias.name}' is banned "
+                                    f"in tests",
+                                )
+                            )
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                for prefix in banned_mock:
+                    if module == prefix or module.startswith(prefix + "."):
+                        violations.extend(
+                            self._v(
+                                file, node.lineno, "mock-banned",
+                                f"Mocking library '{module}' is banned in tests",
+                            )
+                        )
+        return violations
+
+    def _check_impl_detail_assertions(self, file: FileInfo) -> list[Violation]:
+        tree = file.ast_tree
+        if tree is None:
+            return []
+
+        banned_attrs = frozenset({
+            "call_count", "call_args", "call_args_list",
+            "assert_called", "assert_called_once", "assert_called_with",
+            "assert_called_once_with", "assert_not_called",
+            "assert_any_call", "assert_has_calls",
+        })
+
+        violations: list[Violation] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute) and node.attr in banned_attrs:
+                violations.extend(
+                    self._v(
+                        file, node.lineno, "impl-detail-assertion",
+                        f"Assertion on implementation detail '.{node.attr}' "
+                        f"is banned in tests",
+                    )
+                )
+        return violations
+
+    def _check_sleep_ban(self, file: FileInfo) -> list[Violation]:
+        if not self._is_unit_or_integration(file):
+            return []
+
+        tree = file.ast_tree
+        if tree is None:
+            return []
+
+        has_sleep_import = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                if module in ("time", "asyncio"):
+                    if any(alias.name == "sleep" for alias in node.names):
+                        has_sleep_import = True
+
+        violations: list[Violation] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Attribute):
+                    if isinstance(node.func.value, ast.Name):
+                        if (
+                            node.func.value.id in ("time", "asyncio")
+                            and node.func.attr == "sleep"
+                        ):
+                            violations.extend(
+                                self._v(
+                                    file, node.lineno, "sleep-in-tests",
+                                    f"{node.func.value.id}.sleep() is banned "
+                                    f"in unit/integration tests",
+                                )
+                            )
+                elif isinstance(node.func, ast.Name):
+                    if node.func.id == "sleep" and has_sleep_import:
+                        violations.extend(
+                            self._v(
+                                file, node.lineno, "sleep-in-tests",
+                                "sleep() is banned in unit/integration tests",
+                            )
+                        )
+        return violations

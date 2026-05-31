@@ -161,7 +161,7 @@ class TestMisplacedDataclass:
             '    x: int\n'
         )
         violations = _check_source(source, layer=Layer.SERVICES)
-        _assert_one_error(violations, "misplaced-dataclass")
+        assert _count_rule(violations, "misplaced-dataclass") == 1
 
     def test_accepts_dataclass_with_methods_in_services(self):
         source = (
@@ -395,3 +395,194 @@ class TestTypeCheckingGuardAllowed:
         )
         violations = _check_source(source)
         _assert_one_error(violations, "import-not-at-top-nested")
+
+
+class TestAsyncFunctionDefSupport:
+    def test_detects_async_free_function_in_services_layer(self):
+        source = (
+            'from __future__ import annotations\n'
+            'async def helper(): pass\n'
+        )
+        violations = _check_source(source, layer=Layer.SERVICES)
+        assert _count_rule(violations, "free-function-services") == 1
+
+    def test_accepts_dataclass_with_async_methods_in_services(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from dataclasses import dataclass\n'
+            '@dataclass(slots=True)\n'
+            'class MyService:\n'
+            '    x: int\n'
+            '    async def check(self): pass\n'
+        )
+        violations = _check_source(source, layer=Layer.SERVICES)
+        assert _count_rule(violations, "misplaced-dataclass") == 0
+
+    def test_detects_async_staticmethod_in_app_factory(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from dataclasses import dataclass\n'
+            '@dataclass(slots=True)\n'
+            'class CheckerFactory:\n'
+            '    @staticmethod\n'
+            '    async def create(): pass\n'
+        )
+        violations = _check_source(source, layer=Layer.FACTORY)
+        assert _count_rule(violations, "factory-no-staticmethod") == 1
+
+
+class TestDataclassServiceProtocol:
+    def test_detects_missing_protocol_for_dataclass_service(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from dataclasses import dataclass\n'
+            '@dataclass(slots=True)\n'
+            'class MyService:\n'
+            '    def check(self): pass\n'
+        )
+        info = _file_info(source, layer=Layer.SERVICES, name="my_service.py")
+        project = ProjectInfo(
+            root_path=__import__("pathlib").Path("."),
+            files=[info],
+        )
+        service = StructuralService()
+        violations = service.check(project)
+        assert _count_rule(violations, "missing-protocol") == 1
+
+
+class TestProtocolRuntimeCheckable:
+    def test_detects_protocol_without_runtime_checkable(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from typing import Protocol\n'
+            'class IMyService(Protocol):\n'
+            '    def check(self): ...\n'
+            '\n'
+            'class MyService:\n'
+            '    def check(self): pass\n'
+        )
+        info = _file_info(source, layer=Layer.SERVICES, name="my_service.py")
+        project = ProjectInfo(
+            root_path=__import__("pathlib").Path("."),
+            files=[info],
+        )
+        service = StructuralService()
+        violations = service.check(project)
+        assert _count_rule(violations, "protocol-not-runtime-checkable") == 1
+
+    def test_accepts_protocol_with_runtime_checkable(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from typing import Protocol, runtime_checkable\n'
+            '@runtime_checkable\n'
+            'class IMyService(Protocol):\n'
+            '    def check(self): ...\n'
+            '\n'
+            'class MyService:\n'
+            '    def check(self): pass\n'
+        )
+        info = _file_info(source, layer=Layer.SERVICES, name="my_service.py")
+        project = ProjectInfo(
+            root_path=__import__("pathlib").Path("."),
+            files=[info],
+        )
+        service = StructuralService()
+        violations = service.check(project)
+        assert _count_rule(violations, "protocol-not-runtime-checkable") == 0
+
+
+class TestAppErrorAttributeRaise:
+    def test_detects_app_error_via_attribute_access(self):
+        source = (
+            'from __future__ import annotations\n'
+            'raise errors.AppError("bad")\n'
+        )
+        violations = _check_source(source)
+        assert _count_rule(violations, "app-error-direct-raise") == 1
+
+
+class TestHttpExceptionLocation:
+    def test_detects_http_exception_import_outside_error_handlers(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from fastapi import HTTPException\n'
+        )
+        violations = _check_source(source, layer=Layer.ROUTES)
+        assert _count_rule(violations, "http-exception-location") == 1
+
+    def test_accepts_http_exception_import_in_error_handlers(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from fastapi import HTTPException\n'
+        )
+        violations = _check_source(source, layer=Layer.ERROR_HANDLERS)
+        assert _count_rule(violations, "http-exception-location") == 0
+
+    def test_detects_starlette_http_exception_import(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from starlette.exceptions import HTTPException\n'
+        )
+        violations = _check_source(source, layer=Layer.ROUTES)
+        assert _count_rule(violations, "http-exception-location") == 1
+
+
+class TestConcreteServiceImport:
+    def test_detects_concrete_service_import_outside_factory(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from myapp.services.user import UserService\n'
+        )
+        violations = _check_source(source, layer=Layer.CONTROLLERS)
+        assert _count_rule(violations, "concrete-service-import") == 1
+
+    def test_accepts_protocol_import_from_services(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from myapp.services.user import IUserService\n'
+        )
+        violations = _check_source(source, layer=Layer.CONTROLLERS)
+        assert _count_rule(violations, "concrete-service-import") == 0
+
+    def test_accepts_concrete_service_import_in_factory(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from myapp.services.user import UserService\n'
+        )
+        violations = _check_source(source, layer=Layer.FACTORY)
+        assert _count_rule(violations, "concrete-service-import") == 0
+
+
+class TestFrozenDataclass:
+    def test_detects_dataclass_without_frozen_in_models(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from dataclasses import dataclass\n'
+            '@dataclass(slots=True)\n'
+            'class UserOutput:\n'
+            '    name: str\n'
+        )
+        violations = _check_source(source, layer=Layer.MODELS)
+        assert _count_rule(violations, "dataclass-no-frozen") == 1
+
+    def test_accepts_dataclass_with_frozen_in_models(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from dataclasses import dataclass\n'
+            '@dataclass(frozen=True, slots=True)\n'
+            'class UserOutput:\n'
+            '    name: str\n'
+        )
+        violations = _check_source(source, layer=Layer.MODELS)
+        assert _count_rule(violations, "dataclass-no-frozen") == 0
+
+    def test_ignores_dataclass_frozen_check_outside_models(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from dataclasses import dataclass\n'
+            '@dataclass(slots=True)\n'
+            'class MyService:\n'
+            '    def check(self): pass\n'
+        )
+        violations = _check_source(source, layer=Layer.SERVICES)
+        assert _count_rule(violations, "dataclass-no-frozen") == 0

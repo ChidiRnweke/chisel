@@ -34,3 +34,19 @@ class TestExecuteOutsideRepos:
         source = "from __future__ import annotations\nsession.execute()\n"
         violations = _check_source(source, Layer.REPOSITORIES)
         assert len(violations) == 0
+
+    def test_ignores_non_session_execute_call(self):
+        source = "from __future__ import annotations\ncursor.execute()\n"
+        violations = _check_source(source, Layer.SERVICES)
+        assert len(violations) == 0
+
+    def test_detects_self_session_execute(self):
+        source = "from __future__ import annotations\nself._session.execute()\n"
+        violations = _check_source(source, Layer.SERVICES)
+        assert len(violations) == 1
+        assert violations[0].rule_id == "session:session-execute-location"
+
+    def test_ignores_subprocess_execute(self):
+        source = "from __future__ import annotations\nsubprocess.execute()\n"
+        violations = _check_source(source, Layer.SERVICES)
+        assert len(violations) == 0

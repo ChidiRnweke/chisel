@@ -12,7 +12,6 @@ from chisel.checker.models.violation import Violation
 _CONTROLLER_MAX_LOC = 30
 _CONTROLLER_MAX_COMPLEXITY = 3
 _ROUTE_MAX_LOC = 20
-_APP_MAX_LOC = 50
 
 
 @dataclass(slots=True)
@@ -35,22 +34,13 @@ class ComplexityService:
         return violations
 
     def _check_loc(self, file: FileInfo) -> list[Violation]:
-        lines = file.source.split("\n")
-        loc = len([l for l in lines if l.strip() and not l.strip().startswith("#")])
-
-        if file.layer == Layer.APP_FILE and loc > _APP_MAX_LOC:
-            return self._v(
-                file, 1, "app-loc-limit",
-                f"app.py must be ≤ {_APP_MAX_LOC} lines of code (found {loc})",
-            )
-
         if file.layer == Layer.ROUTES:
             violations: list[Violation] = []
             tree = file.ast_tree
             if tree is None:
                 return violations
             for node in tree.body:
-                if isinstance(node, ast.FunctionDef):
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     end = node.end_lineno or node.lineno
                     func_loc = end - node.lineno + 1
                     if func_loc > _ROUTE_MAX_LOC:
@@ -60,6 +50,7 @@ class ComplexityService:
                                 f"Route endpoint '{node.name}' must be "
                                 f"≤ {_ROUTE_MAX_LOC} lines of code "
                                 f"(found {func_loc})",
+                                severity=Severity.WARNING,
                             )
                         )
             return violations
@@ -72,7 +63,7 @@ class ComplexityService:
             for node in tree.body:
                 if isinstance(node, ast.ClassDef):
                     for item in node.body:
-                        if isinstance(item, ast.FunctionDef):
+                        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                             end = item.end_lineno or item.lineno
                             func_loc = end - item.lineno + 1
                             if func_loc > _CONTROLLER_MAX_LOC:
@@ -83,6 +74,7 @@ class ComplexityService:
                                         f"{item.name}' must be "
                                         f"≤ {_CONTROLLER_MAX_LOC} lines of code "
                                         f"(found {func_loc})",
+                                        severity=Severity.WARNING,
                                     )
                                 )
             return violations
@@ -101,7 +93,7 @@ class ComplexityService:
         for node in tree.body:
             if isinstance(node, ast.ClassDef):
                 for item in node.body:
-                    if isinstance(item, ast.FunctionDef):
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                         cc = self._cyclomatic_complexity(item)
                         if cc > _CONTROLLER_MAX_COMPLEXITY:
                             violations.extend(
@@ -131,7 +123,9 @@ class ComplexityService:
             )
         return []
 
-    def _cyclomatic_complexity(self, node: ast.FunctionDef) -> int:
+    def _cyclomatic_complexity(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef
+    ) -> int:
         complexity = 1
         for child in ast.walk(node):
             if isinstance(child, (ast.If, ast.For, ast.While, ast.ExceptHandler)):
@@ -150,13 +144,18 @@ class ComplexityService:
         return complexity
 
     def _v(
-        self, file: FileInfo, line: int, rule_suffix: str, message: str
+        self,
+        file: FileInfo,
+        line: int,
+        rule_suffix: str,
+        message: str,
+        severity: Severity = Severity.ERROR,
     ) -> list[Violation]:
         return [
             Violation(
                 file=str(file.path),
                 line=line,
-                severity=Severity.ERROR,
+                severity=severity,
                 rule_id=f"{self.rule_id_prefix}:{rule_suffix}",
                 message=message,
             )

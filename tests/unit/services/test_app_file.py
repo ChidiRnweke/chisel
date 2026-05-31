@@ -46,6 +46,17 @@ class TestNoRoutesInApp:
         assert _count(violations, "route-in-app") == 1
 
 
+class TestNoAsyncRoutesInApp:
+    def test_detects_async_route_decorator_in_app_file(self):
+        source = (
+            "from __future__ import annotations\n"
+            "@router.get('/users')\n"
+            "async def get_users(): pass\n"
+        )
+        violations = _check_source(source)
+        assert _count(violations, "route-in-app") == 1
+
+
 class TestAppFileComplexity:
     def test_detects_app_file_complexity_exceeding_one(self):
         source = (

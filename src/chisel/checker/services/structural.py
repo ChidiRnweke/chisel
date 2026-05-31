@@ -44,6 +44,9 @@ class StructuralService:
         violations.extend(self._check_try_except_routes(file, tree))
         violations.extend(self._check_app_factory(file, tree))
         violations.extend(self._check_orm_mapped(file, tree))
+        violations.extend(self._check_http_exception_location(file, tree))
+        violations.extend(self._check_concrete_service_import(file, tree))
+        violations.extend(self._check_frozen_dataclass(file, tree))
         return violations
 
     def _v(
@@ -232,16 +235,8 @@ class StructuralService:
 
         violations: list[Violation] = []
         for node in tree.body:
-            if isinstance(node, ast.FunctionDef):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 name = node.name
-                runtime_dec = any(
-                    isinstance(d, ast.Name) and d.id == "runtime_checkable"
-                    for d in node.decorator_list
-                )
-                if runtime_dec:
-                    continue
-                if name == "check":
-                    continue
                 cls = self._find_containing_class(node, tree)
                 if cls is None:
                     violations.extend(
@@ -284,7 +279,8 @@ class StructuralService:
             if not self._is_dataclass(node):
                 continue
             method_count = sum(
-                1 for n in node.body if isinstance(n, ast.FunctionDef)
+                1 for n in node.body
+                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
             )
             if method_count == 0:
                 violations.extend(
@@ -324,15 +320,19 @@ class StructuralService:
         violations: list[Violation] = []
         for node in ast.walk(tree):
             if isinstance(node, ast.Raise) and isinstance(node.exc, ast.Call):
-                if isinstance(node.exc.func, ast.Name):
-                    if node.exc.func.id == "AppError":
-                        violations.extend(
-                            self._v(
-                                file, node.lineno, "app-error-direct-raise",
-                                "AppError must never be raised directly — "
-                                "use named subclasses only",
-                            )
+                func = node.exc.func
+                is_app_error = (
+                    (isinstance(func, ast.Name) and func.id == "AppError")
+                    or (isinstance(func, ast.Attribute) and func.attr == "AppError")
+                )
+                if is_app_error:
+                    violations.extend(
+                        self._v(
+                            file, node.lineno, "app-error-direct-raise",
+                            "AppError must never be raised directly — "
+                            "use named subclasses only",
                         )
+                    )
         for node in tree.body:
             if not isinstance(node, ast.ClassDef):
                 continue
@@ -392,7 +392,7 @@ class StructuralService:
                 "CheckerFactory",
             ):
                 for item in node.body:
-                    if isinstance(item, ast.FunctionDef):
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                         for dec in item.decorator_list:
                             if isinstance(dec, ast.Name) and dec.id == "staticmethod":
                                 violations.extend(
@@ -465,6 +465,19 @@ class StructuralService:
                             f"Protocol '{protocol_name}'",
                         )
                     )
+                elif not self._protocol_has_runtime_checkable(
+                    project, protocol_name
+                ):
+                    violations.append(
+                        Violation(
+                            file=str(svc_file.path),
+                            line=1,
+                            severity=Severity.ERROR,
+                            rule_id=f"{self.rule_id_prefix}:protocol-not-runtime-checkable",
+                            message=f"Protocol '{protocol_name}' must be decorated "
+                            f"with @runtime_checkable",
+                        )
+                    )
         return violations
 
     def _is_dataclass(self, node: ast.ClassDef) -> bool:
@@ -496,7 +509,9 @@ class StructuralService:
         return False
 
     def _find_containing_class(
-        self, func_node: ast.FunctionDef, tree: ast.Module
+        self,
+        func_node: ast.FunctionDef | ast.AsyncFunctionDef,
+        tree: ast.Module,
     ) -> ast.ClassDef | None:
         for node in tree.body:
             if isinstance(node, ast.ClassDef):
@@ -515,8 +530,7 @@ class StructuralService:
                     continue
                 if node.name.endswith("Protocol"):
                     continue
-                if not self._is_dataclass(node):
-                    classes.append(node.name)
+                classes.append(node.name)
         return classes
 
     def _protocol_exists(self, project: ProjectInfo, protocol_name: str) -> bool:
@@ -527,4 +541,106 @@ class StructuralService:
             for node in tree.body:
                 if isinstance(node, ast.ClassDef) and node.name == protocol_name:
                     return True
+        return False
+
+    def _protocol_has_runtime_checkable(
+        self, project: ProjectInfo, protocol_name: str
+    ) -> bool:
+        for f in project.files:
+            tree = f.ast_tree
+            if tree is None:
+                continue
+            for node in tree.body:
+                if isinstance(node, ast.ClassDef) and node.name == protocol_name:
+                    for dec in node.decorator_list:
+                        if isinstance(dec, ast.Name) and dec.id == "runtime_checkable":
+                            return True
+                    return False
+        return False
+
+    def _check_http_exception_location(
+        self, file: FileInfo, tree: ast.Module
+    ) -> list[Violation]:
+        if file.layer == Layer.ERROR_HANDLERS:
+            return []
+
+        for node in tree.body:
+            if isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                if module.startswith("fastapi") or module.startswith("starlette"):
+                    for alias in node.names:
+                        if alias.name == "HTTPException":
+                            return self._v(
+                                file, node.lineno, "http-exception-location",
+                                "HTTPException must only appear in error_handlers.py",
+                            )
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if "HTTPException" in alias.name:
+                        return self._v(
+                            file, node.lineno, "http-exception-location",
+                            "HTTPException must only appear in error_handlers.py",
+                        )
+        return []
+
+    def _check_concrete_service_import(
+        self, file: FileInfo, tree: ast.Module
+    ) -> list[Violation]:
+        if file.layer == Layer.FACTORY:
+            return []
+
+        violations: list[Violation] = []
+        for node in tree.body:
+            if isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                if ".services." not in module and not module.endswith(".services"):
+                    continue
+                for alias in node.names:
+                    name = alias.name
+                    if (
+                        name[0:1].isupper()
+                        and not name.startswith("I")
+                        and not name.endswith("Error")
+                        and not name.endswith("Protocol")
+                    ):
+                        violations.extend(
+                            self._v(
+                                file, node.lineno,
+                                "concrete-service-import",
+                                f"Concrete service '{name}' must only be imported "
+                                f"in factory.py — import the Protocol instead",
+                            )
+                        )
+        return violations
+
+    def _check_frozen_dataclass(
+        self, file: FileInfo, tree: ast.Module
+    ) -> list[Violation]:
+        if file.layer != Layer.MODELS:
+            return []
+
+        violations: list[Violation] = []
+        for node in tree.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            if not self._is_dataclass(node):
+                continue
+            if not self._has_frozen(node):
+                violations.extend(
+                    self._v(
+                        file, node.lineno, "dataclass-no-frozen",
+                        f"Dataclass '{node.name}' in models/ must use frozen=True",
+                    )
+                )
+        return violations
+
+    def _has_frozen(self, node: ast.ClassDef) -> bool:
+        for dec in node.decorator_list:
+            if isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name):
+                if dec.func.id == "dataclass":
+                    for kw in dec.keywords:
+                        if kw.arg == "frozen":
+                            if isinstance(kw.value, ast.Constant):
+                                return bool(kw.value.value)
+                            return True
         return False
