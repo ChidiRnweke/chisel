@@ -1,0 +1,28 @@
+{
+  "name": "chisel-js",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "chisel-js": "./dist/cli/main.js"
+  },
+  "scripts": {
+    "build": "bun build ./src/chisel/cli/main.ts --target=node --outdir=./dist --external typescript --external svelte",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^25.9.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^15.0.0",
+    "estree-walker": "^3.0.3",
+    "fast-glob": "^3.3.3",
+    "smol-toml": "^1.6.1",
+    "svelte": "^5.56.0"
+  }
+}
