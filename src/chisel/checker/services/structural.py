@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from chisel.checker.models.file_info import FileInfo
 from chisel.checker.models.layer import Layer
 from chisel.checker.models.project_info import ProjectInfo
+from chisel.checker.services.protocols import RuleInfo
 from chisel.checker.models.severity import Severity
 from chisel.checker.models.violation import Violation
 
@@ -47,6 +48,73 @@ class StructuralService:
         violations.extend(self._check_concrete_service_import(file, tree))
         return violations
 
+    def describe_rules(self) -> list[RuleInfo]:
+        return [
+            RuleInfo(id="structural:import-not-at-top", category="structural",
+                     description="All imports must be at the top of the file",
+                     fix_guidance="Use the module-level structlog logger instead. print() has no log level and doesn't appear in your observability stack."),
+            RuleInfo(id="structural:import-not-at-top-nested", category="structural",
+                     description="Import statements inside functions, methods, or blocks",
+                     fix_guidance="Import statements inside functions, methods, or blocks are banned — move them to the top of the file."),
+            RuleInfo(id="structural:getattr-setattr-banned", category="structural",
+                     description="getattr() or setattr() used in application code",
+                     fix_guidance="Add the attribute to the Protocol interface or use an explicit typed constructor. Dynamic attribute access erases the type system."),
+            RuleInfo(id="structural:isinstance-banned", category="structural",
+                     description="isinstance() used in application code",
+                     fix_guidance="Use match/case for type-based branching. In error handlers the match exc: pattern already handles it. Elsewhere, isinstance checks usually mean logic that belongs on the domain object itself."),
+            RuleInfo(id="structural:class-attribute-banned", category="structural",
+                     description="__class__ attribute access in application code",
+                     fix_guidance="Metaprogramming via __class__ is banned. Use match/case for type-based branching instead."),
+            RuleInfo(id="structural:percent-interpolation-banned", category="structural",
+                     description="Percent (%) string interpolation used",
+                     fix_guidance="Use f-strings for application strings. For logger calls use structured keyword arguments: logger.info('message', key=value)."),
+            RuleInfo(id="structural:logger-fstring", category="structural",
+                     description="f-string passed to a logger call",
+                     fix_guidance="Pass context as keyword arguments, not interpolated strings. Replace logger.info(f'Created {x}') with logger.info('Created item', id=x)."),
+            RuleInfo(id="structural:print-banned", category="structural",
+                     description="print() called in src/",
+                     fix_guidance="Use the module-level structlog logger instead. print() has no log level and doesn't appear in your observability stack."),
+            RuleInfo(id="structural:non-dataclass-in-layer", category="structural",
+                     description="Class in services/, controllers/, or repositories/ is not a @dataclass",
+                     fix_guidance="Add @dataclass(slots=True) and declare dependencies as typed fields. This makes dependencies explicit and injectable."),
+            RuleInfo(id="structural:dataclass-no-slots", category="structural",
+                     description="@dataclass without slots=True",
+                     fix_guidance="Dataclasses must use slots=True for performance and memory efficiency."),
+            RuleInfo(id="structural:misplaced-dataclass", category="structural",
+                     description="@dataclass with zero methods in services/, controllers/, or repositories/",
+                     fix_guidance="This is a model, not a service/controller/repository. Move it to models/."),
+            RuleInfo(id="structural:logger-dataclass-field", category="structural",
+                     description="logger defined as a dataclass field",
+                     fix_guidance="The logger is a module-level constant, not a dependency. Move it outside the class: logger = structlog.getLogger(__name__)."),
+            RuleInfo(id="structural:app-error-direct-raise", category="structural",
+                     description="AppError raised directly",
+                     fix_guidance="Raise a named subclass instead: raise NotFoundError(...). Define new errors in errors.py if needed."),
+            RuleInfo(id="structural:app-error-http-status", category="structural",
+                     description="HTTP status code in a domain error class",
+                     fix_guidance="Remove the status code from the error class. The mapping from domain error to HTTP status lives exclusively in error_handlers.py."),
+            RuleInfo(id="structural:try-except-routes", category="structural",
+                     description="try/except inside a route handler",
+                     fix_guidance="Route handlers don't catch exceptions — error_handlers.py does. Remove the try/except and let the exception propagate."),
+            RuleInfo(id="structural:factory-no-staticmethod", category="structural",
+                     description="@staticmethod on AppFactory or CheckerFactory",
+                     fix_guidance="The factory is instantiated per-request and carries session and user context. Make it a regular instance method."),
+            RuleInfo(id="structural:factory-zero-logic", category="structural",
+                     description="Conditional logic in AppFactory or CheckerFactory",
+                     fix_guidance="The factory wires dependencies and makes no decisions. Move the conditional logic into a service method."),
+            RuleInfo(id="structural:bare-column-banned", category="structural",
+                     description="Bare Column() used instead of Mapped[T] in ORM models",
+                     fix_guidance="Use Mapped[T] for ORM column types instead of bare Column()."),
+            RuleInfo(id="structural:missing-protocol", category="structural",
+                     description="Service implementation has no corresponding Protocol",
+                     fix_guidance="Define an IYourService Protocol in the same file. Controllers and the factory depend on the interface, not the concrete class."),
+            RuleInfo(id="structural:http-exception-location", category="structural",
+                     description="HTTPException imported outside error_handlers.py",
+                     fix_guidance="HTTPExceptions must only appear in error_handlers.py. Raise a domain error from errors.py instead and map it to HTTP status in the error handler."),
+            RuleInfo(id="structural:concrete-service-import", category="structural",
+                     description="Concrete service class imported outside factory.py",
+                     fix_guidance="Only the factory assembles concrete implementations. Import the Protocol interface everywhere else."),
+        ]
+
     def _v(
         self, file: FileInfo, line: int, rule_suffix: str, message: str
     ) -> list[Violation]:
@@ -88,6 +156,8 @@ class StructuralService:
                     pass
                 case ast.ImportFrom(module=None):
                     pass
+                case ast.Try() if self._is_import_error_try(node):
+                    pass
                 case _:
                     import_finished = True
         return violations
@@ -111,9 +181,10 @@ class StructuralService:
                 bodies.append((node.body, guarded))
                 bodies.append((node.orelse, False))
             case ast.Try():
-                bodies.append((node.body, False))
+                import_guard = self._is_import_error_try(node)
+                bodies.append((node.body, import_guard))
                 for handler in node.handlers:
-                    bodies.append((handler.body, False))
+                    bodies.append((handler.body, import_guard))
                 if node.orelse:
                     bodies.append((node.orelse, False))
                 if node.finalbody:
@@ -136,7 +207,7 @@ class StructuralService:
                                     file, child.lineno,
                                     "import-not-at-top-nested",
                                     "Import statements inside functions, methods, "
-                                    "or blocks are banned — move to top of file",
+                                    "or blocks are banned — move them to the top of the file.",
                                 )
                             )
                 match child:
@@ -156,6 +227,15 @@ class StructuralService:
             case _:
                 return False
 
+    def _is_import_error_try(self, node: ast.Try) -> bool:
+        for handler in node.handlers:
+            if handler.type is None:
+                continue
+            match handler.type:
+                case ast.Name(id="ImportError") | ast.Name(id="ModuleNotFoundError"):
+                    return True
+        return False
+
     def _check_getattr_setattr(
         self, file: FileInfo, tree: ast.Module
     ) -> list[Violation]:
@@ -166,7 +246,8 @@ class StructuralService:
                     violations.extend(
                         self._v(
                             file, node.lineno, "getattr-setattr-banned",
-                            f"{name}() is banned in application code",
+                            "Add the attribute to the Protocol interface or use an explicit typed constructor. "
+                            "Dynamic attribute access erases the type system.",
                         )
                     )
         return violations
@@ -181,7 +262,9 @@ class StructuralService:
                     violations.extend(
                         self._v(
                             file, node.lineno, "percent-interpolation-banned",
-                            "'%' string interpolation is banned — use f-strings",
+                            "Use f-strings for application strings. "
+                            "For logger calls use structured keyword arguments: "
+                            "logger.info('message', key=value).",
                         )
                     )
         return violations
@@ -199,8 +282,9 @@ class StructuralService:
                                 violations.extend(
                                     self._v(
                                         file, node.lineno, "logger-fstring",
-                                        "f-string in logger call is banned — use structured "
-                                        "key-value arguments",
+                                        "Pass context as keyword arguments, not interpolated strings. "
+                                        "Replace logger.info(f'Created {x}') with "
+                                        "logger.info('Created item', id=x).",
                                     )
                                 )
         return violations
@@ -213,33 +297,40 @@ class StructuralService:
                 case ast.Call(func=ast.Name(id="print")):
                     return self._v(
                         file, node.lineno, "print-banned",
-                        "print() is banned in src/ — use logger",
+                        "Use the module-level structlog logger instead. "
+                        "print() has no log level and doesn't appear in your observability stack.",
                     )
         return []
 
     def _check_isinstance_ban(
         self, file: FileInfo, tree: ast.Module
     ) -> list[Violation]:
+        if file.layer == Layer.TESTS:
+            return []
         for node in ast.walk(tree):
             match node:
                 case ast.Call(func=ast.Name(id="isinstance")):
                     return self._v(
                         file, node.lineno, "isinstance-banned",
-                        "isinstance() is banned — use pattern matching or "
-                        "explicit attribute checks instead",
+                        "Use match/case for type-based branching. "
+                        "In error handlers the match exc: pattern already handles it. "
+                        "Elsewhere, isinstance checks usually mean logic that belongs "
+                        "on the domain object itself.",
                     )
         return []
 
     def _check_class_attribute(
         self, file: FileInfo, tree: ast.Module
     ) -> list[Violation]:
+        if file.layer == Layer.TESTS:
+            return []
         for node in ast.walk(tree):
             match node:
                 case ast.Attribute(attr="__class__"):
                     return self._v(
                         file, node.lineno, "class-attribute-banned",
-                        "__class__ attribute access is banned — "
-                        "metaprogramming is not permitted",
+                        "Metaprogramming via __class__ is banned. "
+                        "Use match/case for type-based branching instead.",
                     )
         return []
 
@@ -267,9 +358,8 @@ class StructuralService:
             violations.extend(
                 self._v(
                     file, node.lineno, "non-dataclass-in-layer",
-                    f"Class '{node.name}' in {file.layer.value}/ must be a "
-                    f"@dataclass — every service, controller, and repository "
-                    f"class must be a dataclass",
+                    "Add @dataclass(slots=True) and declare dependencies as typed fields. "
+                    "This makes dependencies explicit and injectable.",
                 )
             )
         return violations
@@ -290,7 +380,7 @@ class StructuralService:
                 violations.extend(
                     self._v(
                         file, node.lineno, "dataclass-no-slots",
-                        f"Dataclass '{node.name}' must use slots=True",
+                        "Dataclasses must use slots=True for performance and memory efficiency.",
                     )
                 )
         return violations
@@ -299,6 +389,8 @@ class StructuralService:
         self, file: FileInfo, tree: ast.Module
     ) -> list[Violation]:
         if file.layer not in (Layer.SERVICES, Layer.CONTROLLERS, Layer.REPOSITORIES):
+            return []
+        if file.path.name == "protocols.py":
             return []
 
         violations: list[Violation] = []
@@ -319,8 +411,8 @@ class StructuralService:
                 violations.extend(
                     self._v(
                         file, node.lineno, "misplaced-dataclass",
-                        f"Dataclass '{node.name}' with no methods in "
-                        f"'{file.layer.value}/' is a misplaced model — move to models/",
+                        "This is a model, not a service/controller/repository. "
+                        "Move it to models/.",
                     )
                 )
         return violations
@@ -343,8 +435,9 @@ class StructuralService:
                         violations.extend(
                             self._v(
                                 file, item.lineno, "logger-dataclass-field",
-                                "logger must never be a dataclass field — "
-                                "use module-level",
+                                "The logger is a module-level constant, not a dependency. "
+                                "Move it outside the class: "
+                                "logger = structlog.getLogger(__name__).",
                             )
                         )
         return violations
@@ -361,8 +454,8 @@ class StructuralService:
                             violations.extend(
                                 self._v(
                                     file, node.lineno, "app-error-direct-raise",
-                                    "AppError must never be raised directly — "
-                                    "use named subclasses only",
+                                    "Raise a named subclass instead: "
+                                    "raise NotFoundError(...). Define new errors in errors.py if needed.",
                                 )
                             )
         for node in tree.body:
@@ -384,8 +477,9 @@ class StructuralService:
                                                 self._v(
                                                     file, item.lineno,
                                                     "app-error-http-status",
-                                                    "AppError subclasses must not contain "
-                                                    "HTTP status codes",
+                                                    "Remove the status code from the error class. "
+                                                    "The mapping from domain error to HTTP status "
+                                                    "lives exclusively in error_handlers.py.",
                                                 )
                                             )
         return violations
@@ -400,7 +494,8 @@ class StructuralService:
                 case ast.Try():
                     return self._v(
                         file, node.lineno, "try-except-routes",
-                        "try/except is banned inside route handlers",
+                        "Route handlers don't catch exceptions — error_handlers.py does. "
+                        "Remove the try/except and let the exception propagate.",
                     )
         return []
 
@@ -427,7 +522,8 @@ class StructuralService:
                                                 self._v(
                                                     file, item.lineno,
                                                     "factory-no-staticmethod",
-                                                    "AppFactory has no @staticmethod",
+                                                    "The factory is instantiated per-request and carries "
+                                                    "session and user context. Make it a regular instance method.",
                                                 )
                                             )
                     for child in ast.walk(node):
@@ -436,7 +532,8 @@ class StructuralService:
                                 violations.extend(
                                     self._v(
                                         file, child.lineno, "factory-zero-logic",
-                                        "AppFactory must contain zero conditional logic",
+                                        "The factory wires dependencies and makes no decisions. "
+                                        "Move the conditional logic into a service method.",
                                     )
                                 )
         return violations
@@ -465,8 +562,9 @@ class StructuralService:
                             line=1,
                             severity=Severity.ERROR,
                             rule_id=f"{self.rule_id_prefix}:missing-protocol",
-                            message=f"Service '{cls_name}' has no corresponding "
-                            f"Protocol '{protocol_name}'",
+                            message="Define an IYourService Protocol in the same file. "
+                            "Controllers and the factory depend on the interface, "
+                            "not the concrete class.",
                         )
                     )
         return violations
@@ -490,8 +588,7 @@ class StructuralService:
                         violations.extend(
                             self._v(
                                 file, item.lineno, "bare-column-banned",
-                                f"ORM model '{node.name}' uses bare Column() — "
-                                f"use Mapped[T] instead",
+                                "Use Mapped[T] for ORM column types instead of bare Column().",
                             )
                         )
         return violations
@@ -550,6 +647,14 @@ class StructuralService:
                         continue
                     if node.name.endswith("Protocol"):
                         continue
+                    if self._is_dataclass(node):
+                        method_count = 0
+                        for n in node.body:
+                            match n:
+                                case ast.FunctionDef() | ast.AsyncFunctionDef():
+                                    method_count += 1
+                        if method_count == 0:
+                            continue
                     classes.append(node.name)
         return classes
 
@@ -596,14 +701,18 @@ class StructuralService:
                             if alias.name == "HTTPException":
                                 return self._v(
                                     file, node.lineno, "http-exception-location",
-                                    "HTTPException must only appear in error_handlers.py",
+                                    "HTTPExceptions must only appear in error_handlers.py. "
+                                    "Raise a domain error from errors.py instead and map it "
+                                    "to HTTP status in the error handler.",
                                 )
                 case ast.Import():
                     for alias in node.names:
                         if "HTTPException" in alias.name:
                             return self._v(
                                 file, node.lineno, "http-exception-location",
-                                "HTTPException must only appear in error_handlers.py",
+                                "HTTPExceptions must only appear in error_handlers.py. "
+                                "Raise a domain error from errors.py instead and map it "
+                                "to HTTP status in the error handler.",
                             )
         return []
 
@@ -622,6 +731,8 @@ class StructuralService:
                     module = node.module or ""
                     if ".services." not in module and not module.endswith(".services"):
                         continue
+                    if ".protocols" in module:
+                        continue
                     for alias in node.names:
                         name = alias.name
                         if (
@@ -634,8 +745,8 @@ class StructuralService:
                                 self._v(
                                     file, node.lineno,
                                     "concrete-service-import",
-                                    f"Concrete service '{name}' must only be imported "
-                                    f"in factory.py — import the Protocol instead",
+                                    "Only the factory assembles concrete implementations. "
+                                    "Import the Protocol interface everywhere else.",
                                 )
                             )
         return violations

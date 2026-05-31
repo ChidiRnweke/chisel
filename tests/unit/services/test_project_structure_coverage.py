@@ -48,3 +48,37 @@ class TestStructuralCoverage:
                 for v in violations
             )
             assert has_rule
+
+
+class TestNonStrictMode:
+    def test_skips_src_layout_check_when_non_strict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pyproject = root / "pyproject.toml"
+            pyproject.write_text("[project]\nname='x'\n")
+            project = ProjectInfo(root_path=root, files=[])
+            violations = ProjectStructureService(strict=False).check(project)
+            layout_rules = any(
+                v.rule_id.startswith("project-structure:src-layout")
+                or v.rule_id.startswith("project-structure:root-py")
+                or v.rule_id.startswith("project-structure:pyproject")
+                for v in violations
+            )
+            assert not layout_rules
+
+    def test_still_runs_coverage_check_when_non_strict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pyproject = root / "pyproject.toml"
+            pyproject.write_text("[project]\nname='x'\n")
+            fixture_path = Path("src/myapp/services/foo.py")
+            project = ProjectInfo(
+                root_path=root,
+                files=[FileInfo(path=fixture_path, layer=Layer.SERVICES)],
+            )
+            violations = ProjectStructureService(strict=False).check(project)
+            has_coverage = any(
+                v.rule_id == "project-structure:missing-test-coverage"
+                for v in violations
+            )
+            assert has_coverage

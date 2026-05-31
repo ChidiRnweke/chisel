@@ -12,9 +12,7 @@ class TestCheckController:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "src" / "myapp").mkdir(parents=True)
-            (root / "src" / "myapp" / "__init__.py").write_text(
-                "from __future__ import annotations\n"
-            )
+            (root / "src" / "myapp" / "__init__.py").write_text("x = 1\n")
             (root / "pyproject.toml").write_text(
                 "[project]\nname='myapp'\nrequires-python='>=3.11'\n"
             )
@@ -29,11 +27,29 @@ class TestCheckController:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "src" / "myapp").mkdir(parents=True)
+            (root / "src" / "myapp" / "__init__.py").write_text("x = 1\n")
+            (root / "pyproject.toml").write_text(
+                "[project]\nname='myapp'\nrequires-python='>=3.11'\n"
+            )
+            controller = CheckController(
+                _services=[ConcurrencyService()],
+                _suppression=SuppressionService(),
+            )
+            result = controller.check(str(root))
+            assert result.errors == 0
+
+    def test_applies_exceptions_filter_before_suppression(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "src" / "myapp").mkdir(parents=True)
             (root / "src" / "myapp" / "__init__.py").write_text(
-                "from __future__ import annotations\nx = 1\n"
+                'print("hello")\n'
             )
             (root / "pyproject.toml").write_text(
                 "[project]\nname='myapp'\nrequires-python='>=3.11'\n"
+            )
+            (root / "chisel-exceptions.toml").write_text(
+                '[[exceptions]]\nfiles = ["src/myapp/__init__.py"]\nrules = ["*"]\nreason = "test"\n'
             )
             controller = CheckController(
                 _services=[ConcurrencyService()],

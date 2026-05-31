@@ -2,6 +2,8 @@
 import ast
 from dataclasses import dataclass
 
+from chisel.checker.services.protocols import RuleInfo
+
 from chisel.checker.models.file_info import FileInfo
 from chisel.checker.models.layer import Layer
 from chisel.checker.models.project_info import ProjectInfo
@@ -12,6 +14,13 @@ from chisel.checker.models.violation import Violation
 @dataclass(slots=True)
 class SessionService:
     rule_id_prefix: str = "session"
+
+    def describe_rules(self) -> list[RuleInfo]:
+        return [
+            RuleInfo(id="session:session-execute-location", category="session",
+                     description="session.execute() called outside repositories/",
+                     fix_guidance="Extract the query into a repository method, add it to IYourRepository, and call it from there."),
+        ]
 
     def check(self, project: ProjectInfo) -> list[Violation]:
         violations: list[Violation] = []
@@ -37,7 +46,8 @@ class SessionService:
                     if self._is_session_receiver(value):
                         return self._v(
                             file, node.lineno, "session-execute-location",
-                            "session.execute() must only be called inside repositories/",
+                            "Extract the query into a repository method, add it to "
+                            "IYourRepository, and call it from there.",
                         )
                 case _:
                     pass

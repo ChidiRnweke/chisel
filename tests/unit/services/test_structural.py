@@ -400,3 +400,48 @@ class TestConcreteServiceImport:
         violations = _check_source(source, layer=Layer.FACTORY)
         assert _count_rule(violations, "concrete-service-import") == 0
 
+
+class TestImportErrorTryAllowed:
+    def test_allows_import_inside_try_except_importerror(self):
+        source = (
+            'try:\n'
+            '    import tomllib\n'
+            'except ImportError:\n'
+            '    import tomli as tomllib\n'
+        )
+        violations = _check_source(source)
+        nested = _count_rule(violations, "import-not-at-top-nested")
+        assert nested == 0
+
+    def test_detects_import_inside_non_importerror_try(self):
+        source = (
+            'try:\n'
+            '    import os\n'
+            'except Exception:\n'
+            '    pass\n'
+        )
+        violations = _check_source(source)
+        nested = _count_rule(violations, "import-not-at-top-nested")
+        assert nested == 1
+
+
+class TestDescribeRules:
+    def test_structural_describes_all_its_rules(self):
+        service = StructuralService()
+        rules = service.describe_rules()
+        assert len(rules) > 15
+        rule_ids = {r.id for r in rules}
+        assert "structural:print-banned" in rule_ids
+        assert "structural:isinstance-banned" in rule_ids
+        assert "structural:missing-protocol" in rule_ids
+        assert all(r.category == "structural" for r in rules)
+
+    def test_rule_info_has_valid_structure(self):
+        service = StructuralService()
+        rules = service.describe_rules()
+        for r in rules:
+            assert len(r.id) > 0
+            assert r.id.startswith("structural:")
+            assert len(r.description) > 0
+            assert len(r.fix_guidance) > 0
+

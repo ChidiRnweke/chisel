@@ -1,8 +1,17 @@
 
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from chisel.checker.models.project_info import ProjectInfo
 from chisel.checker.models.violation import Violation
+
+
+@dataclass(frozen=True, slots=True)
+class RuleInfo:
+    id: str
+    category: str
+    description: str
+    fix_guidance: str
 
 
 @runtime_checkable
@@ -10,6 +19,8 @@ class ICheckerService(Protocol):
     rule_id_prefix: str
 
     def check(self, project: ProjectInfo) -> list[Violation]: ...
+
+    def describe_rules(self) -> list[RuleInfo]: ...
 
 
 @runtime_checkable

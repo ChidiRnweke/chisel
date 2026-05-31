@@ -2,6 +2,8 @@
 import ast
 from dataclasses import dataclass
 
+from chisel.checker.services.protocols import RuleInfo
+
 from chisel.checker.models.file_info import FileInfo
 from chisel.checker.models.layer import Layer
 from chisel.checker.models.project_info import ProjectInfo
@@ -12,6 +14,13 @@ from chisel.checker.models.violation import Violation
 @dataclass(slots=True)
 class ErrorFlowService:
     rule_id_prefix: str = "error-flow"
+
+    def describe_rules(self) -> list[RuleInfo]:
+        return [
+            RuleInfo(id="error-flow:http-in-error", category="error-flow",
+                     description="HTTP status code in a domain error class",
+                     fix_guidance="Remove the status code from the error class. The mapping from domain error to HTTP status lives exclusively in error_handlers.py."),
+        ]
 
     def check(self, project: ProjectInfo) -> list[Violation]:
         violations: list[Violation] = []
@@ -60,8 +69,9 @@ class ErrorFlowService:
                                             if "status" in name_lower or "http" in name_lower:
                                                 return self._v(
                                                     file, item.lineno, "http-in-error",
-                                                    "HTTP status codes must not appear in error "
-                                                    "classes",
+                                                    "Remove the status code from the error class. "
+                                                    "The mapping from domain error to HTTP status "
+                                                    "lives exclusively in error_handlers.py.",
                                                 )
                                         case _:
                                             pass

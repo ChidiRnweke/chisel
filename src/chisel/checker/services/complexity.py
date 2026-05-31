@@ -2,6 +2,8 @@
 import ast
 from dataclasses import dataclass
 
+from chisel.checker.services.protocols import RuleInfo
+
 from chisel.checker.models.file_info import FileInfo
 from chisel.checker.models.layer import Layer
 from chisel.checker.models.project_info import ProjectInfo
@@ -16,6 +18,25 @@ _ROUTE_MAX_LOC = 20
 @dataclass(slots=True)
 class ComplexityService:
     rule_id_prefix: str = "complexity"
+
+    def describe_rules(self) -> list[RuleInfo]:
+        return [
+            RuleInfo(id="complexity:app-loc-limit", category="complexity",
+                     description="app.py exceeds 50 lines of code",
+                     fix_guidance="app.py should contain only create_app() and the lifespan context. Move everything else into the appropriate layer."),
+            RuleInfo(id="complexity:route-loc-limit", category="complexity",
+                     description="Route handler exceeds 20 lines of code",
+                     fix_guidance="Route handlers parse input, call the factory, return output — nothing else. Move anything else into a controller or service."),
+            RuleInfo(id="complexity:controller-loc-limit", category="complexity",
+                     description="Controller method exceeds 30 lines of code",
+                     fix_guidance="Controllers orchestrate — they don't contain logic. Extract business logic into a service or split concerns across services composed with asyncio.TaskGroup."),
+            RuleInfo(id="complexity:controller-complexity-limit", category="complexity",
+                     description="Controller method cyclomatic complexity exceeds 3",
+                     fix_guidance="Controllers orchestrate — they don't contain logic. Extract business logic into a service or split concerns across services composed with asyncio.TaskGroup."),
+            RuleInfo(id="complexity:factory-complexity-limit", category="complexity",
+                     description="Factory cyclomatic complexity exceeds 1",
+                     fix_guidance="The factory wires dependencies and makes no decisions. Move the conditional logic into a service method."),
+        ]
 
     def check(self, project: ProjectInfo) -> list[Violation]:
         violations: list[Violation] = []
@@ -47,9 +68,9 @@ class ComplexityService:
                             violations.extend(
                                 self._v(
                                     file, node.lineno, "route-loc-limit",
-                                    f"Route endpoint '{node.name}' must be "
-                                    f"≤ {_ROUTE_MAX_LOC} lines of code "
-                                    f"(found {func_loc})",
+                                    "Route handlers parse input, call the factory, return output "
+                                    "— nothing else. Move anything else into a controller "
+                                    "or service.",
                                     severity=Severity.WARNING,
                                 )
                             )
@@ -74,10 +95,9 @@ class ComplexityService:
                                         violations.extend(
                                             self._v(
                                                 file, item.lineno, "controller-loc-limit",
-                                                f"Controller method '{node.name}."
-                                                f"{item.name}' must be "
-                                                f"≤ {_CONTROLLER_MAX_LOC} lines of code "
-                                                f"(found {func_loc})",
+                                                "Controllers orchestrate — they don't contain logic. "
+                                                "Extract business logic into a service or split "
+                                                "concerns across services composed with asyncio.TaskGroup.",
                                                 severity=Severity.WARNING,
                                             )
                                         )
@@ -110,9 +130,9 @@ class ComplexityService:
                                         self._v(
                                             file, item.lineno,
                                             "controller-complexity-limit",
-                                            f"Controller method '{node.name}."
-                                            f"{item.name}' has cyclomatic complexity "
-                                            f"{cc} (max {_CONTROLLER_MAX_COMPLEXITY})",
+                                            "Controllers orchestrate — they don't contain logic. "
+                                            "Extract business logic into a service or split "
+                                            "concerns across services composed with asyncio.TaskGroup.",
                                         )
                                     )
                             case _:
@@ -133,7 +153,8 @@ class ComplexityService:
         if cc > 1:
             return self._v(
                 file, 1, "factory-complexity-limit",
-                f"Factory cyclomatic complexity must be 1 (found {cc})",
+                "The factory wires dependencies and makes no decisions. "
+                "Move the conditional logic into a service method.",
             )
         return []
 

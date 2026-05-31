@@ -1,7 +1,7 @@
 
 import ast
 from dataclasses import dataclass
-
+from chisel.checker.services.protocols import RuleInfo
 from chisel.checker.models.file_info import FileInfo
 from chisel.checker.models.layer import Layer
 from chisel.checker.models.project_info import ProjectInfo
@@ -32,6 +32,25 @@ class CheckTestStructureService:
             violations.extend(self._check_impl_detail_assertions(file))
             violations.extend(self._check_sleep_ban(file))
         return violations
+
+    def describe_rules(self) -> list[RuleInfo]:
+        return [
+            RuleInfo(id="test-structure:test-file-location", category="test-structure",
+                     description="Test file outside tests/unit/, tests/integration/, or tests/e2e/",
+                     fix_guidance="Move into the correct directory. Unit tests in tests/unit/, repository tests in tests/integration/, full-stack tests in tests/e2e/."),
+            RuleInfo(id="test-structure:one-assert-per-test", category="test-structure",
+                     description="More than one assert in a test function",
+                     fix_guidance="Split into separate test functions, one per assertion. Name each after the invariant it proves: test_cannot_X, test_returns_Y_when_Z."),
+            RuleInfo(id="test-structure:test-naming", category="test-structure",
+                     description="Test name does not describe an invariant",
+                     fix_guidance="Name the test after the invariant it proves: test_cannot_X, test_returns_Y_when_Z, test_detects_X, test_allows_X_under_Y."),
+            RuleInfo(id="test-structure:skip-without-reason", category="test-structure",
+                     description="@pytest.mark.skip without a reason",
+                     fix_guidance="Add reason= explaining why this test is skipped and when it should be re-enabled."),
+            RuleInfo(id="test-structure:banned-import-in-tests", category="test-structure",
+                     description="TestClient, uvicorn, or httpx imported in unit/integration tests",
+                     fix_guidance="Inject fakes and call the service or controller directly. The factory pattern exists to make this possible without spinning up the app."),
+        ]
 
     def _is_test_file(self, file: FileInfo) -> bool:
         name = file.path.name
@@ -64,8 +83,9 @@ class CheckTestStructureService:
                 return []
         return self._v(
             file, 1, "test-file-location",
-            f"Test file '{file.path}' must live under tests/unit/, "
-            f"tests/integration/, or tests/e2e/",
+            "Move into the correct directory. Unit tests in tests/unit/, "
+            "repository tests in tests/integration/, full-stack tests in "
+            "tests/e2e/.",
         )
 
     def _check_one_assert(self, file: FileInfo) -> list[Violation]:
@@ -82,8 +102,9 @@ class CheckTestStructureService:
                         violations.extend(
                             self._v(
                                 file, node.lineno, "one-assert-per-test",
-                                f"Test '{name}' has {assert_count} assert "
-                                f"statements (exactly 1 required)",
+                                "Split into separate test functions, one per "
+                                "assertion. Name each after the invariant it proves: "
+                                "test_cannot_X, test_returns_Y_when_Z.",
                             )
                         )
                 case _:
@@ -114,8 +135,9 @@ class CheckTestStructureService:
                         violations.extend(
                             self._v(
                                 file, node.lineno, "test-naming",
-                                f"Test name '{name}' does not describe an invariant "
-                                f"— use test_cannot_X, test_returns_Y_when_Z, etc.",
+                                "Name the test after the invariant it proves: "
+                                "test_cannot_X, test_returns_Y_when_Z, "
+                                "test_detects_X, test_allows_X_under_Y.",
                             )
                         )
                 case _:
@@ -137,8 +159,8 @@ class CheckTestStructureService:
                                 violations.extend(
                                     self._v(
                                         file, node.lineno, "skip-without-reason",
-                                        f"@pytest.mark.skip on '{node.name}' "
-                                        f"must include reason=",
+                                        "Add reason= explaining why this test is "
+                                        "skipped and when it should be re-enabled.",
                                     )
                                 )
                 case _:
@@ -197,8 +219,9 @@ class CheckTestStructureService:
             if module == prefix or module.startswith(prefix + "."):
                 return self._v(
                     file, line, "banned-import-in-tests",
-                    f"'{module}' is banned in tests/unit/ and tests/integration/ "
-                    f"— use only in tests/e2e/",
+                    "Inject fakes and call the service or controller "
+                    "directly. The factory pattern exists to make this "
+                    "possible without spinning up the app.",
                 )
         return None
 

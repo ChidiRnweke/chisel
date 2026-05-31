@@ -2,7 +2,7 @@
 import ast
 from dataclasses import dataclass
 from pathlib import Path
-
+from chisel.checker.services.protocols import RuleInfo
 from chisel.checker.models.file_info import FileInfo
 from chisel.checker.models.layer import Layer
 from chisel.checker.models.project_info import ProjectInfo
@@ -13,14 +13,44 @@ from chisel.checker.models.violation import Violation
 @dataclass(slots=True)
 class ProjectStructureService:
     rule_id_prefix: str = "project-structure"
+    strict: bool = True
 
     def check(self, project: ProjectInfo) -> list[Violation]:
         violations: list[Violation] = []
-        violations.extend(self._check_src_layout(project))
-        violations.extend(self._check_build_config(project))
+        if self.strict:
+            violations.extend(self._check_src_layout(project))
+            violations.extend(self._check_build_config(project))
         violations.extend(self._check_orm_init_imports(project))
         violations.extend(self._check_structural_coverage(project))
         return violations
+
+    def describe_rules(self) -> list[RuleInfo]:
+        return [
+            RuleInfo(id="project-structure:src-layout-missing", category="project-structure",
+                     description="Project does not use src layout",
+                     fix_guidance="All application code lives under the src layout. Create src/<appname>/ and move all .py files there."),
+            RuleInfo(id="project-structure:root-py-file", category="project-structure",
+                     description=".py file found at project root",
+                     fix_guidance="All application code lives under the src layout. Move this file into src/<appname>/."),
+            RuleInfo(id="project-structure:src-root-py-file", category="project-structure",
+                     description=".py file found at src/ root",
+                     fix_guidance="All application code lives under the src layout. Move this file into src/<appname>/."),
+            RuleInfo(id="project-structure:setup-py-banned", category="project-structure",
+                     description="setup.py found in project",
+                     fix_guidance="Use pyproject.toml exclusively. Remove setup.py and consolidate dependencies there."),
+            RuleInfo(id="project-structure:requirements-txt-banned", category="project-structure",
+                     description="requirements.txt found in project",
+                     fix_guidance="Use pyproject.toml exclusively. Remove requirements.txt and consolidate dependencies there."),
+            RuleInfo(id="project-structure:pyproject-missing", category="project-structure",
+                     description="pyproject.toml not found",
+                     fix_guidance="pyproject.toml is required as the single build configuration file."),
+            RuleInfo(id="project-structure:orm-init-empty", category="project-structure",
+                     description="ORM __init__.py has no imports",
+                     fix_guidance="repositories/orm/__init__.py must import all ORM models for Alembic autogeneration."),
+            RuleInfo(id="project-structure:missing-test-coverage", category="project-structure",
+                     description="Service or controller has no corresponding test file",
+                     fix_guidance="Add a test file under tests/unit/ covering its core invariants."),
+        ]
 
     def _check_src_layout(self, project: ProjectInfo) -> list[Violation]:
         root = project.root_path
@@ -29,7 +59,8 @@ class ProjectStructureService:
         if not src.is_dir():
             return self._v(
                 str(root), 1, "src-layout-missing",
-                "Project must use src layout: src/<appname>/",
+                "All application code lives under the src layout. "
+                "Create src/<appname>/ and move all .py files there.",
             )
 
         py_files_at_root = list(root.glob("*.py"))
@@ -40,7 +71,8 @@ class ProjectStructureService:
                 violations.extend(
                     self._v(
                         rel, 1, "root-py-file",
-                        f".py files at project root are invalid: {rel}",
+                        "All application code lives under the src layout. "
+                        "Move this file into src/<appname>/."
                     )
                 )
             return violations
@@ -53,7 +85,8 @@ class ProjectStructureService:
                 violations.extend(
                     self._v(
                         rel, 1, "src-root-py-file",
-                        f".py files at src/ root are invalid: {rel}",
+                        "All application code lives under the src layout. "
+                        "Move this file into src/<appname>/."
                     )
                 )
             return violations
@@ -67,21 +100,24 @@ class ProjectStructureService:
         if setup_py.exists():
             return self._v(
                 "setup.py", 1, "setup-py-banned",
-                "setup.py is banned — use pyproject.toml only",
+                "Use pyproject.toml exclusively. Remove setup.py and "
+                "consolidate dependencies there.",
             )
 
         requirements_txt = root / "requirements.txt"
         if requirements_txt.exists():
             return self._v(
                 "requirements.txt", 1, "requirements-txt-banned",
-                "requirements.txt is banned — use pyproject.toml only",
+                "Use pyproject.toml exclusively. Remove requirements.txt "
+                "and consolidate dependencies there.",
             )
 
         pyproject = root / "pyproject.toml"
         if not pyproject.exists():
             return self._v(
                 "pyproject.toml", 1, "pyproject-missing",
-                "pyproject.toml is required — only build file permitted",
+                "pyproject.toml is required as the single build "
+                "configuration file.",
             )
 
         return []
@@ -115,7 +151,7 @@ class ProjectStructureService:
             return self._v(
                 str(orm_init.path), 1, "orm-init-empty",
                 "repositories/orm/__init__.py must import all ORM models "
-                "for Alembic autogeneration",
+                "for Alembic autogeneration.",
             )
 
         return []
@@ -147,8 +183,8 @@ class ProjectStructureService:
                 violations.extend(
                     self._v(
                         str(svc.path), 1, "missing-test-coverage",
-                        f"Service '{name}' has no corresponding test file "
-                        f"(expected tests/unit/services/test_{name}.py)",
+                        "Add a test file under tests/unit/ covering its "
+                        "core invariants.",
                     )
                 )
 
@@ -159,8 +195,8 @@ class ProjectStructureService:
                 violations.extend(
                     self._v(
                         str(ctrl.path), 1, "missing-test-coverage",
-                        f"Controller '{name}' has no corresponding test file "
-                        f"(expected tests/unit/controllers/test_{name}.py)",
+                        "Add a test file under tests/unit/ covering its "
+                        "core invariants.",
                     )
                 )
 

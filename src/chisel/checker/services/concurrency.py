@@ -2,6 +2,8 @@
 import ast
 from dataclasses import dataclass
 
+from chisel.checker.services.protocols import RuleInfo
+
 from chisel.checker.models.file_info import FileInfo
 from chisel.checker.models.project_info import ProjectInfo
 from chisel.checker.models.severity import Severity
@@ -11,6 +13,13 @@ from chisel.checker.models.violation import Violation
 @dataclass(slots=True)
 class ConcurrencyService:
     rule_id_prefix: str = "concurrency"
+
+    def describe_rules(self) -> list[RuleInfo]:
+        return [
+            RuleInfo(id="concurrency:asyncio-gather-banned", category="concurrency",
+                     description="asyncio.gather() used",
+                     fix_guidance="Replace with asyncio.TaskGroup. TaskGroup cancels sibling tasks on failure and propagates exceptions cleanly."),
+        ]
 
     def check(self, project: ProjectInfo) -> list[Violation]:
         violations: list[Violation] = []
@@ -34,12 +43,14 @@ class ConcurrencyService:
                 )):
                     return self._v(
                         file, node.lineno, "asyncio-gather-banned",
-                        "asyncio.gather is banned — use asyncio.TaskGroup only",
+                        "Replace with asyncio.TaskGroup. TaskGroup cancels "
+                        "sibling tasks on failure and propagates exceptions cleanly.",
                     )
                 case ast.Call(func=ast.Name(id="gather")) if has_gather_import:
                     return self._v(
                         file, node.lineno, "asyncio-gather-banned",
-                        "asyncio.gather is banned — use asyncio.TaskGroup only",
+                        "Replace with asyncio.TaskGroup. TaskGroup cancels "
+                        "sibling tasks on failure and propagates exceptions cleanly.",
                     )
                 case _:
                     pass

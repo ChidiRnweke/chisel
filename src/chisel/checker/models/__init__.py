@@ -1,4 +1,5 @@
 
+from chisel.checker.models.exemption import Exemption
 from chisel.checker.models.file_info import FileInfo
 from chisel.checker.models.import_edge import ImportEdge
 from chisel.checker.models.layer import Layer
@@ -9,6 +10,7 @@ from chisel.checker.models.violation import Violation
 
 __all__ = [
     "CheckResult",
+    "Exemption",
     "FileInfo",
     "ImportEdge",
     "Layer",

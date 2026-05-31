@@ -22,6 +22,7 @@ from chisel.checker.services.check_test_structure import CheckTestStructureServi
 class CheckerFactory:
     _import_graph: IImportGraph = field(default_factory=ImportGraph)
     _suppression: SuppressionService = field(default_factory=SuppressionService)
+    strict: bool = True
 
     def create_controller(self) -> CheckController:
         services: list[ICheckerService] = [
@@ -32,7 +33,7 @@ class CheckerFactory:
             SessionService(),
             ErrorFlowService(),
             ConfigStartupService(),
-            ProjectStructureService(),
+            ProjectStructureService(strict=self.strict),
             AppFileService(),
             CheckTestStructureService(),
         ]

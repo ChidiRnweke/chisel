@@ -16,6 +16,9 @@ from chisel.checker.repositories.protocols import IImportGraph
 from chisel.checker.services.protocols import ICheckerService, ISuppressionService
 
 
+from chisel.checker.repositories.exception_registry import ExceptionRegistry
+
+
 @dataclass(slots=True)
 class CheckController:
     _suppression: ISuppressionService
@@ -25,9 +28,24 @@ class CheckController:
     def check(self, project_path: str) -> CheckResult:
         root = Path(project_path).resolve()
         project = self._prepare_project(root)
+        violations: list[Violation] = []
+
         if project.package_name:
-            self._build_import_graph(root, project.package_name)
-        violations = self._run_services(project)
+            try:
+                self._build_import_graph(root, project.package_name)
+            except ImportGraphError as exc:
+                violations.append(
+                    Violation(
+                        file="<import-graph>",
+                        line=0,
+                        severity=Severity.WARNING,
+                        rule_id="import-graph:build-failed",
+                        message=str(exc),
+                    )
+                )
+
+        violations.extend(self._run_services(project))
+        violations = self._apply_exceptions(root, violations)
         sources = self._collect_sources(project)
         active = self._suppression.check(violations, sources)
         return self._summarize(active, len(project.files))
@@ -83,6 +101,13 @@ class CheckController:
 
     def _collect_sources(self, project: ProjectInfo) -> dict[str, str]:
         return {str(f.path): f.source for f in project.files}
+
+    def _apply_exceptions(
+        self, root: Path, violations: list[Violation]
+    ) -> list[Violation]:
+        registry = ExceptionRegistry()
+        registry.load(root)
+        return registry.filter(violations)
 
     def _summarize(
         self, violations: list[Violation], files_checked: int

@@ -2,6 +2,8 @@
 import re
 from dataclasses import dataclass
 
+from chisel.checker.services.protocols import RuleInfo
+
 from chisel.checker.models.severity import Severity
 from chisel.checker.models.violation import Violation
 
@@ -14,6 +16,13 @@ _NOQA_RE = re.compile(
 @dataclass(slots=True)
 class SuppressionService:
     rule_id_prefix: str = "suppression"
+
+    def describe_rules(self) -> list[RuleInfo]:
+        return [
+            RuleInfo(id="suppression:missing-reason", category="suppression",
+                     description="noqa suppression comment without a reason",
+                     fix_guidance="Suppression comments require a reason — noqa: rule-id — explanation of why the violation is acceptable here. Add it after the rule ID."),
+        ]
 
     def check(self, violations: list[Violation], sources: dict[str, str]) -> list[Violation]:
         active: list[Violation] = []
@@ -31,8 +40,9 @@ class SuppressionService:
                             line=v.line,
                             severity=Severity.ERROR,
                             rule_id=f"{self.rule_id_prefix}:missing-reason",
-                            message="Suppression comment must include a reason "
-                            "after — or --",
+                            message="Suppression comments require a reason — noqa: "
+                            "rule-id — explanation of why the violation is "
+                            "acceptable here. Add it after the rule ID.",
                         )
                     )
             elif not suppressed:

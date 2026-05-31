@@ -2,6 +2,8 @@
 import ast
 from dataclasses import dataclass
 
+from chisel.checker.services.protocols import RuleInfo
+
 from chisel.checker.models.file_info import FileInfo
 from chisel.checker.models.layer import Layer
 from chisel.checker.models.project_info import ProjectInfo
@@ -12,6 +14,13 @@ from chisel.checker.models.violation import Violation
 @dataclass(slots=True)
 class ConfigStartupService:
     rule_id_prefix: str = "config-startup"
+
+    def describe_rules(self) -> list[RuleInfo]:
+        return [
+            RuleInfo(id="config-startup:getenv-outside-config", category="config-startup",
+                     description="os.getenv() called outside config.py",
+                     fix_guidance="All environment variables are read once at startup in Config.from_env(). Access config values via the injected config instance."),
+        ]
 
     def check(self, project: ProjectInfo) -> list[Violation]:
         violations: list[Violation] = []
@@ -36,7 +45,9 @@ class ConfigStartupService:
                 )):
                     return self._v(
                         file, node.lineno, "getenv-outside-config",
-                        "os.getenv() must only be called in config.py",
+                        "All environment variables are read once at startup in "
+                        "Config.from_env(). Access config values via the injected "
+                        "config instance.",
                     )
                 case _:
                     pass

@@ -55,23 +55,35 @@ class FileDiscovery:
                 relative = py_file.relative_to(root_path)
                 files.append(FileInfo(path=relative, layer=Layer.TESTS))
 
-        if not package_name:
-            package_name = root_path.name
-
         return ProjectInfo(root_path=root_path, files=files, package_name=package_name)
 
     def _find_package_name(self, root_path: Path) -> str:
         src = root_path / "src"
-        if not src.is_dir():
-            return ""
-        for child in sorted(src.iterdir()):
-            if child.is_dir() and (child / "__init__.py").exists():
+        if src.is_dir():
+            for child in sorted(src.iterdir()):
+                if child.is_dir() and (child / "__init__.py").exists():
+                    return child.name
+
+        for child in sorted(root_path.iterdir()):
+            if not child.is_dir():
+                continue
+            if child.name in ("tests", "__pycache__", ".mypy_cache", ".venv", "venv", "node_modules"):
+                continue
+            if child.name.startswith("."):
+                continue
+            if (child / "__init__.py").exists():
                 return child.name
+
         return ""
 
     def _find_src_root(self, root_path: Path, package_name: str) -> Path:
         if package_name:
-            return root_path / "src" / package_name
+            candidate = root_path / "src" / package_name
+            if candidate.is_dir():
+                return candidate
+            candidate = root_path / package_name
+            if candidate.is_dir():
+                return candidate
         src = root_path / "src"
         if src.is_dir():
             return src

@@ -1,7 +1,7 @@
 
 import ast
 from dataclasses import dataclass
-
+from chisel.checker.services.protocols import RuleInfo
 from chisel.checker.models.file_info import FileInfo
 from chisel.checker.models.layer import Layer
 from chisel.checker.models.project_info import ProjectInfo
@@ -23,6 +23,19 @@ class AppFileService:
             violations.extend(self._check_file(file))
         return violations
 
+    def describe_rules(self) -> list[RuleInfo]:
+        return [
+            RuleInfo(id="app-file:app-loc-limit", category="app-file",
+                     description="app.py exceeds 50 lines of code",
+                     fix_guidance="app.py should contain only create_app() and the lifespan context. Move everything else into the appropriate layer."),
+            RuleInfo(id="app-file:route-in-app", category="app-file",
+                     description="Route definition inside app.py",
+                     fix_guidance="app.py only creates the app and registers routers. Move this route into routes/ and register it via app.include_router()."),
+            RuleInfo(id="app-file:app-complexity-limit", category="app-file",
+                     description="app.py cyclomatic complexity exceeds 1",
+                     fix_guidance="app.py should contain only create_app() and the lifespan context. Move everything else into the appropriate layer."),
+        ]
+
     def _check_file(self, file: FileInfo) -> list[Violation]:
         violations: list[Violation] = []
         violations.extend(self._check_loc(file))
@@ -36,7 +49,8 @@ class AppFileService:
         if loc > _APP_MAX_LOC:
             return self._v(
                 file, 1, "app-loc-limit",
-                f"app.py must be ≤ {_APP_MAX_LOC} lines of code (found {loc})",
+                "app.py should contain only create_app() and the lifespan "
+                "context. Move everything else into the appropriate layer.",
             )
         return []
 
@@ -54,12 +68,16 @@ class AppFileService:
                             case ast.Attribute(attr=attr) if attr in route_decorators:
                                 return self._v(
                                     file, node.lineno, "route-in-app",
-                                    "Route definitions are banned in app.py",
+                                    "app.py only creates the app and registers routers. "
+                                    "Move this route into routes/ and register it "
+                                    "via app.include_router().",
                                 )
                             case ast.Call(func=ast.Attribute(attr=attr)) if attr in route_decorators:
                                 return self._v(
                                     file, node.lineno, "route-in-app",
-                                    "Route definitions are banned in app.py",
+                                    "app.py only creates the app and registers routers. "
+                                    "Move this route into routes/ and register it "
+                                    "via app.include_router().",
                                 )
                             case _:
                                 pass
@@ -76,7 +94,8 @@ class AppFileService:
         if cc > 1:
             return self._v(
                 file, 1, "app-complexity-limit",
-                f"app.py cyclomatic complexity must be 1 (found {cc})",
+                "app.py should contain only create_app() and the lifespan "
+                "context. Move everything else into the appropriate layer.",
             )
         return []
 

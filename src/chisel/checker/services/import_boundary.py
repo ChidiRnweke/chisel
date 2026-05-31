@@ -1,6 +1,8 @@
 
 from dataclasses import dataclass
 
+from chisel.checker.services.protocols import RuleInfo
+
 from chisel.checker.models.import_edge import ImportEdge
 from chisel.checker.models.layer import Layer
 from chisel.checker.models.project_info import ProjectInfo
@@ -95,6 +97,34 @@ class ImportBoundaryService:
     _import_graph: IImportGraph
     rule_id_prefix: str = "import-boundary"
 
+    def describe_rules(self) -> list[RuleInfo]:
+        return [
+            RuleInfo(id="import-boundary:layer-no-internal-imports", category="import-boundary",
+                     description="Layer importing from code it must not depend on",
+                     fix_guidance="Models are pure data with no dependencies. If you need logic that uses a service or repository, it belongs in a service method."),
+            RuleInfo(id="import-boundary:layer-banned-import", category="import-boundary",
+                     description="Layer importing from a banned layer",
+                     fix_guidance="Layer boundary violated. Services never directly import controllers, routes, or other services. Wire dependencies through the factory using Protocol interfaces."),
+            RuleInfo(id="import-boundary:banned-module", category="import-boundary",
+                     description="Service importing SQLAlchemy or other banned module",
+                     fix_guidance="Services never touch the database. Move the query into a repository method and inject the repository into the service."),
+            RuleInfo(id="import-boundary:fastapi-location", category="import-boundary",
+                     description="fastapi imported outside routes/, dependencies.py, or error_handlers.py",
+                     fix_guidance="FastAPI imports mean HTTP concerns are leaking into the domain. Move the FastAPI-specific code to a route handler or dependency."),
+            RuleInfo(id="import-boundary:sqlalchemy-location", category="import-boundary",
+                     description="sqlalchemy imported outside repositories/",
+                     fix_guidance="Services never touch the database. Move the query into a repository method and inject the repository into the service."),
+            RuleInfo(id="import-boundary:async-session-location", category="import-boundary",
+                     description="sqlalchemy.ext.asyncio imported outside repositories/",
+                     fix_guidance="The session is request-scoped and belongs in repositories only. Inject it per-request via Depends(get_session) and pass it through the factory."),
+            RuleInfo(id="import-boundary:factory-import-location", category="import-boundary",
+                     description="factory.py imported outside routes/",
+                     fix_guidance="The factory belongs in routes and dependencies only. Thread services through as Protocol-typed parameters everywhere else."),
+            RuleInfo(id="import-boundary:orm-leak", category="import-boundary",
+                     description="ORM type imported outside repositories/",
+                     fix_guidance="ORM types never leave the repository layer. Call _to_domain() inside the repository and return a domain model."),
+        ]
+
     def check(self, project: ProjectInfo) -> list[Violation]:
         violations: list[Violation] = []
         for edge in self._import_graph.all_imports:
@@ -143,16 +173,17 @@ class ImportBoundaryService:
             return self._violation(
                 edge,
                 "layer-no-internal-imports",
-                f"Layer '{importer_layer.value}' must not import any internal code "
-                f"from other layers (imports '{edge.imported}')",
+                "Models are pure data with no dependencies. If you need logic "
+                "that uses a service or repository, it belongs in a service method.",
             )
 
         if imported_layer in banned_set:
             return self._violation(
                 edge,
                 "layer-banned-import",
-                f"Layer '{importer_layer.value}' must not import from "
-                f"'{imported_layer.value}' (imports '{edge.imported}')",
+                "Layer boundary violated. Services never directly import "
+                "controllers, routes, or other services. Wire dependencies "
+                "through the factory using Protocol interfaces.",
             )
 
         return []
@@ -166,8 +197,8 @@ class ImportBoundaryService:
                 return self._violation(
                     edge,
                     "banned-module",
-                    f"Layer '{importer_layer.value}' must not import '{prefix}' "
-                    f"(imports '{edge.imported}')",
+                    "Services never touch the database. Move the query into a "
+                    "repository method and inject the repository into the service.",
                 )
         return []
 
@@ -179,8 +210,8 @@ class ImportBoundaryService:
                 return self._violation(
                     edge,
                     "fastapi-location",
-                    f"'fastapi' must only be imported in routes/, dependencies.py, "
-                    f"error_handlers.py (found in '{importer_layer.value}')",
+                    "FastAPI imports mean HTTP concerns are leaking into the domain. "
+                    "Move the FastAPI-specific code to a route handler or dependency.",
                 )
         return []
 
@@ -195,16 +226,17 @@ class ImportBoundaryService:
                 return self._violation(
                     edge,
                     "async-session-location",
-                    f"'sqlalchemy.ext.asyncio' must only be imported in repositories/ "
-                    f"(found in '{importer_layer.value}')",
+                    "The session is request-scoped and belongs in repositories only. "
+                    "Inject it per-request via Depends(get_session) and pass it "
+                    "through the factory.",
                 )
         if edge.imported == "sqlalchemy" or edge.imported.startswith("sqlalchemy."):
             if importer_layer not in _SQLALCHEMY_ALLOWED_LAYERS:
                 return self._violation(
                     edge,
                     "sqlalchemy-location",
-                    f"'sqlalchemy' must only be imported in repositories/ "
-                    f"(found in '{importer_layer.value}')",
+                    "Services never touch the database. Move the query into a "
+                    "repository method and inject the repository into the service.",
                 )
         return []
 
@@ -217,8 +249,9 @@ class ImportBoundaryService:
                 return self._violation(
                     edge,
                     "factory-import-location",
-                    f"'factory.py' must only be imported by routes/ "
-                    f"(found in '{importer_layer.value}')",
+                    "The factory belongs in routes and dependencies only. "
+                    "Thread services through as Protocol-typed parameters "
+                    "everywhere else.",
                 )
         return []
 
@@ -230,8 +263,9 @@ class ImportBoundaryService:
                 return self._violation(
                     edge,
                     "orm-leak",
-                    f"ORM types must never be imported outside repositories/ "
-                    f"(found in '{importer_layer.value}': '{edge.imported}')",
+                    "ORM types never leave the repository layer. "
+                    "Call _to_domain() inside the repository and return "
+                    "a domain model.",
                 )
         return []
 
