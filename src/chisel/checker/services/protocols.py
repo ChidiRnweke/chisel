@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+from typing import Protocol, runtime_checkable
+
+from chisel.checker.models.project_info import ProjectInfo
+from chisel.checker.models.violation import Violation
+
+
+@runtime_checkable
+class ICheckerService(Protocol):
+    rule_id_prefix: str
+
+    def check(self, project: ProjectInfo) -> list[Violation]: ...
+
+
+@runtime_checkable
+class IImportBoundaryService(ICheckerService, Protocol): ...
+
+
+@runtime_checkable
+class IStructuralService(ICheckerService, Protocol): ...
+
+
+@runtime_checkable
+class IComplexityService(ICheckerService, Protocol): ...
+
+
+@runtime_checkable
+class IConcurrencyService(ICheckerService, Protocol): ...
+
+
+@runtime_checkable
+class ISessionService(ICheckerService, Protocol): ...
+
+
+@runtime_checkable
+class IErrorFlowService(ICheckerService, Protocol): ...
+
+
+@runtime_checkable
+class IConfigStartupService(ICheckerService, Protocol): ...
+
+
+@runtime_checkable
+class IProjectStructureService(ICheckerService, Protocol): ...
+
+
+@runtime_checkable
+class IAppFileService(ICheckerService, Protocol): ...

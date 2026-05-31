@@ -1,0 +1,71 @@
+from __future__ import annotations
+
+import ast
+from dataclasses import dataclass
+
+from chisel.checker.models.file_info import FileInfo
+from chisel.checker.models.layer import Layer
+from chisel.checker.models.project_info import ProjectInfo
+from chisel.checker.models.severity import Severity
+from chisel.checker.models.violation import Violation
+
+
+@dataclass(slots=True)
+class ErrorFlowService:
+    rule_id_prefix: str = "error-flow"
+
+    def check(self, project: ProjectInfo) -> list[Violation]:
+        violations: list[Violation] = []
+        for file in project.files:
+            if file.ast_tree is None:
+                continue
+            violations.extend(self._check_file(file))
+        return violations
+
+    def _check_file(self, file: FileInfo) -> list[Violation]:
+        tree = file.ast_tree
+        if tree is None:
+            return []
+
+        if file.layer == Layer.ERROR_HANDLERS:
+            return []
+
+        return self._check_http_in_error(file, tree)
+
+    def _check_http_in_error(
+        self, file: FileInfo, tree: ast.Module
+    ) -> list[Violation]:
+        for node in tree.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            has_error_base = any(
+                isinstance(base, ast.Name) and "Error" in base.id
+                for base in node.bases
+            )
+            if not has_error_base:
+                continue
+            for item in node.body:
+                if isinstance(item, ast.Assign):
+                    for target in item.targets:
+                        if isinstance(target, ast.Name):
+                            name_lower = target.id.lower()
+                            if "status" in name_lower or "http" in name_lower:
+                                return self._v(
+                                    file, item.lineno, "http-in-error",
+                                    "HTTP status codes must not appear in error "
+                                    "classes",
+                                )
+        return []
+
+    def _v(
+        self, file: FileInfo, line: int, rule_suffix: str, message: str
+    ) -> list[Violation]:
+        return [
+            Violation(
+                file=str(file.path),
+                line=line,
+                severity=Severity.ERROR,
+                rule_id=f"{self.rule_id_prefix}:{rule_suffix}",
+                message=message,
+            )
+        ]

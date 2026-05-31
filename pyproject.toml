@@ -1,0 +1,22 @@
+[project]
+name = "chisel"
+version = "0.1.0"
+description = "Opinionated architecture constraint checker"
+readme = "README.md"
+authors = [
+    { name = "ChidiRNweke", email = "chidi125@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "grimp>=3.0",
+    "radon>=6.0",
+    "typer>=0.12",
+    "rich>=13.0",
+]
+
+[project.scripts]
+chisel = "chisel.cli.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
