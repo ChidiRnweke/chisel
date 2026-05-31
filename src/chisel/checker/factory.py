@@ -16,6 +16,7 @@ from chisel.checker.services.protocols import ICheckerService
 from chisel.checker.services.session import SessionService
 from chisel.checker.services.structural import StructuralService
 from chisel.checker.services.suppression import SuppressionService
+from chisel.checker.services.check_test_structure import CheckTestStructureService
 
 
 @dataclass(slots=True)
@@ -34,6 +35,7 @@ class CheckerFactory:
             ConfigStartupService(),
             ProjectStructureService(),
             AppFileService(),
+            CheckTestStructureService(),
         ]
 
         return CheckController(

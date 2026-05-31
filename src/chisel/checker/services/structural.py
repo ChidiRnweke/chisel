@@ -402,10 +402,11 @@ class StructuralService:
                                         "AppFactory has no @staticmethod",
                                     )
                                 )
-                    if isinstance(item, (ast.If, ast.For, ast.While, ast.Try)):
+                for child in ast.walk(node):
+                    if isinstance(child, (ast.If, ast.For, ast.While, ast.Try)):
                         violations.extend(
                             self._v(
-                                file, item.lineno, "factory-zero-logic",
+                                file, child.lineno, "factory-zero-logic",
                                 "AppFactory must contain zero conditional logic",
                             )
                         )

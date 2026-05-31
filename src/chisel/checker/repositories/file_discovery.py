@@ -46,6 +46,14 @@ class FileDiscovery:
             layer = self._classify_file(py_file, src_root, package_name)
             files.append(FileInfo(path=relative, layer=layer))
 
+        tests_root = root_path / "tests"
+        if tests_root.is_dir():
+            for py_file in sorted(tests_root.rglob("*.py")):
+                if self._is_ignored(py_file, tests_root):
+                    continue
+                relative = py_file.relative_to(root_path)
+                files.append(FileInfo(path=relative, layer=Layer.TESTS))
+
         if not package_name:
             package_name = root_path.name
 

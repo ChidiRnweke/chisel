@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from chisel.checker.models.file_info import FileInfo
+from chisel.checker.models.layer import Layer
 from chisel.checker.models.project_info import ProjectInfo
 from chisel.checker.models.severity import Severity
 from chisel.checker.models.violation import Violation
@@ -19,6 +20,7 @@ class ProjectStructureService:
         violations.extend(self._check_src_layout(project))
         violations.extend(self._check_build_config(project))
         violations.extend(self._check_orm_init_imports(project))
+        violations.extend(self._check_structural_coverage(project))
         return violations
 
     def _check_src_layout(self, project: ProjectInfo) -> list[Violation]:
@@ -110,6 +112,52 @@ class ProjectStructureService:
             )
 
         return []
+
+    def _check_structural_coverage(
+        self, project: ProjectInfo
+    ) -> list[Violation]:
+        violations: list[Violation] = []
+        service_files = [
+            f for f in project.files
+            if f.layer == Layer.SERVICES
+            and f.path.name.endswith(".py")
+            and f.path.name != "protocols.py"
+            and f.path.name != "__init__.py"
+        ]
+        controller_files = [
+            f for f in project.files
+            if f.layer == Layer.CONTROLLERS
+            and f.path.name != "__init__.py"
+        ]
+
+        test_files = {str(f.path) for f in project.files
+                      if str(f.path).startswith("tests/")}
+
+        for svc in service_files:
+            name = svc.path.stem
+            expected = f"tests/unit/services/test_{name}.py"
+            if expected not in test_files:
+                violations.extend(
+                    self._v(
+                        str(svc.path), 1, "missing-test-coverage",
+                        f"Service '{name}' has no corresponding test file "
+                        f"(expected tests/unit/services/test_{name}.py)",
+                    )
+                )
+
+        for ctrl in controller_files:
+            name = ctrl.path.stem
+            expected = f"tests/unit/controllers/test_{name}.py"
+            if expected not in test_files:
+                violations.extend(
+                    self._v(
+                        str(ctrl.path), 1, "missing-test-coverage",
+                        f"Controller '{name}' has no corresponding test file "
+                        f"(expected tests/unit/controllers/test_{name}.py)",
+                    )
+                )
+
+        return violations
 
     def _v(
         self, file: str, line: int, rule_suffix: str, message: str
