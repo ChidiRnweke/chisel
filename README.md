@@ -1,98 +1,144 @@
-# chisel
+# Chisel
 
-Opinionated architecture skills for AI-assisted fullstack development. SvelteKit + Python FastAPI, monorepo-first. These can be used with Claude Code or anything else that supports skills (e.g., opencode).
+Deterministic architecture constraint checkers designed to work alongside agent skills. The skills teach an agent the right pattern — the checker enforces it. Run it as a pre-commit hook to block violations before they land. Run it interactively to steer an agent while it's working.
 
-## Why "chisel"?
+Two checkers, one set of rules implemented from [`constraints.md`](constraints.md):
 
-A chisel turns raw material into something deliberate. That's what these skills do — they take an LLM's general coding ability and shape it into disciplined, production-grade output.
+| Package | Language | Target | CLI |
+|---|---|---|---|
+| `chisel` | Python | FastAPI backends | `chisel check .` |
+| `chisel-js` | TypeScript | SvelteKit frontends | `chisel-js check .` |
 
-This is me distilling what I've learned as a software/ML engineer into reusable skills that anyone can plug into their AI workflow. They're opinionated because opinions are what make codebases consistent.
+## How it fits with skills
 
-Feel free to use them. Let me know what worked and what didn't — I'm iterating on these actively.
-
-## Skills
-
-| Skill | What it covers |
-|---|---|
-| `architecting-fullstack` | Monorepo structure, Pattern A (TS monolith) vs Pattern B (BFF), project setup, cross-cutting concerns |
-| `building-python-backend` | FastAPI backend: services, repositories, controllers, factory, config, error hierarchy, SQLAlchemy |
-| `building-sveltekit-frontend` | SvelteKit frontend: loaders, actions, stores, openapi-fetch, error handling, layer separation |
-| `designing-svelte-ui` | Design system creation, token system, shadcn theming, component architecture, blandness audit |
-
-## Usage
-
-Reference skills from your project's `CLAUDE.md`:
-
-```markdown
-@.claude/skills/architecting-fullstack/SKILL.md
-@.claude/skills/designing-svelte-ui/SKILL.md
-```
-
-Or add them to your agent's skill/context configuration.
-
-## How to use these skills effectively
-
-1. Give the model a concrete task. If you're not manually invoking a skill with `/skill-name`, include the relevant skill paths in context.
-2. If execution drifts from the plan, tell it to reread the plan and continue. That usually improves adherence quickly.
-3. For greenfield or large projects, use `architecting-fullstack` + `planning-features` to generate the high-level plan first.
-4. Break big features into subplans with checkboxes. Keep each subplan in its own plan file and track progress with checkmarks.
-
-Recommended planning loop:
-
-- Clear context, then ask a fresh model to review your plan files against `@.claude/skills/` constraints.
-- Ask whether the plans are executable and unambiguous, and what is missing.
-- Iterate until the reviewer says the plan is complete.
-- Handover to an executor model to implement step-by-step.
-
-Suggested review prompt:
-
-```text
-Review the plans in this repo against @.claude/skills/.
-Tell me whether they respect the skill constraints, whether they are executable,
-and whether they are unambiguous. What else would you need?
-```
-
-Minimal blueprint pattern (trimmed):
-
-```markdown
-# Blueprint: <feature name>
-
-## Executor Instructions
-1. Re-read this file each loop.
-2. Execute only the next unchecked step.
-3. Complete referenced subplans before returning.
-4. Verify before checking off.
-5. Keep plan files updated with discoveries.
-
-## Plan
-- [ ] Step 1: foundations
-- [ ] Step 2: backend subplan
-- [ ] Step 3: frontend subplan
-- [ ] Step 4: UI subplan
-- [ ] Step 5: integrated verification
-```
-
-## Structure
+The `skills/` directory contains agent skills — structured instructions that teach an LLM the architectural patterns for each layer. The checker verifies those patterns deterministically:
 
 ```
-.claude/skills/
-├── architecting-fullstack/
-│   └── SKILL.md
-├── building-python-backend/
-│   ├── SKILL.md
-│   └── references/
-│       ├── layers.md
-│       ├── fastapi.md
-│       └── sqlalchemy.md
-├── building-sveltekit-frontend/
-│   ├── SKILL.md
-│   └── references/
-│       ├── layers.md
-│       ├── openapi.md
-│       └── error-handling.md
-└── designing-svelte-ui/
-    ├── SKILL.md
-    └── references/
-        └── audit.md
+skills/
+  building-python-backend/SKILL.md          ← teaches service/controller/repository patterns
+  building-sveltekit-frontend/SKILL.md      ← teaches $effect, onMount, store patterns
+  designing-svelte-ui/SKILL.md              ← teaches shadcn component rules, Tailwind tokens
+  qa/SKILL.md                               ← teaches one-assert-per-test, fakes over mocks
+
+chisel check .                              ← enforces every rule from those skills
 ```
 
+An agent reads `building-python-backend/SKILL.md`, learns that services never import `sqlalchemy`, writes code accordingly. The checker catches it if it doesn't. The agent reads `chisel explain structural:print-banned` to get fix guidance in context. Loop until clean.
+
+## Pre-commit
+
+Block violations before they land on any branch:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: chisel-py
+        name: chisel (Python)
+        entry: chisel check chisel_py --strict
+        language: python
+        language_version: python3.12
+        additional_dependencies: [grimp>=3.0, radon>=6.0, typer>=0.12, rich>=13.0]
+        files: ^chisel_py/src/.*\.py$
+        pass_filenames: false
+
+      - id: chisel-js
+        name: chisel (TypeScript)
+        entry: chisel-js check .
+        language: system
+        files: ^(chisel_js/src/.*\.ts|chisel_js/.*\.svelte)$
+        pass_filenames: false
+```
+
+## Quick start
+
+```bash
+# Python
+pip install chisel
+chisel check ./your-backend
+
+# TypeScript
+npm install -g chisel-js
+chisel-js check ./your-frontend
+```
+
+## Agent-facing commands
+
+These are designed for LLM consumption — an agent queries them to understand what a rule means and how to fix it:
+
+```bash
+chisel rules                              # all ~55 rules, grouped by category
+chisel rules --json                       # machine-readable for agent consumption
+chisel explain structural:isinstance-banned  # rule description + fix guidance
+chisel explain structural                 # all rules in a category
+chisel check . --json                     # machine-readable violation list
+```
+
+`chisel-js` equivalents: `chisel-js rules`, `chisel-js explain`, `chisel-js check . --json`.
+
+## What gets checked
+
+- **Import boundaries** — layers only import what they're allowed to. Services don't import SQLAlchemy. Routes don't import services directly. ORM types stay in repositories.
+- **Structural invariants** — `getattr`/`setattr` banned. `isinstance` requires `match/case`. Logger is module-level. Dataclasses use `slots=True`. `try/except` banned in route handlers.
+- **Component enforcement** (JS) — raw HTML elements (`<button>`, `<select>`, `<form>`, `<dialog>`, etc.) must use shadcn replacements. 23 rules covering every banned HTML tag.
+- **Colour enforcement** (JS) — arbitrary Tailwind values banned. Dynamic class construction flagged. Modifier classes on semantic HTML blocked.
+- **$effect / onMount** (JS) — `$effect` without cleanup flagged. Writing `$state` from `data` recommends `$derived`. `onMount` must reference a browser API.
+- **Complexity** — controller method ≤30 LoC (Python) / ≤40 (JS). Route handler ≤20 LoC. Page ≤100 LoC.
+- **Testing** — one assert per test. Mocking libraries banned. Test names must describe invariants. Test files must live in `tests/unit/` or `tests/integration/`.
+- **Project structure** — `pyproject.toml` only (no `setup.py`). `pnpm` only (no `npm`/`yarn`). Env files separate backend from frontend secrets.
+- **Concurrency** — `asyncio.gather` banned (Python). `Promise.all` in loaders warned (JS).
+- **Error flow** — raw HTTP status codes never leak past error handlers.
+
+Full rule listing:
+
+```bash
+chisel rules            # human-readable, grouped by category
+chisel rules --json     # machine-readable
+chisel explain structural:isinstance-banned  # detailed fix guidance
+chisel explain structural                       # all rules in a category
+```
+
+## Exceptions
+
+Create a `chisel-exceptions.toml` at your project root to exempt files from rules:
+
+```toml
+[[exceptions]]
+files = ["src/legacy/*.py", "src/cli/main.py"]
+rules = ["structural:print-banned"]
+reason = "CLI requires stdout output"
+```
+
+`*` matches all rules. A category prefix like `structural` matches all rules in that category. Inline per-line suppression: `# noqa: rule-id — reason` (Python) / `<!-- noqa: rule-id — reason -->` (Svelte).
+
+## Architecture
+
+Both checkers follow the same layered architecture (and enforce it on themselves):
+
+```
+models/         Pure data — Violation, Severity, FileInfo, ProjectInfo
+services/       One service per rule category. Self-describing via describeRules()
+repositories/   File discovery, import graph analysis
+controllers/    Orchestrates services, filters exceptions, suppresses via noqa
+factory.py      Zero-logic DI — wires all services into the controller
+cli/            Thin entry point — argparse/commander → factory → controller → reporter
+```
+
+Adding a rule is one new check method in a service + one `describeRules()` entry. The CLI and the agent-facing commands discover it automatically.
+
+## Development
+
+```bash
+# Python
+cd chisel_py
+pip install -e ".[dev]"
+pytest tests/ -q
+
+# TypeScript
+cd chisel_js
+bun install
+bun test
+```
+
+Both checkers are self-validating: `chisel check . --strict` and `chisel-js check .` produce zero violations on their own source code.

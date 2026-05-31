@@ -38,7 +38,6 @@ class StructuralService:
         violations.extend(self._check_print(file, tree))
         violations.extend(self._check_non_dataclass_in_layer(file, tree))
         violations.extend(self._check_dataclass_rules(file, tree))
-        violations.extend(self._check_frozen_dataclass(file, tree))
         violations.extend(self._check_misplaced_dataclass(file, tree))
         violations.extend(self._check_logger_level(file, tree))
         violations.extend(self._check_app_error_rules(file, tree))
@@ -46,7 +45,6 @@ class StructuralService:
         violations.extend(self._check_app_factory(file, tree))
         violations.extend(self._check_orm_mapped(file, tree))
         violations.extend(self._check_http_exception_location(file, tree))
-        violations.extend(self._check_match_case_location(file, tree))
         violations.extend(self._check_toplevel_function_in_services(file, tree))
         violations.extend(self._check_concrete_service_import(file, tree))
         return violations
@@ -747,26 +745,6 @@ class StructuralService:
                             ))
         return violations
 
-    def _check_match_case_location(
-        self, file: FileInfo, tree: ast.Module
-    ) -> list[Violation]:
-        if file.layer == Layer.ERROR_HANDLERS:
-            return []
-        if file.layer == Layer.TESTS:
-            return []
-        violations: list[Violation] = []
-        for node in ast.walk(tree):
-            match node:
-                case ast.Match():
-                    violations.extend(
-                        self._v(
-                            file, node.lineno, "match-case-location",
-                            "match/case is only allowed in error_handlers.py. "
-                            "Use if/elif everywhere else.",
-                        )
-                    )
-        return violations
-
     def _check_toplevel_function_in_services(
         self, file: FileInfo, tree: ast.Module
     ) -> list[Violation]:
@@ -819,39 +797,3 @@ class StructuralService:
                                 )
                             )
         return violations
-
-    def _check_frozen_dataclass(
-        self, file: FileInfo, tree: ast.Module
-    ) -> list[Violation]:
-        if file.layer != Layer.MODELS:
-            return []
-
-        violations: list[Violation] = []
-        for node in tree.body:
-            match node:
-                case ast.ClassDef():
-                    pass
-                case _:
-                    continue
-            if not self._is_dataclass(node):
-                continue
-            if not self._has_frozen(node):
-                violations.extend(
-                    self._v(
-                        file, node.lineno, "dataclass-no-frozen",
-                        f"Dataclass '{node.name}' in models/ must use frozen=True",
-                    )
-                )
-        return violations
-
-    def _has_frozen(self, node: ast.ClassDef) -> bool:
-        for dec in node.decorator_list:
-            match dec:
-                case ast.Call(func=ast.Name(id="dataclass")):
-                    for kw in dec.keywords:
-                        if kw.arg == "frozen":
-                            match kw.value:
-                                case ast.Constant():
-                                    return bool(kw.value.value)
-                            return True
-        return False

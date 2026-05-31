@@ -2,7 +2,7 @@
 name = "chisel"
 version = "0.1.0"
 description = "Opinionated architecture constraint checker"
-readme = "README.md"
+readme = { file = "README.md", text = "" }
 authors = [
     { name = "ChidiRNweke", email = "chidi125@gmail.com" }
 ]
@@ -12,6 +12,12 @@ dependencies = [
     "radon>=6.0",
     "typer>=0.12",
     "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "tomli>=2.0",
 ]
 
 [project.scripts]
