@@ -80,7 +80,6 @@ _FASTAPI_ALLOWED_LAYERS: frozenset[Layer] = frozenset({
 
 _SQLALCHEMY_ALLOWED_LAYERS: frozenset[Layer] = frozenset({
     Layer.REPOSITORIES,
-    Layer.DEPENDENCIES,
 })
 
 _SQLALCHEMY_EXT_ALLOWED_LAYERS: frozenset[Layer] = frozenset({

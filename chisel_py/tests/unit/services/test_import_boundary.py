@@ -129,6 +129,20 @@ class TestSqlalchemyLocation:
         _assert_none(violations, "sqlalchemy-location")
 
 
+class TestSqlalchemyBannedInDependencies:
+    def test_detects_sqlalchemy_in_dependencies_layer(self, service, graph, project):
+        graph.set_edges([_edge("myapp.dependencies", "sqlalchemy")])
+        graph.set_layers("myapp.dependencies", Layer.DEPENDENCIES)
+        violations = service.check(project)
+        _assert_one(violations, "sqlalchemy-location")
+
+    def test_detects_sqlalchemy_submodule_in_dependencies_layer(self, service, graph, project):
+        graph.set_edges([_edge("myapp.dependencies", "sqlalchemy.orm")])
+        graph.set_layers("myapp.dependencies", Layer.DEPENDENCIES)
+        violations = service.check(project)
+        _assert_one(violations, "sqlalchemy-location")
+
+
 class TestFactoryImportLocation:
     def test_detects_factory_import_outside_routes(self, service, graph, project):
         graph.set_edges([_edge("myapp.services.foo", "myapp.factory")])

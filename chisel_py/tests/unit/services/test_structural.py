@@ -425,6 +425,177 @@ class TestImportErrorTryAllowed:
         assert nested == 1
 
 
+class TestFrozenDataclass:
+    def test_detects_dataclass_without_frozen_in_models(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from dataclasses import dataclass\n'
+            '@dataclass(slots=True)\n'
+            'class MyModel:\n'
+            '    x: int\n'
+        )
+        violations = _check_source(source, layer=Layer.MODELS)
+        assert _count_rule(violations, "dataclass-no-frozen") == 1
+
+    def test_accepts_dataclass_with_frozen_in_models(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from dataclasses import dataclass\n'
+            '@dataclass(slots=True, frozen=True)\n'
+            'class MyModel:\n'
+            '    x: int\n'
+        )
+        violations = _check_source(source, layer=Layer.MODELS)
+        assert _count_rule(violations, "dataclass-no-frozen") == 0
+
+    def test_skips_non_models_layer(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from dataclasses import dataclass\n'
+            '@dataclass(slots=True)\n'
+            'class MyService:\n'
+            '    def check(self): pass\n'
+        )
+        violations = _check_source(source, layer=Layer.SERVICES)
+        assert _count_rule(violations, "dataclass-no-frozen") == 0
+
+
+class TestIsinstanceBanErrorHandlers:
+    def test_allows_isinstance_in_error_handlers(self):
+        source = (
+            'from __future__ import annotations\n'
+            'isinstance(exc, ValueError)\n'
+        )
+        violations = _check_source(source, layer=Layer.ERROR_HANDLERS)
+        assert _count_rule(violations, "isinstance-banned") == 0
+
+    def test_detects_isinstance_in_services(self):
+        source = (
+            'from __future__ import annotations\n'
+            'isinstance(obj, str)\n'
+        )
+        violations = _check_source(source, layer=Layer.SERVICES)
+        assert _count_rule(violations, "isinstance-banned") == 1
+
+
+class TestTestLayerExemptions:
+    def test_allows_getattr_in_tests(self):
+        source = "from __future__ import annotations\ngetattr(obj, 'x')\n"
+        violations = _check_source(source, layer=Layer.TESTS)
+        assert _count_rule(violations, "getattr-setattr-banned") == 0
+
+    def test_allows_percent_format_in_tests(self):
+        source = 'from __future__ import annotations\nx = "hello %s" % name\n'
+        violations = _check_source(source, layer=Layer.TESTS)
+        assert _count_rule(violations, "percent-interpolation-banned") == 0
+
+    def test_allows_print_in_tests(self):
+        source = 'from __future__ import annotations\nprint("debug")\n'
+        violations = _check_source(source, layer=Layer.TESTS)
+        assert _count_rule(violations, "print-banned") == 0
+
+
+class TestMatchCaseLocation:
+    def test_detects_match_case_outside_error_handlers(self):
+        source = (
+            'from __future__ import annotations\n'
+            'def handle(x):\n'
+            '    match x:\n'
+            '        case 1:\n'
+            '            pass\n'
+        )
+        violations = _check_source(source, layer=Layer.SERVICES)
+        assert _count_rule(violations, "match-case-location") == 1
+
+    def test_allows_match_case_in_error_handlers(self):
+        source = (
+            'from __future__ import annotations\n'
+            'def handle(exc):\n'
+            '    match exc:\n'
+            '        case ValueError():\n'
+            '            pass\n'
+        )
+        violations = _check_source(source, layer=Layer.ERROR_HANDLERS)
+        assert _count_rule(violations, "match-case-location") == 0
+
+    def test_allows_match_case_in_tests(self):
+        source = (
+            'from __future__ import annotations\n'
+            'def test_something():\n'
+            '    match result:\n'
+            '        case 1:\n'
+            '            pass\n'
+        )
+        violations = _check_source(source, layer=Layer.TESTS)
+        assert _count_rule(violations, "match-case-location") == 0
+
+
+class TestToplevelFunctionInServices:
+    def test_detects_toplevel_function_in_services(self):
+        source = (
+            'from __future__ import annotations\n'
+            'def helper():\n'
+            '    pass\n'
+        )
+        violations = _check_source(source, layer=Layer.SERVICES)
+        assert _count_rule(violations, "toplevel-function-in-service") == 1
+
+    def test_detects_toplevel_async_function_in_services(self):
+        source = (
+            'from __future__ import annotations\n'
+            'async def helper():\n'
+            '    pass\n'
+        )
+        violations = _check_source(source, layer=Layer.SERVICES)
+        assert _count_rule(violations, "toplevel-function-in-service") == 1
+
+    def test_allows_toplevel_function_in_routes(self):
+        source = (
+            'from __future__ import annotations\n'
+            'def get_users():\n'
+            '    pass\n'
+        )
+        violations = _check_source(source, layer=Layer.ROUTES)
+        assert _count_rule(violations, "toplevel-function-in-service") == 0
+
+    def test_allows_class_methods_in_services(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from dataclasses import dataclass\n'
+            '@dataclass(slots=True)\n'
+            'class MyService:\n'
+            '    def check(self): pass\n'
+        )
+        violations = _check_source(source, layer=Layer.SERVICES)
+        assert _count_rule(violations, "toplevel-function-in-service") == 0
+
+
+class TestStatusCodeLocation:
+    def test_detects_status_import_from_fastapi_outside_error_handlers(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from fastapi import status\n'
+        )
+        violations = _check_source(source, layer=Layer.ROUTES)
+        assert _count_rule(violations, "status-code-location") == 1
+
+    def test_detects_status_import_from_starlette_outside_error_handlers(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from starlette import status\n'
+        )
+        violations = _check_source(source, layer=Layer.ROUTES)
+        assert _count_rule(violations, "status-code-location") == 1
+
+    def test_allows_status_import_in_error_handlers(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from fastapi import status\n'
+        )
+        violations = _check_source(source, layer=Layer.ERROR_HANDLERS)
+        assert _count_rule(violations, "status-code-location") == 0
+
+
 class TestDescribeRules:
     def test_structural_describes_all_its_rules(self):
         service = StructuralService()
@@ -434,6 +605,10 @@ class TestDescribeRules:
         assert "structural:print-banned" in rule_ids
         assert "structural:isinstance-banned" in rule_ids
         assert "structural:missing-protocol" in rule_ids
+        assert "structural:dataclass-no-frozen" in rule_ids
+        assert "structural:match-case-location" in rule_ids
+        assert "structural:toplevel-function-in-service" in rule_ids
+        assert "structural:status-code-location" in rule_ids
         assert all(r.category == "structural" for r in rules)
 
     def test_rule_info_has_valid_structure(self):

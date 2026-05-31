@@ -38,6 +38,7 @@ class StructuralService:
         violations.extend(self._check_print(file, tree))
         violations.extend(self._check_non_dataclass_in_layer(file, tree))
         violations.extend(self._check_dataclass_rules(file, tree))
+        violations.extend(self._check_frozen_dataclass(file, tree))
         violations.extend(self._check_misplaced_dataclass(file, tree))
         violations.extend(self._check_logger_level(file, tree))
         violations.extend(self._check_app_error_rules(file, tree))
@@ -45,6 +46,8 @@ class StructuralService:
         violations.extend(self._check_app_factory(file, tree))
         violations.extend(self._check_orm_mapped(file, tree))
         violations.extend(self._check_http_exception_location(file, tree))
+        violations.extend(self._check_match_case_location(file, tree))
+        violations.extend(self._check_toplevel_function_in_services(file, tree))
         violations.extend(self._check_concrete_service_import(file, tree))
         return violations
 
@@ -80,6 +83,9 @@ class StructuralService:
             RuleInfo(id="structural:dataclass-no-slots", category="structural",
                      description="@dataclass without slots=True",
                      fix_guidance="Dataclasses must use slots=True for performance and memory efficiency."),
+            RuleInfo(id="structural:dataclass-no-frozen", category="structural",
+                     description="@dataclass in models/ without frozen=True",
+                     fix_guidance="Value objects and output models in models/ must use frozen=True to ensure immutability."),
             RuleInfo(id="structural:misplaced-dataclass", category="structural",
                      description="@dataclass with zero methods in services/, controllers/, or repositories/",
                      fix_guidance="This is a model, not a service/controller/repository. Move it to models/."),
@@ -110,6 +116,15 @@ class StructuralService:
             RuleInfo(id="structural:http-exception-location", category="structural",
                      description="HTTPException imported outside error_handlers.py",
                      fix_guidance="HTTPExceptions must only appear in error_handlers.py. Raise a domain error from errors.py instead and map it to HTTP status in the error handler."),
+            RuleInfo(id="structural:match-case-location", category="structural",
+                     description="match/case used outside error_handlers.py",
+                     fix_guidance="match/case is only allowed in error_handlers.py for exception type branching. Use if/elif everywhere else."),
+            RuleInfo(id="structural:toplevel-function-in-service", category="structural",
+                     description="Top-level standalone function in services/",
+                     fix_guidance="Services must be @dataclass classes, not standalone functions. Move this function into a service class."),
+            RuleInfo(id="structural:status-code-location", category="structural",
+                     description="status imported from fastapi/starlette outside error_handlers.py",
+                     fix_guidance="HTTP status codes must only appear in error_handlers.py. Raise a domain error and map it to HTTP status in the error handler."),
             RuleInfo(id="structural:concrete-service-import", category="structural",
                      description="Concrete service class imported outside factory.py",
                      fix_guidance="Only the factory assembles concrete implementations. Import the Protocol interface everywhere else."),
@@ -239,6 +254,8 @@ class StructuralService:
     def _check_getattr_setattr(
         self, file: FileInfo, tree: ast.Module
     ) -> list[Violation]:
+        if file.layer == Layer.TESTS:
+            return []
         violations: list[Violation] = []
         for node in ast.walk(tree):
             match node:
@@ -255,6 +272,8 @@ class StructuralService:
     def _check_percent_format(
         self, file: FileInfo, tree: ast.Module
     ) -> list[Violation]:
+        if file.layer == Layer.TESTS:
+            return []
         violations: list[Violation] = []
         for node in ast.walk(tree):
             match node:
@@ -292,6 +311,8 @@ class StructuralService:
     def _check_print(
         self, file: FileInfo, tree: ast.Module
     ) -> list[Violation]:
+        if file.layer == Layer.TESTS:
+            return []
         for node in ast.walk(tree):
             match node:
                 case ast.Call(func=ast.Name(id="print")):
@@ -306,6 +327,8 @@ class StructuralService:
         self, file: FileInfo, tree: ast.Module
     ) -> list[Violation]:
         if file.layer == Layer.TESTS:
+            return []
+        if file.layer == Layer.ERROR_HANDLERS:
             return []
         for node in ast.walk(tree):
             match node:
@@ -692,6 +715,7 @@ class StructuralService:
         if file.layer == Layer.ERROR_HANDLERS:
             return []
 
+        violations: list[Violation] = []
         for node in tree.body:
             match node:
                 case ast.ImportFrom():
@@ -699,22 +723,67 @@ class StructuralService:
                     if module.startswith("fastapi") or module.startswith("starlette"):
                         for alias in node.names:
                             if alias.name == "HTTPException":
-                                return self._v(
+                                violations.extend(self._v(
                                     file, node.lineno, "http-exception-location",
                                     "HTTPExceptions must only appear in error_handlers.py. "
                                     "Raise a domain error from errors.py instead and map it "
                                     "to HTTP status in the error handler.",
-                                )
+                                ))
+                            if alias.name == "status":
+                                violations.extend(self._v(
+                                    file, node.lineno, "status-code-location",
+                                    "HTTP status codes must only appear in error_handlers.py. "
+                                    "Raise a domain error and map it to HTTP status in the "
+                                    "error handler.",
+                                ))
                 case ast.Import():
                     for alias in node.names:
                         if "HTTPException" in alias.name:
-                            return self._v(
+                            violations.extend(self._v(
                                 file, node.lineno, "http-exception-location",
                                 "HTTPExceptions must only appear in error_handlers.py. "
                                 "Raise a domain error from errors.py instead and map it "
                                 "to HTTP status in the error handler.",
-                            )
-        return []
+                            ))
+        return violations
+
+    def _check_match_case_location(
+        self, file: FileInfo, tree: ast.Module
+    ) -> list[Violation]:
+        if file.layer == Layer.ERROR_HANDLERS:
+            return []
+        if file.layer == Layer.TESTS:
+            return []
+        violations: list[Violation] = []
+        for node in ast.walk(tree):
+            match node:
+                case ast.Match():
+                    violations.extend(
+                        self._v(
+                            file, node.lineno, "match-case-location",
+                            "match/case is only allowed in error_handlers.py. "
+                            "Use if/elif everywhere else.",
+                        )
+                    )
+        return violations
+
+    def _check_toplevel_function_in_services(
+        self, file: FileInfo, tree: ast.Module
+    ) -> list[Violation]:
+        if file.layer != Layer.SERVICES:
+            return []
+        violations: list[Violation] = []
+        for node in tree.body:
+            match node:
+                case ast.FunctionDef() | ast.AsyncFunctionDef():
+                    violations.extend(
+                        self._v(
+                            file, node.lineno, "toplevel-function-in-service",
+                            "Services must be @dataclass classes, not standalone functions. "
+                            "Move this function into a service class.",
+                        )
+                    )
+        return violations
 
     def _check_concrete_service_import(
         self, file: FileInfo, tree: ast.Module
