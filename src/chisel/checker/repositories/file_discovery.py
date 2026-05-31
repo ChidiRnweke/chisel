@@ -1,5 +1,5 @@
-from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from chisel.checker.models.file_info import FileInfo
@@ -7,8 +7,9 @@ from chisel.checker.models.layer import Layer
 from chisel.checker.models.project_info import ProjectInfo
 
 
+@dataclass(slots=True)
 class FileDiscovery:
-    _LAYER_MAP: dict[str, Layer] = {
+    _LAYER_MAP = {
         "models": Layer.MODELS,
         "errors": Layer.ERRORS,
         "config": Layer.CONFIG,
@@ -24,7 +25,7 @@ class FileDiscovery:
         "app": Layer.APP_FILE,
     }
 
-    _LAYER_FILENAMES: dict[str, Layer] = {
+    _LAYER_FILENAMES = {
         "errors.py": Layer.ERRORS,
         "config.py": Layer.CONFIG,
         "factory.py": Layer.FACTORY,

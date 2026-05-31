@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
@@ -87,6 +86,14 @@ class ProjectStructureService:
 
         return []
 
+    @staticmethod
+    def _is_import_node(node: ast.stmt) -> bool:
+        match node:
+            case ast.Import() | ast.ImportFrom():
+                return True
+            case _:
+                return False
+
     def _check_orm_init_imports(self, project: ProjectInfo) -> list[Violation]:
         orm_init = None
         for f in project.files:
@@ -102,7 +109,7 @@ class ProjectStructureService:
             return []
 
         has_imports = any(
-            isinstance(node, (ast.Import, ast.ImportFrom)) for node in tree.body
+            self._is_import_node(node) for node in tree.body
         )
         if not has_imports:
             return self._v(

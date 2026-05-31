@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import re
 from dataclasses import dataclass
@@ -52,19 +51,38 @@ class SuppressionService:
             return False, False
 
         target_line = lines[violation.line - 1]
-        match = _NOQA_RE.search(target_line)
-        if match is None:
-            return False, False
+        line_match = _NOQA_RE.search(target_line)
+        if line_match is not None:
+            rule_ids_raw = line_match.group(1)
+            rule_ids = {r.strip() for r in rule_ids_raw.split(",")}
+            matched = violation.rule_id in rule_ids or any(
+                violation.rule_id.startswith(rid) for rid in rule_ids
+            )
+            if matched:
+                reason = (line_match.group(2) or "").strip()
+                return True, len(reason) > 0
 
-        rule_ids_raw = match.group(1)
-        rule_ids = {r.strip() for r in rule_ids_raw.split(",")}
-
-        matched = violation.rule_id in rule_ids or any(
-            violation.rule_id.startswith(rid) for rid in rule_ids
+        file_suppressed, file_reason = self._check_file_level_noqa(
+            lines, violation.rule_id
         )
+        if file_suppressed:
+            return file_suppressed, file_reason
 
-        if not matched:
-            return False, False
+        return False, False
 
-        reason = (match.group(2) or "").strip()
-        return True, len(reason) > 0
+    def _check_file_level_noqa(
+        self, lines: list[str], rule_id: str
+    ) -> tuple[bool, bool]:
+        for i in range(min(3, len(lines))):
+            match = _NOQA_RE.search(lines[i])
+            if match is None:
+                continue
+            reason = (match.group(2) or "").strip()
+            if len(reason) > 0:
+                continue
+            file_rule_ids = {r.strip() for r in match.group(1).split(",")}
+            if rule_id in file_rule_ids or any(
+                rule_id.startswith(rid) for rid in file_rule_ids
+            ):
+                return True, True
+        return False, False

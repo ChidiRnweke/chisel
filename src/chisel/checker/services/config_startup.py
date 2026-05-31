@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
@@ -31,13 +30,16 @@ class ConfigStartupService:
             return []
 
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-                if isinstance(node.func.value, ast.Name):
-                    if node.func.value.id == "os" and node.func.attr == "getenv":
-                        return self._v(
-                            file, node.lineno, "getenv-outside-config",
-                            "os.getenv() must only be called in config.py",
-                        )
+            match node:
+                case ast.Call(func=ast.Attribute(
+                    value=ast.Name(id="os"), attr="getenv"
+                )):
+                    return self._v(
+                        file, node.lineno, "getenv-outside-config",
+                        "os.getenv() must only be called in config.py",
+                    )
+                case _:
+                    pass
         return []
 
     def _v(

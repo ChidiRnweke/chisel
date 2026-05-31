@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import ast
 import sys
@@ -14,15 +13,14 @@ from chisel.checker.repositories.file_discovery import FileDiscovery
 from chisel.checker.repositories.file_reader import FileReader
 from chisel.checker.repositories.import_graph import ImportGraph
 from chisel.checker.repositories.protocols import IImportGraph
-from chisel.checker.services.protocols import ICheckerService
-from chisel.checker.services.suppression import SuppressionService
+from chisel.checker.services.protocols import ICheckerService, ISuppressionService
 
 
 @dataclass(slots=True)
 class CheckController:
+    _suppression: ISuppressionService
     _services: list[ICheckerService] = field(default_factory=list)
-    _suppression: SuppressionService = field(default_factory=SuppressionService)
-    _import_graph: IImportGraph = field(default_factory=ImportGraph)
+    _import_graph: IImportGraph = field(default_factory=ImportGraph)  # noqa
 
     def check(self, project_path: str) -> CheckResult:
         root = Path(project_path).resolve()
@@ -38,19 +36,28 @@ class CheckController:
         discovery = FileDiscovery()
         project = discovery.discover(root)
         reader = FileReader()
-        for file_info in project.files:
-            self._load_file(file_info, root, reader)
-        return project
+        populated = [
+            self._load_file(f, root, reader) for f in project.files
+        ]
+        return ProjectInfo(
+            root_path=project.root_path,
+            files=populated,
+            package_name=project.package_name,
+        )
 
     def _load_file(
         self, file_info, root: Path, reader: FileReader
-    ) -> None:
+    ):
         try:
             source = reader.read(root / file_info.path)
-            file_info.source = source
-            file_info.ast_tree = ast.parse(source)
+            return type(file_info)(
+                path=file_info.path,
+                layer=file_info.layer,
+                source=source,
+                ast_tree=ast.parse(source),
+            )
         except Exception:
-            pass
+            return file_info
 
     def _build_import_graph(self, root: Path, package_name: str) -> None:
         src = root / "src"

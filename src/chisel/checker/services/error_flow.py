@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
@@ -32,29 +31,44 @@ class ErrorFlowService:
 
         return self._check_http_in_error(file, tree)
 
+    @staticmethod
+    def _is_error_base(base: ast.expr) -> bool:
+        match base:
+            case ast.Name():
+                return "Error" in base.id
+            case _:
+                return False
+
     def _check_http_in_error(
         self, file: FileInfo, tree: ast.Module
     ) -> list[Violation]:
         for node in tree.body:
-            if not isinstance(node, ast.ClassDef):
-                continue
-            has_error_base = any(
-                isinstance(base, ast.Name) and "Error" in base.id
-                for base in node.bases
-            )
-            if not has_error_base:
-                continue
-            for item in node.body:
-                if isinstance(item, ast.Assign):
-                    for target in item.targets:
-                        if isinstance(target, ast.Name):
-                            name_lower = target.id.lower()
-                            if "status" in name_lower or "http" in name_lower:
-                                return self._v(
-                                    file, item.lineno, "http-in-error",
-                                    "HTTP status codes must not appear in error "
-                                    "classes",
-                                )
+            match node:
+                case ast.ClassDef():
+                    has_error_base = any(
+                        self._is_error_base(base) for base in node.bases
+                    )
+                    if not has_error_base:
+                        continue
+                    for item in node.body:
+                        match item:
+                            case ast.Assign():
+                                for target in item.targets:
+                                    match target:
+                                        case ast.Name():
+                                            name_lower = target.id.lower()
+                                            if "status" in name_lower or "http" in name_lower:
+                                                return self._v(
+                                                    file, item.lineno, "http-in-error",
+                                                    "HTTP status codes must not appear in error "
+                                                    "classes",
+                                                )
+                                        case _:
+                                            pass
+                            case _:
+                                pass
+                case _:
+                    pass
         return []
 
     def _v(

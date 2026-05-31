@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 from chisel.checker.factory import CheckerFactory
 from chisel.checker.reporter import Reporter

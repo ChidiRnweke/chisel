@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
@@ -48,19 +47,24 @@ class AppFileService:
 
         route_decorators = {"get", "post", "put", "delete", "patch", "route"}
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                for dec in node.decorator_list:
-                    if isinstance(dec, ast.Attribute) and dec.attr in route_decorators:
-                        return self._v(
-                            file, node.lineno, "route-in-app",
-                            "Route definitions are banned in app.py",
-                        )
-                    if isinstance(dec, ast.Call) and isinstance(dec.func, ast.Attribute):
-                        if dec.func.attr in route_decorators:
-                            return self._v(
-                                file, node.lineno, "route-in-app",
-                                "Route definitions are banned in app.py",
-                            )
+            match node:
+                case ast.FunctionDef() | ast.AsyncFunctionDef():
+                    for dec in node.decorator_list:
+                        match dec:
+                            case ast.Attribute(attr=attr) if attr in route_decorators:
+                                return self._v(
+                                    file, node.lineno, "route-in-app",
+                                    "Route definitions are banned in app.py",
+                                )
+                            case ast.Call(func=ast.Attribute(attr=attr)) if attr in route_decorators:
+                                return self._v(
+                                    file, node.lineno, "route-in-app",
+                                    "Route definitions are banned in app.py",
+                                )
+                            case _:
+                                pass
+                case _:
+                    pass
         return []
 
     def _check_complexity(self, file: FileInfo) -> list[Violation]:
@@ -79,10 +83,13 @@ class AppFileService:
     def _file_complexity(self, tree: ast.Module) -> int:
         complexity = 1
         for node in ast.walk(tree):
-            if isinstance(node, (ast.If, ast.For, ast.While, ast.ExceptHandler)):
-                complexity += 1
-            elif isinstance(node, ast.BoolOp):
-                complexity += len(node.values) - 1
+            match node:
+                case ast.If() | ast.For() | ast.While() | ast.ExceptHandler():
+                    complexity += 1
+                case ast.BoolOp(values=values):
+                    complexity += len(values) - 1
+                case _:
+                    pass
         return complexity
 
     def _v(

@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
@@ -29,30 +28,31 @@ class ConcurrencyService:
         has_gather_import = self._has_gather_import(tree)
 
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Attribute):
-                    if isinstance(node.func.value, ast.Name):
-                        if (
-                            node.func.value.id == "asyncio"
-                            and node.func.attr == "gather"
-                        ):
-                            return self._v(
-                                file, node.lineno, "asyncio-gather-banned",
-                                "asyncio.gather is banned — use asyncio.TaskGroup only",
-                            )
-                elif isinstance(node.func, ast.Name):
-                    if node.func.id == "gather" and has_gather_import:
-                        return self._v(
-                            file, node.lineno, "asyncio-gather-banned",
-                            "asyncio.gather is banned — use asyncio.TaskGroup only",
-                        )
+            match node:
+                case ast.Call(func=ast.Attribute(
+                    value=ast.Name(id="asyncio"), attr="gather"
+                )):
+                    return self._v(
+                        file, node.lineno, "asyncio-gather-banned",
+                        "asyncio.gather is banned — use asyncio.TaskGroup only",
+                    )
+                case ast.Call(func=ast.Name(id="gather")) if has_gather_import:
+                    return self._v(
+                        file, node.lineno, "asyncio-gather-banned",
+                        "asyncio.gather is banned — use asyncio.TaskGroup only",
+                    )
+                case _:
+                    pass
         return []
 
     def _has_gather_import(self, tree: ast.Module) -> bool:
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module == "asyncio":
-                if any(alias.name == "gather" for alias in node.names):
-                    return True
+            match node:
+                case ast.ImportFrom(module="asyncio"):
+                    if any(alias.name == "gather" for alias in node.names):
+                        return True
+                case _:
+                    pass
         return False
 
     def _v(

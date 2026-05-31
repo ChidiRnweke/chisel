@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 from chisel.checker.models.import_edge import ImportEdge
 from chisel.checker.models.layer import Layer

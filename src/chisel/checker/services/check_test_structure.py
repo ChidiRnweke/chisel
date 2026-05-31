@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
@@ -76,23 +75,29 @@ class CheckTestStructureService:
 
         violations: list[Violation] = []
         for node in tree.body:
-            if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
-                assert_count = self._count_asserts(node)
-                if assert_count != 1:
-                    violations.extend(
-                        self._v(
-                            file, node.lineno, "one-assert-per-test",
-                            f"Test '{node.name}' has {assert_count} assert "
-                            f"statements (exactly 1 required)",
+            match node:
+                case ast.FunctionDef(name=name) if name.startswith("test_"):
+                    assert_count = self._count_asserts(node)
+                    if assert_count != 1:
+                        violations.extend(
+                            self._v(
+                                file, node.lineno, "one-assert-per-test",
+                                f"Test '{name}' has {assert_count} assert "
+                                f"statements (exactly 1 required)",
+                            )
                         )
-                    )
+                case _:
+                    pass
         return violations
 
     def _count_asserts(self, node: ast.FunctionDef) -> int:
         count = 0
         for child in ast.walk(node):
-            if isinstance(child, ast.Assert):
-                count += 1
+            match child:
+                case ast.Assert():
+                    count += 1
+                case _:
+                    pass
         return count
 
     def _check_test_naming(self, file: FileInfo) -> list[Violation]:
@@ -102,17 +107,19 @@ class CheckTestStructureService:
 
         violations: list[Violation] = []
         for node in tree.body:
-            if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
-                name = node.name
-                invariant_part = name[len("test_"):]
-                if "_" not in invariant_part:
-                    violations.extend(
-                        self._v(
-                            file, node.lineno, "test-naming",
-                            f"Test name '{name}' does not describe an invariant "
-                            f"— use test_cannot_X, test_returns_Y_when_Z, etc.",
+            match node:
+                case ast.FunctionDef(name=name) if name.startswith("test_"):
+                    invariant_part = name[len("test_"):]
+                    if "_" not in invariant_part:
+                        violations.extend(
+                            self._v(
+                                file, node.lineno, "test-naming",
+                                f"Test name '{name}' does not describe an invariant "
+                                f"— use test_cannot_X, test_returns_Y_when_Z, etc.",
+                            )
                         )
-                    )
+                case _:
+                    pass
         return violations
 
     def _check_skip_reason(self, file: FileInfo) -> list[Violation]:
@@ -122,32 +129,39 @@ class CheckTestStructureService:
 
         violations: list[Violation] = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                for dec in node.decorator_list:
-                    if self._is_pytest_skip(dec):
-                        if not self._has_reason_keyword(dec):
-                            violations.extend(
-                                self._v(
-                                    file, node.lineno, "skip-without-reason",
-                                    f"@pytest.mark.skip on '{node.name}' "
-                                    f"must include reason=",
+            match node:
+                case ast.FunctionDef():
+                    for dec in node.decorator_list:
+                        if self._is_pytest_skip(dec):
+                            if not self._has_reason_keyword(dec):
+                                violations.extend(
+                                    self._v(
+                                        file, node.lineno, "skip-without-reason",
+                                        f"@pytest.mark.skip on '{node.name}' "
+                                        f"must include reason=",
+                                    )
                                 )
-                            )
+                case _:
+                    pass
         return violations
 
     def _is_pytest_skip(self, dec: ast.expr) -> bool:
-        if isinstance(dec, ast.Attribute) and dec.attr == "skip":
-            if isinstance(dec.value, ast.Attribute) and dec.value.attr == "mark":
-                return isinstance(dec.value.value, ast.Name) and dec.value.value.id == "pytest"
-        if isinstance(dec, ast.Call):
-            return self._is_pytest_skip(dec.func)
-        return False
+        match dec:
+            case ast.Attribute(value=ast.Attribute(value=ast.Name(id="pytest"), attr="mark"), attr="skip"):
+                return True
+            case ast.Call():
+                return self._is_pytest_skip(dec.func)
+            case _:
+                return False
 
     def _has_reason_keyword(self, dec: ast.expr) -> bool:
-        if isinstance(dec, ast.Call):
-            for kw in dec.keywords:
-                if kw.arg == "reason":
-                    return True
+        match dec:
+            case ast.Call():
+                for kw in dec.keywords:
+                    if kw.arg == "reason":
+                        return True
+            case _:
+                pass
         return False
 
     def _check_banned_imports(self, file: FileInfo) -> list[Violation]:
@@ -160,16 +174,19 @@ class CheckTestStructureService:
 
         violations: list[Violation] = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    v = self._check_banned_module(file, node.lineno, alias.name)
+            match node:
+                case ast.Import():
+                    for alias in node.names:
+                        v = self._check_banned_module(file, node.lineno, alias.name)
+                        if v:
+                            violations.extend(v)
+                case ast.ImportFrom():
+                    module = node.module or ""
+                    v = self._check_banned_module(file, node.lineno, module)
                     if v:
                         violations.extend(v)
-            elif isinstance(node, ast.ImportFrom):
-                module = node.module or ""
-                v = self._check_banned_module(file, node.lineno, module)
-                if v:
-                    violations.extend(v)
+                case _:
+                    pass
         return violations
 
     def _check_banned_module(
@@ -193,29 +210,32 @@ class CheckTestStructureService:
         banned_mock = {"unittest.mock", "pytest_mock", "mock"}
         violations: list[Violation] = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
+            match node:
+                case ast.Import():
+                    for alias in node.names:
+                        for prefix in banned_mock:
+                            if alias.name == prefix or alias.name.startswith(
+                                prefix + "."
+                            ):
+                                violations.extend(
+                                    self._v(
+                                        file, node.lineno, "mock-banned",
+                                        f"Mocking library '{alias.name}' is banned "
+                                        f"in tests",
+                                    )
+                                )
+                case ast.ImportFrom():
+                    module = node.module or ""
                     for prefix in banned_mock:
-                        if alias.name == prefix or alias.name.startswith(
-                            prefix + "."
-                        ):
+                        if module == prefix or module.startswith(prefix + "."):
                             violations.extend(
                                 self._v(
                                     file, node.lineno, "mock-banned",
-                                    f"Mocking library '{alias.name}' is banned "
-                                    f"in tests",
+                                    f"Mocking library '{module}' is banned in tests",
                                 )
                             )
-            elif isinstance(node, ast.ImportFrom):
-                module = node.module or ""
-                for prefix in banned_mock:
-                    if module == prefix or module.startswith(prefix + "."):
-                        violations.extend(
-                            self._v(
-                                file, node.lineno, "mock-banned",
-                                f"Mocking library '{module}' is banned in tests",
-                            )
-                        )
+                case _:
+                    pass
         return violations
 
     def _check_impl_detail_assertions(self, file: FileInfo) -> list[Violation]:
@@ -232,14 +252,17 @@ class CheckTestStructureService:
 
         violations: list[Violation] = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.Attribute) and node.attr in banned_attrs:
-                violations.extend(
-                    self._v(
-                        file, node.lineno, "impl-detail-assertion",
-                        f"Assertion on implementation detail '.{node.attr}' "
-                        f"is banned in tests",
+            match node:
+                case ast.Attribute(attr=attr) if attr in banned_attrs:
+                    violations.extend(
+                        self._v(
+                            file, node.lineno, "impl-detail-assertion",
+                            f"Assertion on implementation detail '.{attr}' "
+                            f"is banned in tests",
+                        )
                     )
-                )
+                case _:
+                    pass
         return violations
 
     def _check_sleep_ban(self, file: FileInfo) -> list[Violation]:
@@ -252,34 +275,34 @@ class CheckTestStructureService:
 
         has_sleep_import = False
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                module = node.module or ""
-                if module in ("time", "asyncio"):
-                    if any(alias.name == "sleep" for alias in node.names):
-                        has_sleep_import = True
+            match node:
+                case ast.ImportFrom():
+                    module = node.module or ""
+                    if module in ("time", "asyncio"):
+                        if any(alias.name == "sleep" for alias in node.names):
+                            has_sleep_import = True
+                case _:
+                    pass
 
         violations: list[Violation] = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Attribute):
-                    if isinstance(node.func.value, ast.Name):
-                        if (
-                            node.func.value.id in ("time", "asyncio")
-                            and node.func.attr == "sleep"
-                        ):
-                            violations.extend(
-                                self._v(
-                                    file, node.lineno, "sleep-in-tests",
-                                    f"{node.func.value.id}.sleep() is banned "
-                                    f"in unit/integration tests",
-                                )
-                            )
-                elif isinstance(node.func, ast.Name):
-                    if node.func.id == "sleep" and has_sleep_import:
+            match node:
+                case ast.Call(func=ast.Attribute(value=ast.Name(id=name), attr="sleep")) if name in ("time", "asyncio"):
+                    violations.extend(
+                        self._v(
+                            file, node.lineno, "sleep-in-tests",
+                            f"{name}.sleep() is banned "
+                            f"in unit/integration tests",
+                        )
+                    )
+                case ast.Call(func=ast.Name(id=name)):
+                    if name == "sleep" and has_sleep_import:
                         violations.extend(
                             self._v(
                                 file, node.lineno, "sleep-in-tests",
                                 "sleep() is banned in unit/integration tests",
                             )
                         )
+                case _:
+                    pass
         return violations

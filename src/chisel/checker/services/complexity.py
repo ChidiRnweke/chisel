@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
@@ -40,19 +39,22 @@ class ComplexityService:
             if tree is None:
                 return violations
             for node in tree.body:
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    end = node.end_lineno or node.lineno
-                    func_loc = end - node.lineno + 1
-                    if func_loc > _ROUTE_MAX_LOC:
-                        violations.extend(
-                            self._v(
-                                file, node.lineno, "route-loc-limit",
-                                f"Route endpoint '{node.name}' must be "
-                                f"≤ {_ROUTE_MAX_LOC} lines of code "
-                                f"(found {func_loc})",
-                                severity=Severity.WARNING,
+                match node:
+                    case ast.FunctionDef() | ast.AsyncFunctionDef():
+                        end = node.end_lineno or node.lineno
+                        func_loc = end - node.lineno + 1
+                        if func_loc > _ROUTE_MAX_LOC:
+                            violations.extend(
+                                self._v(
+                                    file, node.lineno, "route-loc-limit",
+                                    f"Route endpoint '{node.name}' must be "
+                                    f"≤ {_ROUTE_MAX_LOC} lines of code "
+                                    f"(found {func_loc})",
+                                    severity=Severity.WARNING,
+                                )
                             )
-                        )
+                    case _:
+                        pass
             return violations
 
         if file.layer == Layer.CONTROLLERS:
@@ -61,22 +63,28 @@ class ComplexityService:
             if tree is None:
                 return violations
             for node in tree.body:
-                if isinstance(node, ast.ClassDef):
-                    for item in node.body:
-                        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                            end = item.end_lineno or item.lineno
-                            func_loc = end - item.lineno + 1
-                            if func_loc > _CONTROLLER_MAX_LOC:
-                                violations.extend(
-                                    self._v(
-                                        file, item.lineno, "controller-loc-limit",
-                                        f"Controller method '{node.name}."
-                                        f"{item.name}' must be "
-                                        f"≤ {_CONTROLLER_MAX_LOC} lines of code "
-                                        f"(found {func_loc})",
-                                        severity=Severity.WARNING,
-                                    )
-                                )
+                match node:
+                    case ast.ClassDef():
+                        for item in node.body:
+                            match item:
+                                case ast.FunctionDef() | ast.AsyncFunctionDef():
+                                    end = item.end_lineno or item.lineno
+                                    func_loc = end - item.lineno + 1
+                                    if func_loc > _CONTROLLER_MAX_LOC:
+                                        violations.extend(
+                                            self._v(
+                                                file, item.lineno, "controller-loc-limit",
+                                                f"Controller method '{node.name}."
+                                                f"{item.name}' must be "
+                                                f"≤ {_CONTROLLER_MAX_LOC} lines of code "
+                                                f"(found {func_loc})",
+                                                severity=Severity.WARNING,
+                                            )
+                                        )
+                                case _:
+                                    pass
+                    case _:
+                        pass
             return violations
 
         return []
@@ -91,20 +99,26 @@ class ComplexityService:
             return violations
 
         for node in tree.body:
-            if isinstance(node, ast.ClassDef):
-                for item in node.body:
-                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        cc = self._cyclomatic_complexity(item)
-                        if cc > _CONTROLLER_MAX_COMPLEXITY:
-                            violations.extend(
-                                self._v(
-                                    file, item.lineno,
-                                    "controller-complexity-limit",
-                                    f"Controller method '{node.name}."
-                                    f"{item.name}' has cyclomatic complexity "
-                                    f"{cc} (max {_CONTROLLER_MAX_COMPLEXITY})",
-                                )
-                            )
+            match node:
+                case ast.ClassDef():
+                    for item in node.body:
+                        match item:
+                            case ast.FunctionDef() | ast.AsyncFunctionDef():
+                                cc = self._cyclomatic_complexity(item)
+                                if cc > _CONTROLLER_MAX_COMPLEXITY:
+                                    violations.extend(
+                                        self._v(
+                                            file, item.lineno,
+                                            "controller-complexity-limit",
+                                            f"Controller method '{node.name}."
+                                            f"{item.name}' has cyclomatic complexity "
+                                            f"{cc} (max {_CONTROLLER_MAX_COMPLEXITY})",
+                                        )
+                                    )
+                            case _:
+                                pass
+                case _:
+                    pass
         return violations
 
     def _check_factory_complexity(self, file: FileInfo) -> list[Violation]:
@@ -128,19 +142,25 @@ class ComplexityService:
     ) -> int:
         complexity = 1
         for child in ast.walk(node):
-            if isinstance(child, (ast.If, ast.For, ast.While, ast.ExceptHandler)):
-                complexity += 1
-            elif isinstance(child, ast.BoolOp):
-                complexity += len(child.values) - 1
+            match child:
+                case ast.If() | ast.For() | ast.While() | ast.ExceptHandler():
+                    complexity += 1
+                case ast.BoolOp(values=values):
+                    complexity += len(values) - 1
+                case _:
+                    pass
         return complexity
 
     def _file_complexity(self, tree: ast.Module) -> int:
         complexity = 1
         for node in ast.walk(tree):
-            if isinstance(node, (ast.If, ast.For, ast.While, ast.ExceptHandler)):
-                complexity += 1
-            elif isinstance(node, ast.BoolOp):
-                complexity += len(node.values) - 1
+            match node:
+                case ast.If() | ast.For() | ast.While() | ast.ExceptHandler():
+                    complexity += 1
+                case ast.BoolOp(values=values):
+                    complexity += len(values) - 1
+                case _:
+                    pass
         return complexity
 
     def _v(

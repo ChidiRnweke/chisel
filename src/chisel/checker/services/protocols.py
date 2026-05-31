@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
@@ -51,3 +50,12 @@ class IAppFileService(ICheckerService, Protocol): ...
 
 @runtime_checkable
 class ICheckTestStructureService(ICheckerService, Protocol): ...
+
+
+@runtime_checkable
+class ISuppressionService(Protocol):
+    rule_id_prefix: str
+
+    def check(
+        self, violations: list[Violation], sources: dict[str, str]
+    ) -> list[Violation]: ...

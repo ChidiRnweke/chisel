@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 from chisel.checker.models.severity import Severity
 from chisel.checker.models.violation import Violation
