@@ -1,8 +1,8 @@
 {
-  "name": "chisel-js",
+  "name": "@chidirnweke/chisel-js",
   "module": "index.ts",
   "type": "module",
-  "private": true,
+  "version": "0.0.1",
   "bin": {
     "chisel-js": "./dist/cli/main.js"
   },

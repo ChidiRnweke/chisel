@@ -26,3 +26,6 @@ chisel = "chisel.cli.main:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[project]
+readme = {file = "README.md", content-type = "text/markdown"}
