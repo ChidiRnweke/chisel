@@ -12,7 +12,7 @@ import { TestStructureService } from "chisel/checker/services/shared/test_struct
 import { ProjectStructureService } from "chisel/checker/services/shared/project_structure";
 
 export class CheckerFactory {
-  createController(): CheckController {
+  static createController(): CheckController {
     return new CheckController([
       new StructuralSvelteService(),
       new ComponentEnforcementService(),

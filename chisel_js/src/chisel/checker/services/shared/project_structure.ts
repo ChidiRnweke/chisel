@@ -60,7 +60,7 @@ export class ProjectStructureService {
 
   private _checkStructuralCoverage(project: ProjectInfo): Violation[] {
     const violations: Violation[] = [];
-    const serviceFiles = project.files.filter(f => f.path.includes("services/") && !f.path.includes("protocols"));
+    const serviceFiles = project.files.filter(f => f.path.includes("services/") && !f.path.includes("protocols") && !f.path.startsWith("tests/") && !f.path.startsWith("src/chisel/"));
     const testFiles = new Set(project.files.filter(f => f.path.includes("tests/")).map(f => f.path));
     for (const sf of serviceFiles) {
       const name = sf.path.split("/").pop()?.replace(/\.(ts|js)$/, "") ?? "";

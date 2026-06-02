@@ -14,8 +14,7 @@ program
   .argument("[path]", "Path to project root", ".")
   .option("--json", "Output violations as JSON")
   .action(async (path: string, options: { json?: boolean }) => {
-    const factory = new CheckerFactory();
-    const controller = factory.createController();
+    const controller = CheckerFactory.createController();
     
     try {
       const result = await controller.check(path);
@@ -47,8 +46,7 @@ program
   .description("List all available rules")
   .option("--json", "Output as JSON")
   .action((options: { json?: boolean }) => {
-    const factory = new CheckerFactory();
-    const controller = factory.createController();
+    const controller = CheckerFactory.createController();
     const allRules: any[] = [];
     for (const svc of controller.services) {
       allRules.push(...svc.describeRules());
@@ -77,8 +75,7 @@ program
   .argument("<rule-id>", "Rule ID or category prefix")
   .option("--json", "Output as JSON")
   .action((ruleId: string, options: { json?: boolean }) => {
-    const factory = new CheckerFactory();
-    const controller = factory.createController();
+    const controller = CheckerFactory.createController();
     const allRules: any[] = [];
     for (const svc of controller.services) {
       allRules.push(...svc.describeRules());

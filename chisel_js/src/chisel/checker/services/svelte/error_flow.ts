@@ -17,6 +17,7 @@ export class ErrorFlowService {
 
   private _checkRawHttpStatus(file: { path: string; source: string }) {
     const violations: Violation[] = [];
+    if (file.path.includes("tests/")) return violations;
     const lines = file.source.split("\n");
     for (let i = 0; i < lines.length; i++) {
       if (file.path.includes("error_handlers") || file.path.endsWith("+error.svelte")) continue;

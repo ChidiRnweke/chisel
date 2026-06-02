@@ -19,6 +19,10 @@ describe("ColourEnforcementService", () => {
   test("detects arbitrary Tailwind values", () => {
     const v = checkSvc(ColourEnforcementService, '<div class="bg-[#123]">x</div>', "src/Page.svelte", "svelte");
     expect(v.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("reports colour rule for arbitrary values", () => {
+    const v = checkSvc(ColourEnforcementService, '<div class="bg-[#123]">x</div>', "src/Page.svelte", "svelte");
     expect(v[0].ruleId).toContain("colour:");
   });
 
@@ -40,6 +44,10 @@ describe("ConcurrencyService", () => {
   test("detects Promise.all in loader", () => {
     const v = checkSvc(ConcurrencyService, "export const load = async () => { await Promise.all([a(), b()]) }", "src/routes/+page.server.ts");
     expect(v.length).toBe(1);
+  });
+
+  test("reports promise-all-warning for Promise.all", () => {
+    const v = checkSvc(ConcurrencyService, "export const load = async () => { await Promise.all([a(), b()]) }", "src/routes/+page.server.ts");
     expect(v[0].ruleId).toBe("concurrency:promise-all-warning");
   });
 });
@@ -48,6 +56,10 @@ describe("ErrorFlowService", () => {
   test("detects raw HTTP status in non-error file", () => {
     const v = checkSvc(ErrorFlowService, "const err = { status: 404 }");
     expect(v.length).toBe(1);
+  });
+
+  test("reports raw-http-status for status codes in non-error file", () => {
+    const v = checkSvc(ErrorFlowService, "const err = { status: 404 }");
     expect(v[0].ruleId).toBe("error-flow:raw-http-status");
   });
 });
@@ -56,6 +68,10 @@ describe("ApiEndpointsService", () => {
   test("detects RequestHandler export outside api/", () => {
     const v = checkSvc(ApiEndpointsService, "export const GET = () => new Response('ok')", "src/routes/endpoint.ts");
     expect(v.length).toBe(1);
+  });
+
+  test("reports request-handler-outside-api for GET export outside api/", () => {
+    const v = checkSvc(ApiEndpointsService, "export const GET = () => new Response('ok')", "src/routes/endpoint.ts");
     expect(v[0].ruleId).toBe("api:request-handler-outside-api");
   });
 });

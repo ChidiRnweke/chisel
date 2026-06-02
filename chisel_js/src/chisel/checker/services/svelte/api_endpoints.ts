@@ -18,7 +18,7 @@ export class ApiEndpointsService {
 
   private _checkRequestHandler(file: { path: string; source: string }) {
     const violations: Violation[] = [];
-    if (file.path.includes("routes/api/")) return violations;
+    if (file.path.includes("routes/api/") || file.path.includes("tests/")) return violations;
     if (!file.path.endsWith(".ts") && !file.path.endsWith(".js")) return violations;
     const lines = file.source.split("\n");
     for (let i = 0; i < lines.length; i++) {

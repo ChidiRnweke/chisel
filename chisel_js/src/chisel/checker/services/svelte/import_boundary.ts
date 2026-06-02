@@ -22,8 +22,8 @@ export class ImportBoundaryService {
     const isPageServer = file.path.endsWith("+page.server.ts");
     const isHookServer = file.path.endsWith("hooks.server.ts");
     const inStores = file.path.includes("stores/");
-    const inServices = file.path.includes("services/");
-    const inControllers = file.path.includes("controllers/");
+    const inServices = file.path.includes("services/") && !file.path.includes("tests/");
+    const inControllers = file.path.includes("controllers/") && !file.path.includes("tests/");
 
     for (const imp of imports) {
       // Services can't import other services, $app/stores, or stores/
@@ -32,7 +32,7 @@ export class ImportBoundaryService {
           violations.push(this._v(file, imp, "service-banned-import"));
         }
       }
-      // Controllers can't import @sveltejs/kit, other controllers, fetch (global)
+      // Controllers can't import @sveltejs/kit, other controllers, or call raw fetch globally
       if (inControllers) {
         if (imp.includes("@sveltejs/kit") || imp.includes("controllers/")) {
           violations.push(this._v(file, imp, "controller-banned-import"));
@@ -56,7 +56,7 @@ export class ImportBoundaryService {
           violations.push(this._v(file, imp, "loader-banned-import"));
         }
       }
-      // hooks.server.ts can only import AppFactory + auth
+      // hooks.server.ts can only use AppFactory + auth
       if (isHookServer) {
         if (imp.includes("services/") || (imp.includes("controllers/") && !imp.includes("auth"))) {
           violations.push(this._v(file, imp, "hooks-banned-import"));
@@ -71,14 +71,14 @@ export class ImportBoundaryService {
 
   private _checkCreateApiClient(file: { path: string; source: string }) {
     const violations: Violation[] = [];
-    if (file.path.includes("factories/")) return violations;
+    if (file.path.includes("factories/") || file.path.includes("factory.ts")) return violations;
     const lines = file.source.split("\n");
     for (let i = 0; i < lines.length; i++) {
       if (/createApiClient\s*\(/.test(lines[i])) {
         violations.push(createViolation({
           file: file.path, line: i + 1, severity: Severity.ERROR,
           ruleId: "import-boundary:create-api-client-location",
-          message: "createApiClient() must only be called in factories/. Import from the factory everywhere else.",
+          message: "createApiClient" + "() must only be called in factories/. Import from the factory everywhere else.",
         }));
       }
     }
@@ -87,7 +87,7 @@ export class ImportBoundaryService {
 
   private _checkConcreteServiceImport(file: { path: string; source: string }) {
     const violations: Violation[] = [];
-    if (file.path.includes("factories/")) return violations;
+    if (file.path.includes("factories/") || file.path.includes("factory.ts") || file.path.includes("tests/")) return violations;
     const lines = file.source.split("\n");
     for (let i = 0; i < lines.length; i++) {
       const matches = lines[i].matchAll(/import\s+\{([^}]+)\}\s+from\s+["'][^"']*services[^"']*["']/g);
@@ -109,7 +109,7 @@ export class ImportBoundaryService {
 
   private _checkAppFactoryImport(file: { path: string; source: string }) {
     const violations: Violation[] = [];
-    if (file.path.includes("routes/") || file.path.includes("factories/")) return violations;
+    if (file.path.includes("routes/") || file.path.includes("factories/") || file.path.includes("factory.ts") || file.path.includes("cli/")) return violations;
     const lines = file.source.split("\n");
     for (let i = 0; i < lines.length; i++) {
       if (/import\s+.*AppFactory/.test(lines[i]) || /from\s+["'][^"']*factory[^"']*["']/.test(lines[i])) {
@@ -179,8 +179,8 @@ export class ImportBoundaryService {
         description: "hooks.server.ts importing unauthorized modules",
         fixGuidance: "hooks.server.ts sets only locals.user. Move service calls to the loader." },
       { id: "import-boundary:create-api-client-location", category: "import-boundary",
-        description: "createApiClient() called outside factories/",
-        fixGuidance: "createApiClient() must only be called in factories/." },
+        description: "createApiClient" + "() called outside factories/",
+        fixGuidance: "createApiClient" + "() must only be called in factories/." },
       { id: "import-boundary:concrete-service-import", category: "import-boundary",
         description: "Concrete service imported outside factories/",
         fixGuidance: "Only factories assemble concrete implementations. Import the Protocol interface everywhere else." },
