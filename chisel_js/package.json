@@ -10,6 +10,10 @@
     "build": "bun build ./src/chisel/cli/main.ts --target=node --outdir=./dist --external typescript --external svelte",
     "test": "bun test"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChidiRnweke/chisel"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^25.9.1"
