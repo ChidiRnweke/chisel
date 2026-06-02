@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chisel_py
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Test
+        run: pytest tests/ -q
+      - name: Self Check
+        run: chisel check . --strict
+      - name: Build
+        run: pip install build && python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-py
+          path: chisel_py/dist/
+
+  javascript:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chisel_js
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install
+        run: bun install
+      - name: Test
+        run: bun test --coverage
+      - name: Self Check
+        run: bun run src/chisel/cli/main.ts check .
+      - name: Build
+        run: bun build ./src/chisel/cli/main.ts --target=node --outdir=./dist --external typescript --external svelte
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-js
+          path: chisel_js/dist/
+
+  publish-py:
+    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: [python]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-py
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_TOKEN }}
+          packages-dir: dist/
+
+  publish-js:
+    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: [javascript]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-js
+          path: chisel_js/dist/
+      - name: Publish
+        working-directory: chisel_js
+        run: |
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
