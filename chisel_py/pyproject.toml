@@ -1,5 +1,5 @@
 [project]
-name = "chisel"
+name = "chisel_checker"
 version = "0.1.1"
 description = "Opinionated architecture constraint checker"
 readme = {file = "README.md", content-type = "text/markdown"}
