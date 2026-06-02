@@ -2,7 +2,7 @@
 name = "chisel"
 version = "0.1.0"
 description = "Opinionated architecture constraint checker"
-readme = { file = "README.md", text = "" }
+readme = {file = "README.md", content-type = "text/markdown"}
 authors = [
     { name = "ChidiRNweke", email = "chidi125@gmail.com" }
 ]
@@ -26,6 +26,3 @@ chisel = "chisel.cli.main:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[project]
-readme = {file = "README.md", content-type = "text/markdown"}
