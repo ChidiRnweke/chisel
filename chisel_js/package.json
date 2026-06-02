@@ -2,9 +2,9 @@
   "name": "@chidirnweke/chisel-js",
   "module": "index.ts",
   "type": "module",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "bin": {
-    "chisel-js": "./dist/cli/main.js"
+    "chisel-js": "./dist/main.js"
   },
   "scripts": {
     "build": "bun build ./src/chisel/cli/main.ts --target=node --outdir=./dist --external typescript --external svelte",
