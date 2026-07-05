@@ -14,9 +14,11 @@ on:
       - .github/workflows/docs.yml
   workflow_dispatch:
 
-# Allow the deploy job to push to the gh-pages branch.
+# Allow the deploy job to publish via the GitHub Pages Actions deployment API.
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: docs-${{ github.ref }}
@@ -48,11 +50,14 @@ jobs:
           path: docs/dist
           retention-days: 7
 
-  # On push to master: build and push to the gh-pages branch.
+  # On push to master: build and deploy via GitHub Pages.
   deploy:
-    name: Deploy to gh-pages
+    name: Deploy to GitHub Pages
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -61,3 +66,7 @@ jobs:
           path: docs
           node-version: 22
           package-manager: bun
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
