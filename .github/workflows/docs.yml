@@ -56,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: withastro/action@v0
+      - uses: withastro/action@v6
         with:
           path: docs
           node-version: 22
