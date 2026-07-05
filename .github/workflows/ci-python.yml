@@ -18,6 +18,7 @@ on:
 
 jobs:
   python:
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'py-v')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -41,7 +42,7 @@ jobs:
           path: chisel_py/dist/
 
   publish-py:
-    if: github.event_name == 'release' && github.event.action == 'published'
+    if: github.event_name == 'release' && github.event.action == 'published' && startsWith(github.event.release.tag_name, 'py-v')
     needs: [python]
     runs-on: ubuntu-latest
     environment: release

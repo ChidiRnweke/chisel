@@ -18,6 +18,7 @@ on:
 
 jobs:
   javascript:
+    if: github.event_name != 'release' || startsWith(github.event.release.tag_name, 'js-v')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -41,7 +42,7 @@ jobs:
           path: chisel_js/dist/
 
   publish-js:
-    if: github.event_name == 'release' && github.event.action == 'published'
+    if: github.event_name == 'release' && github.event.action == 'published' && startsWith(github.event.release.tag_name, 'js-v')
     needs: [javascript]
     runs-on: ubuntu-latest
     environment: release
