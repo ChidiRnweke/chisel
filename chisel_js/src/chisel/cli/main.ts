@@ -60,6 +60,12 @@ async function confirmSkillOverwrite(yes?: boolean, dryRun?: boolean): Promise<v
   }
 }
 
+async function showVersionNotice(): Promise<void> {
+  if (!process.stderr.isTTY) return;
+  const notice = await new UpdateController().versionNotice();
+  if (notice) console.error(notice.message);
+}
+
 program
   .command("check")
   .description("Check a project for architectural constraint violations")
@@ -76,6 +82,7 @@ program
         console.log(reporter.reportJson(result));
       } else {
         reporter.report(result);
+        await showVersionNotice();
       }
       
       if (result.hasErrors) process.exit(1);
@@ -89,7 +96,7 @@ program
   .command("rules")
   .description("List all available rules")
   .option("--json", "Output as JSON")
-  .action((options: { json?: boolean }) => {
+  .action(async (options: { json?: boolean }) => {
     const controller = CheckerFactory.createController();
     const allRules: any[] = [];
     for (const svc of controller.services) {
@@ -110,6 +117,7 @@ program
         }
       }
       console.log();
+      await showVersionNotice();
     }
   });
 
@@ -118,7 +126,7 @@ program
   .description("Show detailed explanation for a rule")
   .argument("<rule-id>", "Rule ID or category prefix")
   .option("--json", "Output as JSON")
-  .action((ruleId: string, options: { json?: boolean }) => {
+  .action(async (ruleId: string, options: { json?: boolean }) => {
     const controller = CheckerFactory.createController();
     const allRules: any[] = [];
     for (const svc of controller.services) {
@@ -144,6 +152,7 @@ program
         console.log(`Description: ${r.description}`);
         console.log(`\nHow to fix:\n${r.fixGuidance}\n\n`);
       }
+      await showVersionNotice();
     }
   });
 
@@ -211,6 +220,7 @@ update
       for (const item of result.results) {
         console.log(`${item.status.padEnd(15)} ${item.name.padEnd(32)} ${item.destination}`);
       }
+      await showVersionNotice();
     } catch (err) {
       console.error(`Error: ${err}`);
       process.exit(1);

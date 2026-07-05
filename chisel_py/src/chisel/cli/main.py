@@ -54,6 +54,14 @@ def _confirm_skill_overwrite(yes: bool, dry_run: bool) -> None:
         raise RuntimeError("Skill update cancelled.")
 
 
+def _show_version_notice() -> None:
+    if not sys.stderr.isatty():
+        return
+    notice = UpdateController().version_notice()
+    if notice is not None:
+        sys.stderr.write(f"{notice.message}\n")
+
+
 @app.command()
 def check(
     project_path: str = typer.Argument(".", help="Path to project root"),
@@ -79,6 +87,7 @@ def check(
         sys.stdout.write(reporter.report_json(result) + "\n")
     else:
         reporter.report(result)
+        _show_version_notice()
 
     if result.has_errors:
         raise typer.Exit(code=1)
@@ -123,6 +132,7 @@ def rules(
                 f"  {rule.id:50s} [{skill_name}] {rule.description}\n"
             )
     sys.stdout.write("\n")
+    _show_version_notice()
 
 
 @app.command()
@@ -171,6 +181,7 @@ def explain(
         sys.stdout.write(f"Description: {rule.description}\n")
         sys.stdout.write(f"\nHow to fix:\n{rule.fix_guidance}\n")
         sys.stdout.write("\n")
+    _show_version_notice()
 
 
 @app.command()
@@ -233,6 +244,7 @@ def setup(
         sys.stdout.write(
             f"{item.status:15s} {item.name:32s} {item.destination}\n"
         )
+    _show_version_notice()
 
 
 @update_app.command("self")
@@ -324,6 +336,7 @@ def update_skills(
         sys.stdout.write(
             f"{item.status:15s} {item.name:32s} {item.destination}\n"
         )
+    _show_version_notice()
 
 
 def main() -> None:

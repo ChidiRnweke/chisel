@@ -3,7 +3,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+import chisel.cli.main as cli_main
 from chisel.cli.main import app
+from chisel.checker.models.self_update import VersionNotice
 
 
 def _invoke(args: list) -> str:
@@ -186,3 +188,34 @@ class TestUpdateCommand:
             assert "name: qa" in (destination / "SKILL.md").read_text(
                 encoding="utf-8"
             )
+
+    def test_show_version_notice_writes_to_tty_stderr(self, monkeypatch):
+        captured: list[str] = []
+
+        class Capture:
+            def write(self, text: str) -> None:
+                captured.append(text)
+
+            def flush(self) -> None:
+                pass
+
+            def isatty(self) -> bool:
+                return True
+
+        class FakeUpdateController:
+            def version_notice(self) -> VersionNotice:
+                return VersionNotice(
+                    current_version="0.2.0",
+                    latest_version="0.2.1",
+                    command="chisel update self",
+                    message="Chisel 0.2.1 is available. Update with: chisel update self",
+                )
+
+        monkeypatch.setattr(sys, "stderr", Capture())
+        monkeypatch.setattr(cli_main, "UpdateController", FakeUpdateController)
+
+        cli_main._show_version_notice()
+
+        assert captured == [
+            "Chisel 0.2.1 is available. Update with: chisel update self\n"
+        ]

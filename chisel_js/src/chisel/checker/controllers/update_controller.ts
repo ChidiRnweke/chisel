@@ -1,6 +1,6 @@
 import { SkillTarget, type SkillSetupResult } from "chisel/checker/models/agent_skill";
 import { SkillInstaller, type ISkillInstaller } from "chisel/checker/services/agent_skills";
-import { SelfUpdater, type ISelfUpdater, type SelfUpdateManager, type SelfUpdateResult } from "chisel/checker/services/self_update";
+import { SelfUpdater, type ISelfUpdater, type SelfUpdateManager, type SelfUpdateResult, type VersionNotice } from "chisel/checker/services/self_update";
 
 export class UpdateController {
   constructor(
@@ -10,6 +10,10 @@ export class UpdateController {
 
   updateSelf(manager: SelfUpdateManager = "auto", dryRun = false): SelfUpdateResult {
     return this.selfUpdater.update(manager, dryRun);
+  }
+
+  async versionNotice(): Promise<VersionNotice | undefined> {
+    return this.selfUpdater.versionNotice();
   }
 
   updateSkills(

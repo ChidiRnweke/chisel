@@ -3,7 +3,11 @@ from pathlib import Path
 
 from chisel.checker.controllers.update_controller import UpdateController
 from chisel.checker.models.agent_skill import SkillInstallResult, SkillTarget
-from chisel.checker.models.self_update import SelfUpdateManager, SelfUpdateResult
+from chisel.checker.models.self_update import (
+    SelfUpdateManager,
+    SelfUpdateResult,
+    VersionNotice,
+)
 
 
 @dataclass(slots=True)
@@ -42,6 +46,14 @@ class FakeSelfUpdater:
     def command_for(self, manager: SelfUpdateManager) -> list[str]:
         return [manager.value]
 
+    def version_notice(self) -> VersionNotice:
+        return VersionNotice(
+            current_version="0.2.0",
+            latest_version="0.2.1",
+            command="chisel update self",
+            message="Chisel 0.2.1 is available. Update with: chisel update self",
+        )
+
 
 class TestUpdateController:
     def test_updates_skills_with_installer(self):
@@ -59,3 +71,11 @@ class TestUpdateController:
         )
         result = controller.update_self(SelfUpdateManager.PIP, dry_run=True)
         assert result.command == ["pip"]
+
+    def test_returns_version_notice_from_updater(self):
+        controller = UpdateController(
+            _skill_installer=FakeSkillInstaller(),
+            _self_updater=FakeSelfUpdater(),
+        )
+        notice = controller.version_notice()
+        assert notice is not None and notice.latest_version == "0.2.1"

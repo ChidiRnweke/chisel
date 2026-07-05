@@ -2,7 +2,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chisel.checker.models.agent_skill import SkillSetupResult, SkillTarget
-from chisel.checker.models.self_update import SelfUpdateManager, SelfUpdateResult
+from chisel.checker.models.self_update import (
+    SelfUpdateManager,
+    SelfUpdateResult,
+    VersionNotice,
+)
 from chisel.checker.services.agent_skills import ISkillInstaller, SkillInstaller
 from chisel.checker.services.self_update import ISelfUpdater, SelfUpdater
 
@@ -18,6 +22,9 @@ class UpdateController:
         dry_run: bool = False,
     ) -> SelfUpdateResult:
         return self._self_updater.update(manager=manager, dry_run=dry_run)
+
+    def version_notice(self) -> VersionNotice | None:
+        return self._self_updater.version_notice()
 
     def update_skills(
         self,

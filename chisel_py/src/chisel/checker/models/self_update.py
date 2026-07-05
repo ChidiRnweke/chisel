@@ -13,3 +13,11 @@ class SelfUpdateManager(str, Enum):
 class SelfUpdateResult:
     command: list[str]
     returncode: int
+
+
+@dataclass(frozen=True, slots=True)
+class VersionNotice:
+    current_version: str
+    latest_version: str
+    command: str
+    message: str
