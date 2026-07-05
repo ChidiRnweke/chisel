@@ -1,6 +1,6 @@
 ---
 title: Turn off a rule for a file
-description: Exempt files or lines from chisel rules with chisel-exceptions.toml or inline noqa; both require a reason.
+description: Exempt files or lines from chisel rules with a project-level exceptions file or inline noqa; both require a reason.
 ---
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
@@ -10,32 +10,59 @@ stdout, an auto-generated migration, a one-off justified exception. This
 guide shows the two escape hatches: project-level file exemptions and
 inline per-line suppression. Both require a `reason`.
 
-## Project-level: `chisel-exceptions.toml`
+## Project-level exceptions file
 
-Drop a `chisel-exceptions.toml` at the root of the project being checked
-(same place you run `chisel check .`). Each `[[exceptions]]` entry maps
-file globs to rule IDs and a reason.
+Drop an exceptions file at the root of the project being checked (same
+place you run the check). Each checker uses its stack's native format:
+`chisel-exceptions.toml` for Python, `chisel-exceptions.json` for
+TypeScript. The schema and the matching semantics are identical; each
+entry maps file globs to rule IDs and a reason.
 
-```toml
-# chisel-exceptions.toml
-[[exceptions]]
-files = ["src/legacy/*.py", "src/cli/main.py"]
-rules = ["structural:print-banned"]
-reason = "CLI requires stdout output"
+<Tabs>
+  <TabItem label="Python">
+    ```toml
+    # chisel-exceptions.toml
+    [[exceptions]]
+    files = ["src/legacy/*.py", "src/cli/main.py"]
+    rules = ["structural:print-banned"]
+    reason = "CLI requires stdout output"
 
-[[exceptions]]
-files = ["src/migrations/**"]
-rules = ["*"]               # match every rule
-reason = "Auto-generated migrations; no architectural intent."
-```
+    [[exceptions]]
+    files = ["src/migrations/*"]
+    rules = ["*"]               # match every rule
+    reason = "Auto-generated migrations; no architectural intent."
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```json
+    // chisel-exceptions.json
+    {
+      "exceptions": [
+        {
+          "files": ["src/routes/embed/*.svelte"],
+          "rules": ["responsiveness"],
+          "reason": "Embeds render inside a fixed-size iframe."
+        },
+        {
+          "files": ["src/lib/generated/*"],
+          "rules": ["*"],
+          "reason": "Generated API client; regenerated on every build."
+        }
+      ]
+    }
+    ```
+  </TabItem>
+</Tabs>
 
-- `files`: glob patterns relative to the project root.
+- `files`: glob patterns relative to the project root. `*` and `?` are
+  wildcards, and `*` also matches across `/`, so `src/*.ts` covers nested
+  files too.
 - `rules`: a list of rule IDs, or `*` to match every rule, or a
   category prefix like `"structural"` to match every rule in that
   category.
-- `reason`: free text, but required. Goes in the JSON output too.
-
-The same file works for both checkers; `chisel-js` reads it the same way.
+- `reason`: free text explaining why. The checkers don't parse it, but an
+  entry without one won't survive review; say why so the next reader
+  doesn't have to guess.
 
 ## Inline: `noqa`
 
@@ -71,7 +98,7 @@ rules](/chisel/reference/js-rules/) reference to get the exact rule ID.
 | Severity | Suppressible? | How |
 | --- | --- | --- |
 | **ERROR** | No | n/a |
-| **WARNING** | Yes | Inline `noqa` or `chisel-exceptions.toml` |
+| **WARNING** | Yes | Inline `noqa` or the project-level exceptions file |
 | **INFO** | n/a | Never blocks, so no need to suppress |
 
 Suppressions on ERROR rules are ignored; those rules are non-negotiable.
@@ -80,14 +107,26 @@ is usually to change the architecture, not to silence the checker.
 
 ## Verify the exemption worked
 
-```bash
-chisel check . --json | jq '.violations | length'   # before
-# (add the exception / noqa)
-chisel check . --json | jq '.violations | length'   # after
-```
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel check . --json | jq '.violations | length'   # before
+    # (add the exception / noqa)
+    chisel check . --json | jq '.violations | length'   # after
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js check . --json | jq '.violations | length'   # before
+    # (add the exception / noqa)
+    chisel-js check . --json | jq '.violations | length'   # after
+    ```
+  </TabItem>
+</Tabs>
 
-The JSON output reports whether a violation was suppressed and by which
-mechanism, so you can audit exemptions in CI.
+Exempted violations disappear from the output entirely; the count dropping
+confirms the exemption matched. Keep the exceptions file in version
+control so exemptions are reviewed like any other change.
 
 ## What's next
 

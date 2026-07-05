@@ -4,6 +4,7 @@ import type { Violation } from "chisel/checker/models/violation";
 import type { RuleInfo } from "chisel/checker/rule_metadata";
 import { createCheckResult } from "chisel/checker/models/result";
 import { createFileInfo } from "chisel/checker/models/file_info";
+import { ExceptionRegistry } from "chisel/checker/repositories/exception_registry";
 import { FileDiscovery } from "chisel/checker/repositories/file_discovery";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -34,7 +35,13 @@ export class CheckController {
     for (const service of this.services) {
       violations.push(...service.check({ ...project, files: filesWithSource }));
     }
-    
-    return createCheckResult(violations, filesWithSource.length);
+
+    return createCheckResult(this.applyExceptions(projectPath, violations), filesWithSource.length);
+  }
+
+  private applyExceptions(projectPath: string, violations: Violation[]): Violation[] {
+    const registry = new ExceptionRegistry();
+    registry.load(projectPath);
+    return registry.filter(violations);
   }
 }
