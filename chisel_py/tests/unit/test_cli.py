@@ -82,6 +82,7 @@ class TestRulesCommand:
         print_banned = [r for r in data if r["id"] == "structural:print-banned"]
         assert len(print_banned) == 1
         assert len(print_banned[0]["fix_guidance"]) > 0
+        assert print_banned[0]["skill_name"] == "building-python-backend"
 
 
 class TestExplainCommand:
@@ -101,6 +102,7 @@ class TestExplainCommand:
         data = json.loads(output)
         assert len(data) >= 1
         assert data[0]["id"] == "structural:print-banned"
+        assert data[0]["skill_name"] == "building-python-backend"
 
 
 class TestSetupCommand:

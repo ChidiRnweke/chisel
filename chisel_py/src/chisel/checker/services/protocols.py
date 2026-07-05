@@ -12,6 +12,7 @@ class RuleInfo:
     category: str
     description: str
     fix_guidance: str
+    skill_name: str = ""
 
 
 @runtime_checkable

@@ -8,6 +8,7 @@ import typer
 from chisel.checker.factory import CheckerFactory
 from chisel.checker.models.agent_skill import SkillTarget
 from chisel.checker.reporter import Reporter
+from chisel.checker.rule_metadata import skill_name_for_category
 from chisel.checker.services.protocols import RuleInfo
 
 app = typer.Typer()
@@ -84,6 +85,7 @@ def rules(
                 "category": r.category,
                 "description": r.description,
                 "fix_guidance": r.fix_guidance,
+                "skill_name": r.skill_name or skill_name_for_category(r.category),
             }
             for r in all_rules
         ]
@@ -98,7 +100,10 @@ def rules(
         rules_list = categorized[category]
         sys.stdout.write(f"\n{category} ({len(rules_list)} rules)\n")
         for rule in rules_list:
-            sys.stdout.write(f"  {rule.id:50s} {rule.description}\n")
+            skill_name = rule.skill_name or skill_name_for_category(rule.category)
+            sys.stdout.write(
+                f"  {rule.id:50s} [{skill_name}] {rule.description}\n"
+            )
     sys.stdout.write("\n")
 
 
@@ -131,6 +136,7 @@ def explain(
                 "category": r.category,
                 "description": r.description,
                 "fix_guidance": r.fix_guidance,
+                "skill_name": r.skill_name or skill_name_for_category(r.category),
             }
             for r in matches
         ]
@@ -140,6 +146,10 @@ def explain(
     for rule in matches:
         sys.stdout.write(f"Rule:        {rule.id}\n")
         sys.stdout.write(f"Category:    {rule.category}\n")
+        sys.stdout.write(
+            "Skill:       "
+            f"{rule.skill_name or skill_name_for_category(rule.category)}\n"
+        )
         sys.stdout.write(f"Description: {rule.description}\n")
         sys.stdout.write(f"\nHow to fix:\n{rule.fix_guidance}\n")
         sys.stdout.write("\n")

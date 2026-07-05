@@ -18,17 +18,21 @@ bun add -g @chidirnweke/chisel-js
 chisel-js check .                  # check the current project
 chisel-js rules                    # list all ~55 rules grouped by category
 chisel-js explain structural:console-log-banned  # detailed fix guidance
-chisel-js check . --json           # machine-readable output for agents
+chisel-js check . --json           # violations with message refs + skill names
 ```
 
 Non-zero exit code when ERROR-level violations are found.
+
+Agent-facing JSON output deduplicates repeated violation messages: each
+violation carries `messageRef`, and the top-level `messages` array contains
+each full message once with its `skillName`.
 
 ## Commands
 
 | Command | Description |
 |---|---|
 | `chisel-js check [path]` | Scan a project for architectural violations |
-| `chisel-js check . --json` | Output violations as structured JSON |
+| `chisel-js check . --json` | Output violations as structured JSON with deduplicated messages |
 | `chisel-js rules` | List all rules, grouped by category |
 | `chisel-js rules --json` | Machine-readable rule listing |
 | `chisel-js explain <rule-id>` | Detailed description + fix guidance for a rule |
@@ -81,4 +85,3 @@ bun run build
 ```
 
 The checker is self-validating: `chisel-js check .` produces zero violations on its own source.
-

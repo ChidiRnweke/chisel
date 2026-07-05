@@ -16,7 +16,7 @@ pip install chisel
 chisel check ./backend              # check a project
 chisel rules                        # list all ~55 rules grouped by category
 chisel explain structural:print-banned  # detailed fix guidance
-chisel check . --json               # machine-readable output for agents
+chisel check . --json               # violations with message refs + skill names
 chisel check . --no-strict          # skip src-layout enforcement
 ```
 
@@ -25,7 +25,7 @@ chisel check . --no-strict          # skip src-layout enforcement
 | Command | Description |
 |---|---|
 | `chisel check [path]` | Scan a project for architectural violations |
-| `chisel check . --json` | Output violations as structured JSON |
+| `chisel check . --json` | Output violations as structured JSON with deduplicated messages |
 | `chisel check . --strict/--no-strict` | Toggle src-layout and build-config enforcement |
 | `chisel rules` | List all rules, grouped by category |
 | `chisel rules --json` | Machine-readable rule listing |
@@ -44,6 +44,10 @@ chisel setup --target opencode   # writes .opencode/skills/
 ```
 
 Without `--target`, `chisel setup` asks which agent to configure when running interactively. Use `--skill qa` to install one skill, `--dry-run --json` to preview, and `--overwrite` to replace existing skill directories.
+
+Agent-facing JSON output deduplicates repeated violation messages: each
+violation carries `message_ref`, and the top-level `messages` array contains
+each full message once with its `skill_name`.
 
 ## What gets checked
 

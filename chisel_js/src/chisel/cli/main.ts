@@ -2,6 +2,7 @@
 import { program } from "commander";
 import { CheckerFactory } from "chisel/checker/factory";
 import { Reporter } from "chisel/checker/reporter";
+import { withSkillName } from "chisel/checker/rule_metadata";
 
 program
   .name("chisel-js")
@@ -18,19 +19,11 @@ program
     
     try {
       const result = await controller.check(path);
+      const reporter = new Reporter();
       
       if (options.json) {
-        console.log(JSON.stringify({
-          summary: {
-            filesChecked: result.filesChecked,
-            errors: result.errors,
-            warnings: result.warnings,
-            info: result.info,
-          },
-          violations: result.violations,
-        }, null, 2));
+        console.log(reporter.reportJson(result));
       } else {
-        const reporter = new Reporter();
         reporter.report(result);
       }
       
@@ -49,7 +42,7 @@ program
     const controller = CheckerFactory.createController();
     const allRules: any[] = [];
     for (const svc of controller.services) {
-      allRules.push(...svc.describeRules());
+      allRules.push(...svc.describeRules().map(withSkillName));
     }
 
     if (options.json) {
@@ -62,7 +55,7 @@ program
       for (const [cat, rules] of Object.entries(categories).sort()) {
         console.log(`\n${cat} (${rules.length} rules)`);
         for (const r of rules) {
-          console.log(`  ${r.id.padEnd(45)} ${r.description}`);
+          console.log(`  ${r.id.padEnd(45)} [${r.skillName}] ${r.description}`);
         }
       }
       console.log();
@@ -78,7 +71,7 @@ program
     const controller = CheckerFactory.createController();
     const allRules: any[] = [];
     for (const svc of controller.services) {
-      allRules.push(...svc.describeRules());
+      allRules.push(...svc.describeRules().map(withSkillName));
     }
 
     const matches = allRules.filter(r =>
@@ -96,6 +89,7 @@ program
       for (const r of matches) {
         console.log(`Rule:        ${r.id}`);
         console.log(`Category:    ${r.category}`);
+        console.log(`Skill:       ${r.skillName}`);
         console.log(`Description: ${r.description}`);
         console.log(`\nHow to fix:\n${r.fixGuidance}\n\n`);
       }

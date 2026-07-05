@@ -1,6 +1,7 @@
 import type { CheckResult } from "chisel/checker/models/result";
 import type { FileInfo } from "chisel/checker/models/file_info";
 import type { Violation } from "chisel/checker/models/violation";
+import type { RuleInfo } from "chisel/checker/rule_metadata";
 import { createCheckResult } from "chisel/checker/models/result";
 import { createFileInfo } from "chisel/checker/models/file_info";
 import { FileDiscovery } from "chisel/checker/repositories/file_discovery";
@@ -10,7 +11,7 @@ import { join } from "node:path";
 export interface CheckerService {
   readonly ruleIdPrefix: string;
   check(project: { rootPath: string; files: { path: string; source: string; layer: string; language: string }[] }): Violation[];
-  describeRules(): { id: string; category: string; description: string; fixGuidance: string }[];
+  describeRules(): RuleInfo[];
 }
 
 export class CheckController {

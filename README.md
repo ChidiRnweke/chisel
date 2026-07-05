@@ -72,9 +72,13 @@ chisel rules                              # all ~55 rules, grouped by category
 chisel rules --json                       # machine-readable for agent consumption
 chisel explain structural:isinstance-banned  # rule description + fix guidance
 chisel explain structural                 # all rules in a category
-chisel check . --json                     # machine-readable violation list
+chisel check . --json                     # violations with message refs + skill names
 chisel setup --target codex               # install repo agent skills to .agents/skills/
 ```
+
+`chisel check --json` and `chisel-js check --json` deduplicate repeated messages:
+violations carry `message_ref` / `messageRef`, and the top-level `messages`
+array contains each full message once with its `skill_name` / `skillName`.
 
 `chisel-js` equivalents: `chisel-js rules`, `chisel-js explain`, `chisel-js check . --json`.
 
@@ -138,7 +142,7 @@ factory.py      Zero-logic DI — wires all services into the controller
 cli/            Thin entry point — argparse/commander → factory → controller → reporter
 ```
 
-Adding a rule is one new check method in a service + one `describeRules()` entry. The CLI and the agent-facing commands discover it automatically.
+Adding a rule is one new check method in a service + one `describeRules()` entry. The CLI and the agent-facing commands discover it automatically and attach the relevant bundled skill name.
 
 ## Development
 
