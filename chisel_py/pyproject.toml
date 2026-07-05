@@ -30,3 +30,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/chisel"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"../skills" = "src/chisel/bundled_skills"

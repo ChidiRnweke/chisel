@@ -12,18 +12,19 @@
 | `services/` | `models/`, repository Protocols, `errors` | other services, `sqlalchemy`, `fastapi`, `starlette`, `controllers`, `factory`, `config` |
 | `repositories/` | `models/`, `errors`, ORM models (internal only) | `services`, `controllers`, `fastapi`, `config` |
 | `controllers/` | service Protocols, `models/`, `errors` | `fastapi`, `starlette`, `sqlalchemy`, `config`, other controllers |
-| `factory.py` | all concrete implementations | nothing banned, but must contain zero logic |
+| `factory.py` | all concrete implementations, `sqlalchemy.ext.asyncio` session types | nothing banned, but must contain zero logic |
 | `routes/` | `factory`, `models`, `fastapi` | `services`, `repositories`, `sqlalchemy` |
-| `dependencies.py` | `factory`, `models`, `fastapi`, `config` | `services`, `repositories`, `sqlalchemy` directly |
+| `dependencies.py` | `factory`, `models`, `fastapi`, `config`, `sqlalchemy.ext.asyncio.AsyncSession` for request-scoped session wiring | `services`, `repositories`, raw SQLAlchemy query APIs |
+| `app.py` | `fastapi`, `routes`, `dependencies`, `error_handlers`, `config` | domain service/repository/controller assembly |
 | `error_handlers.py` | `errors`, `fastapi`, `starlette` | domain layers |
 
 - ORM types (`*ORM`) never imported outside `repositories/` — including `repositories/orm/`
 - `AsyncSession` / `sqlalchemy` never imported in `services/` or `controllers/`
 - `HTTPException`, `status_code` never appear outside `error_handlers.py`
 - `os.getenv()` called only in `config.py`
-- `fastapi` imported only in `routes/`, `dependencies.py`, `error_handlers.py`
+- `fastapi` imported only in `app.py`, `routes/`, `dependencies.py`, `error_handlers.py`
 - Concrete service classes imported only in `factory.py` — importing a concrete service anywhere else is banned
-- `factory.py` imported only in `routes/` — importing it in any other layer is banned
+- `factory.py` imported only in `routes/` and `dependencies.py` — importing it in any other layer is banned
 
 ### Structural Invariants
 

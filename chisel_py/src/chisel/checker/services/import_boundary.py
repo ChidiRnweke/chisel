@@ -62,6 +62,7 @@ _BANNED_INTERNAL_LAYERS: dict[Layer, set[Layer] | None] = {
         Layer.DEPENDENCIES,
         Layer.APP_FILE,
     },
+    Layer.APP_FILE: set(),
 }
 
 _BANNED_THIRD_PARTY: dict[Layer, set[str]] = {
@@ -69,24 +70,28 @@ _BANNED_THIRD_PARTY: dict[Layer, set[str]] = {
     Layer.CONTROLLERS: {"sqlalchemy", "fastapi", "starlette"},
     Layer.REPOSITORIES: {"fastapi"},
     Layer.ROUTES: {"sqlalchemy"},
-    Layer.DEPENDENCIES: {"sqlalchemy"},
 }
 
 _FASTAPI_ALLOWED_LAYERS: frozenset[Layer] = frozenset({
+    Layer.APP_FILE,
     Layer.ROUTES,
     Layer.DEPENDENCIES,
     Layer.ERROR_HANDLERS,
 })
 
 _SQLALCHEMY_ALLOWED_LAYERS: frozenset[Layer] = frozenset({
+    Layer.FACTORY,
     Layer.REPOSITORIES,
 })
 
 _SQLALCHEMY_EXT_ALLOWED_LAYERS: frozenset[Layer] = frozenset({
+    Layer.DEPENDENCIES,
+    Layer.FACTORY,
     Layer.REPOSITORIES,
 })
 
 _FACTORY_IMPORT_ALLOWED_LAYERS: frozenset[Layer] = frozenset({
+    Layer.DEPENDENCIES,
     Layer.ROUTES,
 })
 
@@ -108,16 +113,16 @@ class ImportBoundaryService:
                      description="Service importing SQLAlchemy or other banned module",
                      fix_guidance="Services never touch the database. Move the query into a repository method and inject the repository into the service."),
             RuleInfo(id="import-boundary:fastapi-location", category="import-boundary",
-                     description="fastapi imported outside routes/, dependencies.py, or error_handlers.py",
+                     description="fastapi imported outside app.py, routes/, dependencies.py, or error_handlers.py",
                      fix_guidance="FastAPI imports mean HTTP concerns are leaking into the domain. Move the FastAPI-specific code to a route handler or dependency."),
             RuleInfo(id="import-boundary:sqlalchemy-location", category="import-boundary",
-                     description="sqlalchemy imported outside repositories/",
+                     description="sqlalchemy imported outside repositories/ or factory.py",
                      fix_guidance="Services never touch the database. Move the query into a repository method and inject the repository into the service."),
             RuleInfo(id="import-boundary:async-session-location", category="import-boundary",
-                     description="sqlalchemy.ext.asyncio imported outside repositories/",
-                     fix_guidance="The session is request-scoped and belongs in repositories only. Inject it per-request via Depends(get_session) and pass it through the factory."),
+                     description="sqlalchemy.ext.asyncio imported outside repositories/, factory.py, or dependencies.py",
+                     fix_guidance="The session is request-scoped. Create it in dependencies.py, pass it through the factory, and use it inside repositories."),
             RuleInfo(id="import-boundary:factory-import-location", category="import-boundary",
-                     description="factory.py imported outside routes/",
+                     description="factory.py imported outside routes/ or dependencies.py",
                      fix_guidance="The factory belongs in routes and dependencies only. Thread services through as Protocol-typed parameters everywhere else."),
             RuleInfo(id="import-boundary:orm-leak", category="import-boundary",
                      description="ORM type imported outside repositories/",
@@ -225,10 +230,10 @@ class ImportBoundaryService:
                 return self._violation(
                     edge,
                     "async-session-location",
-                    "The session is request-scoped and belongs in repositories only. "
-                    "Inject it per-request via Depends(get_session) and pass it "
-                    "through the factory.",
+                    "The session is request-scoped. Create it in dependencies.py, "
+                    "pass it through the factory, and use it inside repositories.",
                 )
+            return []
         if edge.imported == "sqlalchemy" or edge.imported.startswith("sqlalchemy."):
             if importer_layer not in _SQLALCHEMY_ALLOWED_LAYERS:
                 return self._violation(

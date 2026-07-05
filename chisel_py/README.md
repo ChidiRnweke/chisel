@@ -31,6 +31,19 @@ chisel check . --no-strict          # skip src-layout enforcement
 | `chisel rules --json` | Machine-readable rule listing |
 | `chisel explain <rule-id>` | Detailed description + fix guidance for a rule |
 | `chisel explain <category>` | All rules in a category (e.g. `structural`) |
+| `chisel setup [path]` | Install Chisel agent skills into a repo for Codex, Claude Code, or OpenCode |
+
+## Agent skills
+
+Install Chisel's bundled skills into a project so coding agents can load the same architecture guidance that the checker enforces:
+
+```bash
+chisel setup --target codex      # writes .agents/skills/
+chisel setup --target claude     # writes .claude/skills/
+chisel setup --target opencode   # writes .opencode/skills/
+```
+
+Without `--target`, `chisel setup` asks which agent to configure when running interactively. Use `--skill qa` to install one skill, `--dry-run --json` to preview, and `--overwrite` to replace existing skill directories.
 
 ## What gets checked
 
@@ -89,4 +102,3 @@ pytest tests/ -q
 ```
 
 The checker is self-validating: `chisel check . --strict` produces zero violations on its own source.
-

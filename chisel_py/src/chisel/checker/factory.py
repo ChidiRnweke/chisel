@@ -2,8 +2,10 @@
 from dataclasses import dataclass, field
 
 from chisel.checker.controllers.check_controller import CheckController
+from chisel.checker.controllers.skill_setup_controller import SkillSetupController
 from chisel.checker.repositories.import_graph import ImportGraph
 from chisel.checker.repositories.protocols import IImportGraph
+from chisel.checker.services.agent_skills import SkillInstaller
 from chisel.checker.services.app_file import AppFileService
 from chisel.checker.services.complexity import ComplexityService
 from chisel.checker.services.concurrency import ConcurrencyService
@@ -43,3 +45,6 @@ class CheckerFactory:
             _suppression=self._suppression,
             _import_graph=self._import_graph,
         )
+
+    def create_skill_setup_controller(self) -> SkillSetupController:
+        return SkillSetupController(_installer=SkillInstaller())

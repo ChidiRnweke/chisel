@@ -108,6 +108,12 @@ class TestFastapiLocation:
         violations = service.check(project)
         _assert_none(violations, "fastapi-location")
 
+    def test_accepts_fastapi_in_app_file(self, service, graph, project):
+        graph.set_edges([_edge("myapp.app", "fastapi")])
+        graph.set_layers("myapp.app", Layer.APP_FILE)
+        violations = service.check(project)
+        _assert_none(violations, "fastapi-location")
+
 
 class TestSqlalchemyLocation:
     def test_detects_sqlalchemy_in_services_layer(self, service, graph, project):
@@ -128,9 +134,27 @@ class TestSqlalchemyLocation:
         violations = service.check(project)
         _assert_none(violations, "sqlalchemy-location")
 
+    def test_accepts_sqlalchemy_in_factory_layer(self, service, graph, project):
+        graph.set_edges([_edge("myapp.factory", "sqlalchemy")])
+        graph.set_layers("myapp.factory", Layer.FACTORY)
+        violations = service.check(project)
+        _assert_none(violations, "sqlalchemy-location")
+
+    def test_accepts_async_session_in_factory_layer(self, service, graph, project):
+        graph.set_edges([_edge("myapp.factory", "sqlalchemy.ext.asyncio")])
+        graph.set_layers("myapp.factory", Layer.FACTORY)
+        violations = service.check(project)
+        _assert_none(violations, "async-session-location")
+
 
 class TestSqlalchemyBannedInDependencies:
-    def test_detects_sqlalchemy_in_dependencies_layer(self, service, graph, project):
+    def test_accepts_async_session_in_dependencies_layer(self, service, graph, project):
+        graph.set_edges([_edge("myapp.dependencies", "sqlalchemy.ext.asyncio")])
+        graph.set_layers("myapp.dependencies", Layer.DEPENDENCIES)
+        violations = service.check(project)
+        _assert_none(violations, "async-session-location")
+
+    def test_detects_raw_sqlalchemy_in_dependencies_layer(self, service, graph, project):
         graph.set_edges([_edge("myapp.dependencies", "sqlalchemy")])
         graph.set_layers("myapp.dependencies", Layer.DEPENDENCIES)
         violations = service.check(project)
@@ -155,6 +179,36 @@ class TestFactoryImportLocation:
         graph.set_layers("myapp.routes.foo", Layer.ROUTES)
         violations = service.check(project)
         _assert_none(violations, "factory-import-location")
+
+    def test_accepts_factory_import_in_dependencies(self, service, graph, project):
+        graph.set_edges([_edge("myapp.dependencies", "myapp.factory")])
+        graph.set_layers("myapp.dependencies", Layer.DEPENDENCIES)
+        graph.set_layers("myapp.factory", Layer.FACTORY)
+        violations = service.check(project)
+        _assert_none(violations, "factory-import-location")
+
+
+class TestAppFileAssemblyImports:
+    def test_accepts_app_file_importing_routes(self, service, graph, project):
+        graph.set_edges([_edge("myapp.app", "myapp.routes.recipes")])
+        graph.set_layers("myapp.app", Layer.APP_FILE)
+        graph.set_layers("myapp.routes.recipes", Layer.ROUTES)
+        violations = service.check(project)
+        _assert_none(violations, "layer-banned-import")
+
+    def test_accepts_app_file_importing_error_handlers(self, service, graph, project):
+        graph.set_edges([_edge("myapp.app", "myapp.error_handlers")])
+        graph.set_layers("myapp.app", Layer.APP_FILE)
+        graph.set_layers("myapp.error_handlers", Layer.ERROR_HANDLERS)
+        violations = service.check(project)
+        _assert_none(violations, "layer-banned-import")
+
+    def test_accepts_app_file_importing_dependencies(self, service, graph, project):
+        graph.set_edges([_edge("myapp.app", "myapp.dependencies")])
+        graph.set_layers("myapp.app", Layer.APP_FILE)
+        graph.set_layers("myapp.dependencies", Layer.DEPENDENCIES)
+        violations = service.check(project)
+        _assert_none(violations, "layer-banned-import")
 
 
 class TestOrmLeak:

@@ -73,9 +73,22 @@ chisel rules --json                       # machine-readable for agent consumpti
 chisel explain structural:isinstance-banned  # rule description + fix guidance
 chisel explain structural                 # all rules in a category
 chisel check . --json                     # machine-readable violation list
+chisel setup --target codex               # install repo agent skills to .agents/skills/
 ```
 
 `chisel-js` equivalents: `chisel-js rules`, `chisel-js explain`, `chisel-js check . --json`.
+
+## Agent skills
+
+Chisel can install its bundled agent skills into your repo:
+
+```bash
+chisel setup --target codex      # .agents/skills/ for Codex and OpenCode compatibility
+chisel setup --target claude     # .claude/skills/ for Claude Code
+chisel setup --target opencode   # .opencode/skills/ for OpenCode native skills
+```
+
+Run `chisel setup` without `--target` in an interactive terminal to choose the destination. Chisel installs one target format per run to avoid duplicate skill discovery in tools like OpenCode.
 
 ## What gets checked
 

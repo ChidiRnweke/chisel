@@ -14,6 +14,7 @@ class FileDiscovery:
         "errors": Layer.ERRORS,
         "config": Layer.CONFIG,
         "services": Layer.SERVICES,
+        "repository": Layer.REPOSITORIES,
         "repositories": Layer.REPOSITORIES,
         "controllers": Layer.CONTROLLERS,
         "factory": Layer.FACTORY,
@@ -96,7 +97,6 @@ class FileDiscovery:
         if filename in self._LAYER_FILENAMES:
             return self._LAYER_FILENAMES[filename]
 
-        parents = [p.name for p in file_path.parents if str(p) != str(src_root)]
         parts = relative.parts
 
         for part in parts[:-1]:

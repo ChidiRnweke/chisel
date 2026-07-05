@@ -1,15 +1,38 @@
 
 import json
 import sys
-from pathlib import Path
+from dataclasses import asdict
 
 import typer
 
 from chisel.checker.factory import CheckerFactory
+from chisel.checker.models.agent_skill import SkillTarget
 from chisel.checker.reporter import Reporter
 from chisel.checker.services.protocols import RuleInfo
 
 app = typer.Typer()
+
+
+def _choose_target_interactively() -> SkillTarget:
+    if not sys.stdin.isatty():
+        raise RuntimeError(
+            "Choose an agent target with --target codex, --target claude, "
+            "or --target opencode."
+        )
+
+    choices = [
+        ("1", SkillTarget.CODEX, ".agents/skills"),
+        ("2", SkillTarget.CLAUDE, ".claude/skills"),
+        ("3", SkillTarget.OPENCODE, ".opencode/skills"),
+    ]
+    sys.stdout.write("Select agent skill target:\n")
+    for number, target, destination in choices:
+        sys.stdout.write(f"  {number}. {target.value} ({destination})\n")
+    selected = input("Target [1]: ").strip() or "1"
+    for number, target, _destination in choices:
+        if selected == number or selected == target.value:
+            return target
+    raise RuntimeError("Unknown target selection.")
 
 
 @app.command()
@@ -120,6 +143,68 @@ def explain(
         sys.stdout.write(f"Description: {rule.description}\n")
         sys.stdout.write(f"\nHow to fix:\n{rule.fix_guidance}\n")
         sys.stdout.write("\n")
+
+
+@app.command()
+def setup(
+    project_path: str = typer.Argument(".", help="Path to project root"),
+    target: SkillTarget | None = typer.Option(
+        None,
+        "--target",
+        help="Agent target: codex, claude, or opencode",
+    ),
+    skills: list[str] | None = typer.Option(
+        None,
+        "--skill",
+        help="Install only this bundled skill. May be passed multiple times.",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Replace existing skill directories.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would be installed without writing files.",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output installation results as JSON.",
+    ),
+) -> None:
+    controller = CheckerFactory().create_skill_setup_controller()
+    try:
+        selected_target = target or _choose_target_interactively()
+        result = controller.setup(
+            project_path,
+            selected_target,
+            skill_names=skills,
+            overwrite=overwrite,
+            dry_run=dry_run,
+        )
+    except Exception as exc:
+        sys.stderr.write(f"Error: {exc}\n")
+        raise typer.Exit(code=1)
+
+    if json_output:
+        data = {
+            "target": result.target.value,
+            "target_dir": result.target_dir,
+            "results": [asdict(item) for item in result.results],
+        }
+        sys.stdout.write(json.dumps(data, indent=2) + "\n")
+        return
+
+    sys.stdout.write(
+        f"Target: {result.target.value} "
+        f"({result.target_dir})\n"
+    )
+    for item in result.results:
+        sys.stdout.write(
+            f"{item.status:15s} {item.name:32s} {item.destination}\n"
+        )
 
 
 def main() -> None:

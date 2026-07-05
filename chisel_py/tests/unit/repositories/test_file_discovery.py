@@ -62,6 +62,38 @@ class TestDiscoversFlatLayoutProject:
             layer_found = any(f.layer == Layer.MODELS for f in project.files)
             assert layer_found
 
+    def test_classifies_singular_repository_directory_as_repositories_layer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "myapp" / "repository").mkdir(parents=True)
+            (root / "myapp" / "__init__.py").write_text("")
+            (root / "myapp" / "repository" / "repo_repository.py").write_text("")
+            discovery = FileDiscovery()
+            project = discovery.discover(root)
+            layer_found = any(
+                f.layer == Layer.REPOSITORIES
+                and str(f.path).endswith("repository/repo_repository.py")
+                for f in project.files
+            )
+            assert layer_found
+
+    def test_classifies_src_singular_repository_directory_as_repositories_layer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "src" / "myapp" / "repository").mkdir(parents=True)
+            (root / "src" / "myapp" / "__init__.py").write_text("")
+            (root / "src" / "myapp" / "repository" / "health_repository.py").write_text(
+                ""
+            )
+            discovery = FileDiscovery()
+            project = discovery.discover(root)
+            layer_found = any(
+                f.layer == Layer.REPOSITORIES
+                and str(f.path).endswith("repository/health_repository.py")
+                for f in project.files
+            )
+            assert layer_found
+
     def test_ignores_tests_and_venv_as_package_name(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

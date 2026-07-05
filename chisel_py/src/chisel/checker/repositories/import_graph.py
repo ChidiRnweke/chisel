@@ -15,6 +15,7 @@ class ImportGraph:
         "errors": Layer.ERRORS,
         "config": Layer.CONFIG,
         "services": Layer.SERVICES,
+        "repository": Layer.REPOSITORIES,
         "repositories": Layer.REPOSITORIES,
         "controllers": Layer.CONTROLLERS,
         "factory": Layer.FACTORY,

@@ -1,8 +1,9 @@
 import json
 import sys
+import tempfile
+from pathlib import Path
 
 from chisel.cli.main import app
-from chisel.checker.services.protocols import RuleInfo
 
 
 def _invoke(args: list) -> str:
@@ -24,6 +25,40 @@ def _invoke(args: list) -> str:
     finally:
         sys.stdout = old_stdout
     return "".join(captured)
+
+
+def _invoke_with_stderr(args: list) -> tuple[str, str]:
+    captured_stdout: list[str] = []
+    captured_stderr: list[str] = []
+
+    class Capture:
+        def __init__(self, captured: list[str]) -> None:
+            self._captured = captured
+
+        def write(self, text: str) -> None:
+            self._captured.append(text)
+
+        def flush(self) -> None:
+            pass
+
+        def isatty(self) -> bool:
+            return False
+
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+    old_stdin = sys.stdin
+    sys.stdout = Capture(captured_stdout)
+    sys.stderr = Capture(captured_stderr)
+    sys.stdin = Capture([])
+    try:
+        app(args, standalone_mode=False)
+    except SystemExit:
+        pass
+    finally:
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
+        sys.stdin = old_stdin
+    return "".join(captured_stdout), "".join(captured_stderr)
 
 
 class TestRulesCommand:
@@ -66,3 +101,31 @@ class TestExplainCommand:
         data = json.loads(output)
         assert len(data) >= 1
         assert data[0]["id"] == "structural:print-banned"
+
+
+class TestSetupCommand:
+    def test_setup_codex_dry_run_json_outputs_install_plan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = _invoke(["setup", tmp, "--target", "codex", "--dry-run", "--json"])
+            data = json.loads(output)
+            assert data["target"] == "codex"
+            assert data["target_dir"] == ".agents/skills"
+            assert any(r["status"] == "would_install" for r in data["results"])
+
+    def test_setup_claude_writes_claude_skills(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _invoke(["setup", tmp, "--target", "claude", "--skill", "qa"])
+            destination = Path(tmp) / ".claude" / "skills" / "qa" / "SKILL.md"
+            assert destination.exists()
+
+    def test_setup_opencode_skill_filter_writes_only_requested_skill(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _invoke(["setup", tmp, "--target", "opencode", "--skill", "qa"])
+            root = Path(tmp) / ".opencode" / "skills"
+            assert (root / "qa" / "SKILL.md").exists()
+            assert not (root / "planning-features").exists()
+
+    def test_setup_without_target_in_noninteractive_mode_exits_with_guidance(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _stdout, stderr = _invoke_with_stderr(["setup", tmp])
+            assert "--target codex" in stderr
