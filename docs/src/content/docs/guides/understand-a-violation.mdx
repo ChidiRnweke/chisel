@@ -28,7 +28,7 @@ violation. Each block names the file, line, rule ID, and a short message.
   </TabItem>
 </Tabs>
 
-The rule ID is the key you'll use everywhere else — it has the form
+The rule ID is the key you'll use everywhere else. It has the form
 `category:rule-name`, e.g. `structural:isinstance-banned` or
 `component-enforcement:raw-button`.
 
@@ -55,7 +55,7 @@ to every rule in that category).
   </TabItem>
 </Tabs>
 
-This is the command an agent runs in its fix loop — the same guidance a
+This is the command an agent runs in its fix loop, the same guidance a
 human reads, in context.
 
 ## List every rule
@@ -91,7 +91,7 @@ to consume:
    stored once in a top-level `messages` array. Each violation references
    its message by `message_ref` (Python) / `messageRef` (TypeScript).
 2. **Skill cross-reference.** Each message carries `skill_name` /
-   `skillName` — the bundled skill that teaches the pattern being
+   `skillName`: the bundled skill that teaches the pattern being
    violated. An agent can read that skill next if it needs more context.
 
 <Aside title="Why dedup?">
@@ -134,7 +134,7 @@ for the full shape.
 
 ## What's next
 
-- [Turn off a rule for a file](/chisel/guides/suppress-a-rule/) — when a
+- [Turn off a rule for a file](/chisel/guides/suppress-a-rule/): when a
   rule genuinely shouldn't apply to a file.
-- [Give your AI agent the rules](/chisel/guides/install-agent-skills/) —
+- [Give your AI agent the rules](/chisel/guides/install-agent-skills/):
   install the skills whose `skill_name` shows up in the JSON.

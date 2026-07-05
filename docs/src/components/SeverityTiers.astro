@@ -1,0 +1,51 @@
+---
+// Severity tiers as visual bars instead of a table.
+---
+
+<figure class="chisel-diagram severity-tiers" role="img" aria-label="Three severity tiers: ERROR blocks and cannot be suppressed, WARNING blocks but is suppressible with a reason, INFO never blocks.">
+  <div class="tier tier-error">
+    <span class="tier-name">ERROR</span>
+    <span class="tier-desc">blocks · not suppressible · always a real bug or architectural violation</span>
+  </div>
+  <div class="tier tier-warning">
+    <span class="tier-name">WARNING</span>
+    <span class="tier-desc">blocks · suppressible with a <code>reason</code> · a strong convention you can opt out of</span>
+  </div>
+  <div class="tier tier-info">
+    <span class="tier-name">INFO</span>
+    <span class="tier-desc">never blocks · logged for awareness</span>
+  </div>
+</figure>
+
+<style>
+  .severity-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .tier {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    padding: 0.65rem 1rem;
+    border-radius: 0.5rem;
+    border-inline-start: 5px solid;
+    background: var(--sl-color-gray-6);
+  }
+  .tier-error { border-color: var(--sl-color-red); }
+  .tier-warning { border-color: var(--sl-color-orange); }
+  .tier-info { border-color: var(--sl-color-gray-4); }
+  .tier-name {
+    font-family: var(--sl-font-system-mono, monospace);
+    font-weight: 700;
+    font-size: var(--sl-text-sm);
+    min-width: 5.5rem;
+  }
+  .tier-error .tier-name { color: var(--sl-color-red); }
+  .tier-warning .tier-name { color: var(--sl-color-orange); }
+  .tier-info .tier-name { color: var(--sl-color-gray-3); }
+  .tier-desc {
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-2);
+  }
+</style>

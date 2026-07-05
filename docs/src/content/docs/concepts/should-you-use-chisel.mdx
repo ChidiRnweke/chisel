@@ -1,0 +1,55 @@
+---
+title: Should you use chisel?
+description: Chisel is highly opinionated and not configurable. When to adopt it as-is, and when to fork it and encode your own rules.
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Chisel enforces one specific way of building software: FastAPI backends,
+SvelteKit frontends, layered services, statelessness, shadcn components,
+one assert per test. The rules are not configurable. Beyond per-line and
+per-file suppression with a reason, you cannot turn a rule off or tune it.
+That rigidity is what makes the signal deterministic, and it means chisel
+is a great fit for some teams and the wrong fit for others.
+
+<CardGrid>
+  <Card title="Adopt it as-is" icon="approve-check">
+    Your stack is FastAPI and/or SvelteKit, and you don't yet hold strong
+    architectural opinions. Chisel gives you a coherent, battle-tested set
+    of them on day one, plus the loop that makes your agent respect them.
+  </Card>
+  <Card title="Fork it and make it yours" icon="setting">
+    You already have opinions, or your stack is different (Django, React,
+    Go, anything not FastAPI + SvelteKit). The bundled rules won't fit,
+    but the machinery transfers. Be inspired, fork, and encode your own
+    rulebook.
+  </Card>
+</CardGrid>
+
+## If you have no strong opinions yet
+
+Take chisel's. They are internally consistent, they optimise for the thing
+that matters in agentic engineering (code that stays readable and
+evolvable), and the checker never argues about them. You can always
+develop your own taste later and fork then; starting with no enforced
+architecture at all is the worst of the options.
+
+## If your opinions differ, or your stack does
+
+Fork it. The value of chisel is not the specific rules; it is the shape of
+the tool: a deterministic checker, a skill per layer that teaches the
+pattern, and a JSON contract that points every violation at the skill that
+explains it. That shape works for any stack.
+
+The codebase is built to be extended: a new rule is one check method in a
+service plus one `describeRules()` entry, and the CLI discovers it
+automatically. See [Architecture](/chisel/concepts/architecture/) for how
+the pieces fit.
+
+Whatever you do, don't skip the idea itself. Agentic engineering needs a
+deterministic architecture signal; the only real choice is whether you
+adopt this one or build your own.
+
+---
+
+**Next:** [Architecture: the JSON contract and how the checkers are built →](/chisel/concepts/architecture/)

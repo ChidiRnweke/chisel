@@ -1,11 +1,11 @@
 ---
 title: Turn off a rule for a file
-description: Exempt files or lines from chisel rules with chisel-exceptions.toml or inline noqa — both require a reason.
+description: Exempt files or lines from chisel rules with chisel-exceptions.toml or inline noqa; both require a reason.
 ---
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
-A rule shouldn't apply to a specific file — a CLI that legitimately needs
+A rule shouldn't apply to a specific file: a CLI that legitimately needs
 stdout, an auto-generated migration, a one-off justified exception. This
 guide shows the two escape hatches: project-level file exemptions and
 inline per-line suppression. Both require a `reason`.
@@ -29,11 +29,11 @@ rules = ["*"]               # match every rule
 reason = "Auto-generated migrations; no architectural intent."
 ```
 
-- `files` — glob patterns relative to the project root.
-- `rules` — a list of rule IDs, or `*` to match every rule, or a
+- `files`: glob patterns relative to the project root.
+- `rules`: a list of rule IDs, or `*` to match every rule, or a
   category prefix like `"structural"` to match every rule in that
   category.
-- `reason` — free text, but required. Goes in the JSON output too.
+- `reason`: free text, but required. Goes in the JSON output too.
 
 The same file works for both checkers; `chisel-js` reads it the same way.
 
@@ -57,7 +57,7 @@ For a single line where the rule shouldn't apply, suppress inline.
 
 Form: `# noqa: <rule-id> — <reason>` (Python) /
 `<!-- noqa: <rule-id> — <reason> -->` (Svelte). The `—` (em dash) and
-reason are required — chisel won't accept a bare `noqa: rule-id` with no
+reason are required; chisel won't accept a bare `noqa: rule-id` with no
 justification.
 
 <Aside title="Find the rule ID first">
@@ -70,11 +70,11 @@ rules](/chisel/reference/js-rules/) reference to get the exact rule ID.
 
 | Severity | Suppressible? | How |
 | --- | --- | --- |
-| **ERROR** | No | — |
+| **ERROR** | No | n/a |
 | **WARNING** | Yes | Inline `noqa` or `chisel-exceptions.toml` |
 | **INFO** | n/a | Never blocks, so no need to suppress |
 
-Suppressions on ERROR rules are ignored — those rules are non-negotiable.
+Suppressions on ERROR rules are ignored; those rules are non-negotiable.
 If you genuinely need an ERROR rule to not apply to a file, the right fix
 is usually to change the architecture, not to silence the checker.
 
@@ -91,7 +91,7 @@ mechanism, so you can audit exemptions in CI.
 
 ## What's next
 
-- [Block violations before commit](/chisel/guides/block-violations-before-commit/)
-  — gate commits on a clean check.
-- [How chisel works](/chisel/concepts/how-it-works/) — why ERROR rules
+- [Block violations before commit](/chisel/guides/block-violations-before-commit/):
+  gate commits on a clean check.
+- [How chisel works](/chisel/concepts/how-it-works/): why ERROR rules
   can't be suppressed.

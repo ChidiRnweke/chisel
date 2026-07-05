@@ -1,56 +1,44 @@
 ---
 title: How chisel works
-description: Skills teach the pattern, the checker enforces it, the agent loops until clean. The contract underneath.
+description: The agent writes, the checker runs after, and every violation points to the skill that teaches the pattern.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
+import LoopDiagram from '../../../components/LoopDiagram.astro';
+import OneSpecDiagram from '../../../components/OneSpecDiagram.astro';
+import SeverityTiers from '../../../components/SeverityTiers.astro';
 
 Chisel is a pair of deterministic checkers and a set of agent skills that
 teach the same patterns. The two halves only make sense together.
 
 ## Roles
 
-- **Skills** (`skills/*/SKILL.md`) — structured Markdown an LLM reads to
-  learn the architectural patterns for a layer. A skill is *advice*: it
-  explains *why* and *how* a rule exists.
-- **Checker** (`chisel` / `chisel-js`) — a deterministic program that
-  finds violations of those rules in real code. The checker never reasons;
-  it just finds them.
-- **Constraints** (`constraints.md`) — the single source of truth. Both
-  checkers implement rules from it, and skills explain the same rules.
+- **Checker** (`chisel` / `chisel-js`): a deterministic program that finds
+  rule violations in real code. It never reasons; it just finds them.
+- **Skills** (`skills/*/SKILL.md`): structured Markdown an LLM reads to
+  learn the patterns for a layer. A skill is *advice*: it explains *why*
+  and *how*.
 
-The skills are opinionated. The checker is deterministic. Neither argues
-with the agent.
+<OneSpecDiagram />
 
 ## The loop
 
-1. **Agent reads a skill.**
-   An LLM coding agent reads
-   `building-python-backend/SKILL.md`, learns that services never import
-   `sqlalchemy`, and writes code accordingly.
-2. **Checker runs.**
-   `chisel check .` finds violations deterministically. No scoring, no
-   judgement — just a list.
-3. **Agent asks for fix guidance.**
-   On a violation it doesn't understand, the agent runs
-   `chisel explain <rule-id>` and reads the same fix guidance a human would.
-4. **Loop until clean.**
-   The agent applies fixes and re-runs the check. When `chisel check .`
-   exits zero, the loop ends.
+<LoopDiagram />
 
-This same loop works for a human writing code, a pre-commit hook blocking
-a commit, or CI failing a pull request. The contract is the same.
+The agent writes code. It may have read a skill first, or it may not have.
+That is the point: `chisel check .` runs *after* the code exists, and every
+violation names the skill that teaches the pattern it skipped. The agent
+gets pointed at your preferences at exactly the moment it violated them.
+It runs `chisel explain <rule-id>` for the fix, reads the skill, fixes,
+and re-checks. When the check exits zero, the loop ends.
+
+The same loop works for a human at a keyboard, a pre-commit hook blocking a
+commit, or CI failing a pull request. The contract is identical.
 
 ## What skills are
 
-Each skill is a small Markdown document (with optional `references/`)
-that explains the architectural patterns for one layer: what to import,
-what to never import, how to structure a service, how to write a test.
-An LLM agent reads a skill, absorbs the pattern, and writes code
-accordingly. The checker then verifies those same patterns
-deterministically.
-
-Chisel ships six skills:
+Each skill is a small Markdown document that explains the architectural
+patterns for one layer. Chisel ships six:
 
 | Skill | Teaches | Used by |
 | --- | --- | --- |
@@ -61,112 +49,26 @@ Chisel ships six skills:
 | `qa` | one-assert-per-test, fakes over mocks | both |
 | `planning-features` | feature planning / decomposition | both |
 
-Each rule the checker enforces is cross-referenced to the skill that
-teaches it — `chisel check . --json` embeds `skill_name` on every
-message so an agent can read the right skill next.
+Every rule is cross-referenced to the skill that teaches it:
+`chisel check . --json` embeds `skill_name` on every message so an agent
+knows what to read next.
 
 <Aside title="Why one target per run?">
-Tools like OpenCode discover skills from more than one directory. If
-Chisel wrote the same skill into both `.agents/skills/` and
-`.opencode/skills/`, the tool would surface the same skill twice. So
-Chisel asks you to choose one target format per run when installing, and
-you re-run with a different `--target` to install into the other
-directory.
+Tools like OpenCode discover skills from more than one directory. If Chisel
+wrote the same skill into both `.agents/skills/` and `.opencode/skills/`,
+the tool would surface it twice. So you pick one `--target` per run, and
+re-run to install into another directory.
 </Aside>
 
 ## Severity tiers
 
-Every rule has a severity.
-
-| Severity | Blocks? | Suppressible? | What it catches |
-| --- | --- | --- | --- |
-| **ERROR** | Yes | No | Always a real bug or architectural violation. |
-| **WARNING** | Yes | Yes, with a `reason` comment | Strong convention you can opt out of with justification. |
-| **INFO** | No | — | Logged for awareness, never blocks. |
+<SeverityTiers />
 
 Suppression is per-line: `# noqa: rule-id — reason` (Python) or
 `<!-- noqa: rule-id — reason -->` (Svelte). See
 [Turn off a rule for a file](/chisel/guides/suppress-a-rule/) for
 project-level exemptions too.
 
-## The JSON contract
+---
 
-`chisel check . --json` and `chisel-js check . --json` are designed for
-agent and CI consumption. Two things make them pleasant to consume:
-
-1. **Deduplicated messages.** Repeated messages across many files are
-   stored once in a top-level `messages` array. Each violation references
-   its message by `message_ref` (Python) / `messageRef` (TypeScript).
-2. **Skill cross-reference.** Each message carries `skill_name` /
-   `skillName` — the bundled skill that teaches the pattern being
-   violated. An agent can read that skill next if it needs more context.
-
-<Aside title="Why dedup?">
-A single bad pattern (e.g. `console.log` left in 30 files) should produce
-one message on the agent's radar, not 30. The agent reads the fix
-guidance once, applies it broadly, and re-checks.
-</Aside>
-
-See the [Commands reference](/chisel/reference/commands/#json-output-shape)
-for the full JSON shape.
-
-## What gets checked
-
-- **Import boundaries** — layers only import what they're allowed to.
-  Services don't import SQLAlchemy. Routes don't import services directly.
-  ORM types stay in repositories.
-- **Structural invariants** — `getattr`/`setattr` banned. `isinstance`
-  requires `match/case`. Logger is module-level. Dataclasses use
-  `slots=True`. `try/except` banned in route handlers.
-- **Component enforcement** (JS) — raw HTML elements must use shadcn
-  replacements. 23+ rules cover every banned HTML tag.
-- **Colour enforcement** (JS) — arbitrary Tailwind values banned. Dynamic
-  class construction flagged. Modifier classes on semantic HTML blocked.
-- **`$effect` / `onMount`** (JS) — `$effect` without cleanup flagged.
-  Writing `$state` from `data` recommends `$derived`. `onMount` must
-  reference a browser API.
-- **Complexity** — controller method ≤ 30 LoC (Python) / ≤ 40 (JS).
-  Route handler ≤ 20 LoC. Page ≤ 100 LoC.
-- **Testing** — one assert per test. Mocking libraries banned. Test names
-  must describe invariants.
-- **Project structure** — `pyproject.toml` only (no `setup.py`).
-  `pnpm` only (no `npm`/`yarn`). Env files separate backend from frontend
-  secrets.
-- **Concurrency** — `asyncio.gather` banned (Python). `Promise.all` in
-  loaders warned (JS).
-- **Error flow** — raw HTTP status codes never leak past error handlers.
-
-See the full rule reference: [Python rules](/chisel/reference/python-rules/)
-· [TypeScript rules](/chisel/reference/js-rules/).
-
-## Self-validating
-
-Both checkers enforce their own rules on their own source code. CI runs:
-
-```bash
-chisel check . --strict      # Python checker checks itself
-chisel-js check .            # TypeScript checker checks itself
-```
-
-Both are expected to produce zero violations. If a rule slips past the
-checker in its own repo, CI fails. This keeps the constraint spec and the
-implementation honest.
-
-## Adding a rule
-
-A new rule is one check method in a service plus one `describeRules()`
-entry. The CLI commands (`rules`, `explain`, `check --json`) discover it
-automatically and attach the relevant bundled skill name. Both checkers
-share the same layered architecture:
-
-```
-models/         Pure data — Violation, Severity, FileInfo, ProjectInfo
-services/       One service per rule category. Self-describing via describeRules()
-repositories/   File discovery, import graph analysis
-controllers/    Orchestrates services, filters exceptions, applies noqa
-factory.py      Zero-logic DI — wires all services into the controller
-cli/            Thin entry point — argparse/commander → factory → controller → reporter
-```
-
-Because both checkers are shaped the same way, the constraint spec maps
-1:1 onto services in each.
+**Next:** [Where this fits in agentic engineering →](/chisel/concepts/agentic-engineering/)

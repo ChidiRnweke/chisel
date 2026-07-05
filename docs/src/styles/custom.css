@@ -1,10 +1,89 @@
+/* Amber accent: dark theme values on :root, light theme overridden below. */
 :root {
-  --sl-color-accent: #f59e0b;
   --sl-color-accent-low: #3a2a05;
+  --sl-color-accent: #f59e0b;
   --sl-color-accent-high: #fde68a;
 }
 
-/* Use Solarized-ish amber accent on links/code */
+:root[data-theme='light'] {
+  --sl-color-accent-low: #fef3c7;
+  --sl-color-accent: #b45309;
+  --sl-color-accent-high: #78350f;
+}
+
 a:hover {
   text-decoration-thickness: 2px;
+}
+
+/* Diagrams */
+.chisel-diagram {
+  margin: 1.5rem auto;
+  max-width: 42rem;
+}
+
+.chisel-diagram figcaption {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+}
+
+/* Hero loop diagram: give it more room than Starlight's default image cap */
+.hero > .hero-html {
+  width: min(100%, 26rem);
+  margin-inline: auto;
+}
+
+/* Numbered journey on the homepage */
+ol.journey {
+  list-style: none;
+  counter-reset: journey;
+  display: flex;
+  gap: 1.25rem;
+  padding: 0;
+  margin-top: 1.5rem;
+}
+
+ol.journey > li {
+  counter-increment: journey;
+  flex: 1;
+  margin: 0;
+  padding: 1rem 1.25rem 1.25rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.75rem;
+  background: var(--sl-color-gray-6);
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+}
+
+ol.journey > li::before {
+  content: counter(journey);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: 0.75rem;
+  border-radius: 50%;
+  background: var(--sl-color-accent);
+  color: var(--sl-color-black);
+  font-weight: 700;
+}
+
+ol.journey li a:first-child {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: var(--sl-text-base);
+  text-decoration: none;
+  color: var(--sl-color-white);
+}
+
+ol.journey li a:hover strong {
+  color: var(--sl-color-accent-high);
+}
+
+@media (max-width: 50rem) {
+  ol.journey {
+    flex-direction: column;
+  }
 }

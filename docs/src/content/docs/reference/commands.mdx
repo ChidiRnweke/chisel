@@ -74,7 +74,7 @@ category.
 | Argument | Description |
 | --- | --- |
 | `<rule-id>` | e.g. `structural:isinstance-banned` |
-| `<category>` | e.g. `structural` — expands to every rule in that category |
+| `<category>` | e.g. `structural`: expands to every rule in that category |
 
 | Option | `chisel` | `chisel-js` |
 | --- | --- | --- |
@@ -114,12 +114,12 @@ chisel setup --target claude --skill qa --skill building-python-backend
 chisel setup --target opencode --dry-run --json
 ```
 
-The TypeScript CLI uses `update skills` for the same job — see below.
+The TypeScript CLI uses `update skills` for the same job; see below.
 
 ## `update skills`
 
 Overwrite installed skills with bundled copies. Same flags on both CLIs
-except `--overwrite` (Python only — `update skills` always overwrites).
+except `--overwrite` (Python only; `update skills` always overwrites).
 
 | Option | `chisel` | `chisel-js` |
 | --- | --- | --- |

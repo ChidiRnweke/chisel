@@ -1,0 +1,55 @@
+---
+// The chisel loop: the agent writes, the check runs after, violations point to the skill.
+---
+
+<figure class="chisel-diagram">
+  <svg viewBox="0 0 720 300" role="img" aria-label="The chisel loop: the agent writes code, chisel check runs after and finds violations deterministically, every violation names the skill that teaches the pattern, and the agent reads it, fixes, and retries until the check exits clean.">
+    <defs>
+      <marker id="loop-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 Z" fill="var(--sl-color-gray-3)" />
+      </marker>
+      <marker id="loop-arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 Z" fill="var(--sl-color-green)" />
+      </marker>
+    </defs>
+
+    <!-- Agent -->
+    <rect x="40" y="30" width="200" height="64" rx="10" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-gray-4)" />
+    <text x="140" y="57" text-anchor="middle" font-size="17" fill="var(--sl-color-white)">AI agent</text>
+    <text x="140" y="78" text-anchor="middle" font-size="13" fill="var(--sl-color-gray-2)">writes code</text>
+
+    <!-- chisel check -->
+    <rect x="420" y="30" width="200" height="64" rx="10" fill="var(--sl-color-accent-low)" stroke="var(--sl-color-accent)" />
+    <text x="520" y="57" text-anchor="middle" font-size="17" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-white)">chisel check .</text>
+    <text x="520" y="78" text-anchor="middle" font-size="13" fill="var(--sl-color-gray-2)">runs after, deterministically</text>
+
+    <!-- chisel explain -->
+    <rect x="420" y="200" width="200" height="64" rx="10" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-gray-4)" />
+    <text x="520" y="227" text-anchor="middle" font-size="14.5" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-white)">chisel explain &lt;rule&gt;</text>
+    <text x="520" y="248" text-anchor="middle" font-size="13" fill="var(--sl-color-gray-2)">fix guidance, in context</text>
+
+    <!-- SKILL.md -->
+    <rect x="40" y="200" width="200" height="64" rx="10" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-gray-4)" />
+    <text x="140" y="227" text-anchor="middle" font-size="17" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-white)">SKILL.md</text>
+    <text x="140" y="248" text-anchor="middle" font-size="13" fill="var(--sl-color-gray-2)">the pattern it skipped</text>
+
+    <!-- edges -->
+    <line x1="248" y1="62" x2="410" y2="62" stroke="var(--sl-color-gray-3)" stroke-width="2" marker-end="url(#loop-arrow)" />
+    <text x="330" y="50" text-anchor="middle" font-size="13" fill="var(--sl-color-gray-2)">code</text>
+
+    <line x1="520" y1="102" x2="520" y2="190" stroke="var(--sl-color-gray-3)" stroke-width="2" marker-end="url(#loop-arrow)" />
+    <text x="532" y="142" font-size="13" fill="var(--sl-color-gray-2)">violations</text>
+    <text x="532" y="158" font-size="13" fill="var(--sl-color-gray-2)">name the skill</text>
+
+    <line x1="412" y1="232" x2="248" y2="232" stroke="var(--sl-color-gray-3)" stroke-width="2" marker-end="url(#loop-arrow)" />
+    <text x="330" y="220" text-anchor="middle" font-size="13" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-gray-2)">skill_name</text>
+
+    <line x1="140" y1="192" x2="140" y2="104" stroke="var(--sl-color-gray-3)" stroke-width="2" marker-end="url(#loop-arrow)" />
+    <text x="128" y="152" text-anchor="end" font-size="13" fill="var(--sl-color-gray-2)">read, fix, retry</text>
+
+    <!-- clean exit -->
+    <line x1="628" y1="62" x2="678" y2="62" stroke="var(--sl-color-green)" stroke-width="2" marker-end="url(#loop-arrow-green)" />
+    <text x="653" y="90" text-anchor="middle" font-size="13" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-green)">exit 0</text>
+    <text x="653" y="106" text-anchor="middle" font-size="13" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-green)">clean</text>
+  </svg>
+</figure>

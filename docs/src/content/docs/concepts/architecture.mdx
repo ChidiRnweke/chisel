@@ -1,0 +1,64 @@
+---
+title: Architecture
+description: The JSON contract agents consume, how the checkers validate themselves, and the layered shape a new rule slots into.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import LayersDiagram from '../../../components/LayersDiagram.astro';
+
+## The JSON contract
+
+`chisel check . --json` and `chisel-js check . --json` are designed for
+agent and CI consumption. Two things make them pleasant to consume:
+
+1. **Deduplicated messages.** Repeated messages across many files are
+   stored once in a top-level `messages` array. Each violation references
+   its message by `message_ref` (Python) / `messageRef` (TypeScript).
+2. **Skill cross-reference.** Each message carries `skill_name` /
+   `skillName`: the bundled skill that teaches the pattern being
+   violated. An agent can read that skill next if it needs more context.
+
+<Aside title="Why dedup?">
+A single bad pattern (e.g. `console.log` left in 30 files) should produce
+one message on the agent's radar, not 30. The agent reads the fix guidance
+once, applies it broadly, and re-checks.
+</Aside>
+
+See the [Commands reference](/chisel/reference/commands/#json-output-shape)
+for the full JSON shape.
+
+## The layered shape
+
+Both checkers share the same layered architecture, the very architecture
+they enforce on your code:
+
+<LayersDiagram />
+
+For everything the rules cover, see the
+[Python rules](/chisel/reference/python-rules/) and
+[TypeScript rules](/chisel/reference/js-rules/) references.
+
+## Self-validating
+
+Both checkers enforce their own rules on their own source code. CI runs:
+
+```bash
+chisel check . --strict      # Python checker checks itself
+chisel-js check .            # TypeScript checker checks itself
+```
+
+Both are expected to produce zero violations. If a rule slips past the
+checker in its own repo, CI fails. This keeps the rulebook and the
+implementation honest.
+
+## Adding a rule
+
+A new rule is one check method in a service plus one `describeRules()`
+entry. The CLI commands (`rules`, `explain`, `check --json`) discover it
+automatically and attach the relevant bundled skill name. Because both
+checkers are shaped the same way, the rulebook maps 1:1 onto services in
+each.
+
+---
+
+**Next:** [Give your AI agent the rules →](/chisel/guides/install-agent-skills/)

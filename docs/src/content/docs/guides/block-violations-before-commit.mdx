@@ -21,7 +21,7 @@ pre-commit install
 ## Add the hook config
 
 Drop this at the repo root as `.pre-commit-config.yaml`. Adjust the
-`files:` filters to match where your code lives — `chisel_py` /
+`files:` filters to match where your code lives: `chisel_py` /
 `chisel_js` below are chisel's own monorepo dirs, rename them to your
 project.
 
@@ -47,7 +47,7 @@ repos:
         pass_filenames: false
 ```
 
-Use one hook or both depending on your stack — a pure-FastAPI repo only
+Use one hook or both depending on your stack: a pure-FastAPI repo only
 needs `chisel-py`; a pure-SvelteKit repo only needs `chisel-js`.
 
 ## Install the CLIs the hooks call
@@ -71,7 +71,7 @@ determinism honest.
 
 ## What's next
 
-- [Run chisel in GitHub Actions](/chisel/guides/run-in-github-actions/) —
+- [Run chisel in GitHub Actions](/chisel/guides/run-in-github-actions/):
   gate pull requests on the same check.
-- [Turn off a rule for a file](/chisel/guides/suppress-a-rule/) — when a
+- [Turn off a rule for a file](/chisel/guides/suppress-a-rule/): when a
   hook failure is a justified exception.

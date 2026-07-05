@@ -28,7 +28,7 @@ Point `chisel-js check` at your project root. Default path is `.`.
 chisel-js check ./your-frontend
 ```
 
-Non-zero exit on any ERROR-level violation — that's what makes it safe to
+Non-zero exit on any ERROR-level violation. That's what makes it safe to
 gate commits and CI on.
 
 <Aside title="No --strict flag">
@@ -46,17 +46,17 @@ names the file, line, rule ID, and a short message.
 chisel-js check ./your-frontend
 ```
 
-For scripts, agents, or CI, ask for JSON — see
+For scripts, agents, or CI, ask for JSON; see
 [Understand a violation](/chisel/guides/understand-a-violation/) for how
 to read the deduplicated `--json` output.
 
 ## What's next
 
-- [Understand a violation](/chisel/guides/understand-a-violation/) — read
+- [Understand a violation](/chisel/guides/understand-a-violation/): read
   a rule's description and fix guidance with `chisel-js explain`.
-- [Turn off a rule for a file](/chisel/guides/suppress-a-rule/) — exempt
+- [Turn off a rule for a file](/chisel/guides/suppress-a-rule/): exempt
   legacy files or justified exceptions.
-- [Block violations before commit](/chisel/guides/block-violations-before-commit/)
-  — wire `chisel-js` into a pre-commit hook.
-- [TypeScript rules reference](/chisel/reference/js-rules/) — every rule,
+- [Block violations before commit](/chisel/guides/block-violations-before-commit/):
+  wire `chisel-js` into a pre-commit hook.
+- [TypeScript rules reference](/chisel/reference/js-rules/): every rule,
   grouped by category.

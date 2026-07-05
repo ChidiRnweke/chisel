@@ -6,14 +6,14 @@ description: Install chisel's bundled agent skills so your coding agent learns t
 import { Tabs, TabItem, Steps, Aside } from '@astrojs/starlight/components';
 
 You want your AI coding agent (Codex, Claude Code, OpenCode) to know the
-patterns chisel enforces — before it writes code, not after. This guide
+patterns chisel enforces before it writes code. Even if it skips them, the checker names the right skill after the fact; installing them saves the round trip. This guide
 installs the bundled agent skills into your repo so the agent reads them
 and writes code that already matches the rules.
 
 ## Pick a target
 
 Skills install into a different directory depending on which agent
-tooling you use. One target per run — chisel won't install two targets
+tooling you use. One target per run: chisel won't install two targets
 at once to avoid duplicate skill discovery in tools like OpenCode.
 
 | `--target` | Where it installs | For |
@@ -66,7 +66,7 @@ destination from a prompt.
 
 ## Preview without writing
 
-Use `--dry-run --json` to see what would change before committing to it —
+Use `--dry-run --json` to see what would change before committing to it;
 useful in automation.
 
 ```bash
@@ -82,9 +82,6 @@ choose one format per run, and re-run with a different `--target` to
 install into the other directory.
 </Aside>
 
-## What's next
+---
 
-- [Upgrade chisel and refresh skills](/chisel/guides/upgrade-chisel/) —
-  keep installed skills in sync with the checker version.
-- [How chisel works](/chisel/concepts/how-it-works/) — what the six
-  bundled skills teach and how rules cross-reference them.
+**Next:** [Block violations before commit →](/chisel/guides/block-violations-before-commit/)

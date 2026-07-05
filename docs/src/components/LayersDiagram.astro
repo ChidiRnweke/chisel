@@ -1,0 +1,60 @@
+---
+// Shared layered architecture of both checkers, with one allowed and one banned import made visual.
+---
+
+<figure class="chisel-diagram">
+  <svg viewBox="0 0 680 420" role="img" aria-label="Layered architecture: cli calls controllers, controllers call services, services call repositories, repositories use models. Services importing sqlalchemy is banned; repositories importing sqlalchemy is allowed.">
+    <defs>
+      <marker id="layer-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 Z" fill="var(--sl-color-gray-3)" />
+      </marker>
+      <marker id="layer-arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 Z" fill="var(--sl-color-red)" />
+      </marker>
+      <marker id="layer-arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 Z" fill="var(--sl-color-green)" />
+      </marker>
+    </defs>
+
+    <!-- layer stack -->
+    <rect x="120" y="16" width="300" height="56" rx="9" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-gray-4)" />
+    <text x="270" y="40" text-anchor="middle" font-size="16" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-white)">cli/</text>
+    <text x="270" y="60" text-anchor="middle" font-size="12.5" fill="var(--sl-color-gray-2)">thin entry point → factory → controller</text>
+
+    <line x1="270" y1="72" x2="270" y2="96" stroke="var(--sl-color-gray-3)" stroke-width="2" marker-end="url(#layer-arrow)" />
+
+    <rect x="120" y="100" width="300" height="56" rx="9" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-gray-4)" />
+    <text x="270" y="124" text-anchor="middle" font-size="16" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-white)">controllers/</text>
+    <text x="270" y="144" text-anchor="middle" font-size="12.5" fill="var(--sl-color-gray-2)">orchestrate services · apply noqa</text>
+
+    <line x1="270" y1="156" x2="270" y2="180" stroke="var(--sl-color-gray-3)" stroke-width="2" marker-end="url(#layer-arrow)" />
+
+    <rect x="120" y="184" width="300" height="56" rx="9" fill="var(--sl-color-accent-low)" stroke="var(--sl-color-accent)" />
+    <text x="270" y="208" text-anchor="middle" font-size="16" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-white)">services/</text>
+    <text x="270" y="228" text-anchor="middle" font-size="12.5" fill="var(--sl-color-gray-2)">one service per rule category</text>
+
+    <line x1="270" y1="240" x2="270" y2="264" stroke="var(--sl-color-gray-3)" stroke-width="2" marker-end="url(#layer-arrow)" />
+
+    <rect x="120" y="268" width="300" height="56" rx="9" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-gray-4)" />
+    <text x="270" y="292" text-anchor="middle" font-size="16" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-white)">repositories/</text>
+    <text x="270" y="312" text-anchor="middle" font-size="12.5" fill="var(--sl-color-gray-2)">file discovery · import graph</text>
+
+    <line x1="270" y1="324" x2="270" y2="348" stroke="var(--sl-color-gray-3)" stroke-width="2" marker-end="url(#layer-arrow)" />
+
+    <rect x="120" y="352" width="300" height="56" rx="9" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-gray-4)" />
+    <text x="270" y="376" text-anchor="middle" font-size="16" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-white)">models/</text>
+    <text x="270" y="396" text-anchor="middle" font-size="12.5" fill="var(--sl-color-gray-2)">pure data: Violation, Severity, FileInfo</text>
+
+    <!-- the ORM, off to the side -->
+    <rect x="490" y="226" width="160" height="56" rx="9" fill="none" stroke="var(--sl-color-gray-4)" stroke-dasharray="6 5" />
+    <text x="570" y="250" text-anchor="middle" font-size="15" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-gray-2)">sqlalchemy</text>
+    <text x="570" y="270" text-anchor="middle" font-size="12.5" fill="var(--sl-color-gray-2)">the ORM</text>
+
+    <line x1="426" y1="212" x2="500" y2="240" stroke="var(--sl-color-red)" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#layer-arrow-red)" />
+    <text x="470" y="208" text-anchor="middle" font-size="13" font-weight="700" fill="var(--sl-color-red)">✗ banned</text>
+
+    <line x1="426" y1="296" x2="500" y2="268" stroke="var(--sl-color-green)" stroke-width="2" marker-end="url(#layer-arrow-green)" />
+    <text x="472" y="308" text-anchor="middle" font-size="13" font-weight="700" fill="var(--sl-color-green)">✓ allowed</text>
+  </svg>
+  <figcaption>Both checkers share this layered shape and enforce the same shape on your code. Import boundaries like “services never import the ORM” are rules, not conventions.</figcaption>
+</figure>

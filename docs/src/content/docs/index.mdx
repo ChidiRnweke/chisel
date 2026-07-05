@@ -1,76 +1,125 @@
 ---
 title: Chisel
-description: Agent writes. Chisel carves. Deterministic architecture constraints that pair with agent skills.
+description: Agent writes. Chisel carves. Deterministic architecture checks, a fix for every violation.
 template: splash
 hero:
-  tagline: Agent writes. Chisel carves.
+  tagline: Your AI agent writes the code. Chisel enforces the architecture. Deterministic checks, a fix for every violation.
+  image:
+    html: |
+      <svg viewBox="0 0 440 275" role="img" aria-label="The chisel loop: the agent writes code, chisel check runs after and finds violations, every violation names the skill that teaches the pattern, and the agent reads it, fixes, and retries until the check exits clean." style="width:100%;max-width:26rem;">
+        <defs>
+          <marker id="ha" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 Z" fill="var(--sl-color-gray-3)"/>
+          </marker>
+          <marker id="hg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 Z" fill="var(--sl-color-green)"/>
+          </marker>
+        </defs>
+        <rect x="100" y="10" width="240" height="56" rx="10" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-gray-4)"/>
+        <text x="220" y="34" text-anchor="middle" font-size="16" fill="var(--sl-color-white)">AI agent</text>
+        <text x="220" y="54" text-anchor="middle" font-size="12.5" fill="var(--sl-color-gray-2)">writes code</text>
+        <line x1="220" y1="66" x2="220" y2="98" stroke="var(--sl-color-gray-3)" stroke-width="2" marker-end="url(#ha)"/>
+        <text x="230" y="87" font-size="12.5" fill="var(--sl-color-gray-2)">code</text>
+        <rect x="100" y="104" width="240" height="56" rx="10" fill="var(--sl-color-accent-low)" stroke="var(--sl-color-accent)"/>
+        <text x="220" y="128" text-anchor="middle" font-size="16" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-white)">chisel check .</text>
+        <text x="220" y="148" text-anchor="middle" font-size="12.5" fill="var(--sl-color-gray-2)">runs after, deterministically</text>
+        <line x1="340" y1="132" x2="376" y2="132" stroke="var(--sl-color-green)" stroke-width="2" marker-end="url(#hg)"/>
+        <text x="384" y="128" font-size="12" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-green)">exit 0</text>
+        <text x="384" y="144" font-size="12" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-green)">clean</text>
+        <line x1="220" y1="160" x2="220" y2="192" stroke="var(--sl-color-gray-3)" stroke-width="2" marker-end="url(#ha)"/>
+        <text x="230" y="181" font-size="12.5" fill="var(--sl-color-gray-2)">violations name the skill</text>
+        <rect x="100" y="198" width="240" height="56" rx="10" fill="var(--sl-color-gray-6)" stroke="var(--sl-color-gray-4)"/>
+        <text x="220" y="222" text-anchor="middle" font-size="14.5" font-family="var(--sl-font-system-mono, monospace)" fill="var(--sl-color-white)">SKILL.md · chisel explain</text>
+        <text x="220" y="242" text-anchor="middle" font-size="12.5" fill="var(--sl-color-gray-2)">the pattern it skipped</text>
+        <path d="M100 226 H52 V38 H92" fill="none" stroke="var(--sl-color-gray-3)" stroke-width="2" marker-end="url(#ha)"/>
+        <text x="44" y="140" text-anchor="middle" font-size="12.5" fill="var(--sl-color-gray-2)" transform="rotate(-90 44 140)">read · fix · retry</text>
+      </svg>
   actions:
-    - text: Quick start
+    - text: Quick start in 5 minutes
       link: /chisel/quick-start/
       variant: primary
-    - text: How it works
+    - text: See how it works
       link: /chisel/concepts/how-it-works/
+      variant: minimal
 ---
 
-import { Badge } from '@astrojs/starlight/components';
+import { Card, CardGrid } from '@astrojs/starlight/components';
 
-**Skills teach the pattern. The checker enforces it. Deterministic, not vibes.**
+**The agent writes. Chisel checks. Every violation points to the skill that teaches the pattern.**
 
-Chisel carves structure into the code your AI agent writes. Your agent
-reads a skill that teaches the right pattern, writes code, and the checker
-enforces that pattern deterministically — no scoring, no judgement, just a
-list of violations and the fix for each. Run it as a pre-commit hook to
-block violations before they land, or interactively to steer an agent
-while it works.
+<CardGrid>
+  <Card title="Deterministic, not vibes" icon="approve-check">
+    No scoring, no LLM judge. `chisel check .` returns the same violations
+    every run, each with its fix. An agent can't argue with it, and
+    neither can a flaky reviewer.
+  </Card>
+  <Card title="Skills read when they matter" icon="open-book">
+    You don't have to hope the agent reads your docs up front. The check
+    runs after the code is written, and every violation names the bundled
+    skill that teaches the pattern it skipped.
+  </Card>
+  <Card title="One rulebook, both stacks" icon="puzzle">
+    `chisel` for Python backends, `chisel-js` for TypeScript frontends.
+    Same rule shape, same JSON output, same architectural intent.
+  </Card>
+</CardGrid>
 
-| Package | Language | Target | Command |
-| --- | --- | --- | --- |
-| `chisel` <Badge text="Python" variant="note" /> | Python | FastAPI backends | `chisel check .` |
-| `chisel-js` <Badge text="TypeScript" variant="note" /> | TypeScript | SvelteKit frontends | `chisel-js check .` |
-
-Both checkers read from a single source of truth: [`constraints.md`][spec]
-at the repo root. One spec, two implementations — so your backend and
-frontend enforce the same architectural intent.
-
-[spec]: /chisel/reference/constraints/
-
-## The loop
-
-```
-skills/                        ← teaches the pattern (LLM-readable Markdown)
-  building-python-backend/SKILL.md
-  building-sveltekit-frontend/SKILL.md
-  designing-svelte-ui/SKILL.md
-  qa/SKILL.md
-
-chisel check .                  ← enforces every rule deterministically
-chisel explain <rule-id>        ← fix guidance the agent reads in context
-```
-
-1. An agent reads `building-python-backend/SKILL.md` and learns that
-   services never import `sqlalchemy`.
-2. It writes code. The checker catches it deterministically if the rule
-   was violated.
-3. The agent runs `chisel explain import-boundary:banned-module` for fix
-   guidance in context, and loops until clean.
-
-The skills are opinionated. The checker is deterministic. Neither argues.
+<CardGrid>
+  <Card title="chisel" icon="seti:python">
+    Python · FastAPI backends
+    ```sh
+    pip install chisel
+    chisel check .
+    ```
+  </Card>
+  <Card title="chisel-js" icon="seti:typescript">
+    TypeScript · SvelteKit frontends
+    ```sh
+    npm install -g chisel-js
+    chisel-js check .
+    ```
+  </Card>
+</CardGrid>
 
 ## What it catches
 
-- **Import boundaries** — services don't import SQLAlchemy, routes don't
-  import services directly, ORM types stay in repositories.
-- **Structural invariants** — `getattr`/`setattr` banned, `isinstance`
-  requires `match/case`, logger is module-level, dataclasses use
-  `slots=True`.
-- **Component & colour enforcement** (JS) — raw HTML elements must use
-  shadcn replacements, arbitrary Tailwind values banned, dynamic class
-  construction flagged.
+<CardGrid>
+  <Card title="Import boundaries">
+    `services` never import `sqlalchemy`. ORM types stay in repositories.
+  </Card>
+  <Card title="Structural invariants">
+    `getattr`/`setattr` banned, dataclasses use `slots=True`.
+  </Card>
+  <Card title="Component & colour rules">
+    Raw HTML tags must use shadcn replacements, arbitrary Tailwind values banned.
+  </Card>
+  <Card title="Reactivity rules">
+    `$effect` without cleanup flagged, `onMount` must touch a browser API.
+  </Card>
+  <Card title="Complexity limits">
+    Route handler ≤ 20 LoC, page ≤ 100 LoC.
+  </Card>
+  <Card title="Testing discipline">
+    One assert per test, mocking libraries banned.
+  </Card>
+</CardGrid>
 
-Plus complexity, testing, project structure, concurrency, and error-flow
-rules. See the full list: [Python rules](/chisel/reference/python-rules/) ·
-[TypeScript rules](/chisel/reference/js-rules/).
+~55 rules in total: [Python rules](/chisel/reference/python-rules/) ·
+[TypeScript rules](/chisel/reference/js-rules/)
 
----
+## Your path
 
-Get a passing check in five minutes → [**Quick start**](/chisel/quick-start/)
+<ol class="journey">
+  <li>
+    <a href="/chisel/quick-start/"><strong>Get a passing check</strong></a>
+    Install a checker and go from violations to <code>exit 0</code> in five minutes.
+  </li>
+  <li>
+    <a href="/chisel/concepts/how-it-works/"><strong>Understand the loop</strong></a>
+    The checker, the skills, and the severities in one page.
+  </li>
+  <li>
+    <a href="/chisel/guides/install-agent-skills/"><strong>Put it in your agent's loop</strong></a>
+    Install the skills and block violations <a href="/chisel/guides/block-violations-before-commit/">before they land</a>.
+  </li>
+</ol>

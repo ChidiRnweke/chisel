@@ -2,7 +2,7 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
-// Chisel docs — https://chidirnweke.github.io/chisel
+// Chisel docs: https://chidirnweke.github.io/chisel
 const REPO = 'https://github.com/ChidiRnweke/chisel';
 
 export default defineConfig({
@@ -16,7 +16,7 @@ export default defineConfig({
 				replacesTitle: false,
 			},
 			description:
-				'Deterministic architecture constraint checkers that pair with agent skills. The skills teach the pattern — the checker enforces it.',
+				'Deterministic architecture checkers that pair with agent skills. The agent writes, chisel checks, and every violation points to the skill that teaches the pattern.',
 			social: [
 				{ icon: 'github', label: 'GitHub', href: REPO },
 			],
@@ -29,33 +29,35 @@ export default defineConfig({
 			customCss: ['./src/styles/custom.css'],
 			sidebar: [
 				{
-					label: 'Start',
+					label: 'Start here',
 					items: [
-						{ label: 'Chisel', slug: 'index' },
 						{ label: 'Quick start', slug: 'quick-start' },
 					],
 				},
 				{
-					label: 'Concepts',
+					label: 'Understand',
 					items: [
 						{ label: 'How chisel works', slug: 'concepts/how-it-works' },
+						{ label: 'Agentic engineering', slug: 'concepts/agentic-engineering' },
+						{ label: 'Should you use chisel?', slug: 'concepts/should-you-use-chisel' },
+						{ label: 'Architecture', slug: 'concepts/architecture' },
 					],
 				},
 				{
-					label: 'Guides',
+					label: 'Do',
 					items: [
 						{ label: 'Check a FastAPI backend', slug: 'guides/check-fastapi' },
 						{ label: 'Check a SvelteKit frontend', slug: 'guides/check-sveltekit' },
+						{ label: 'Give your AI agent the rules', slug: 'guides/install-agent-skills' },
 						{ label: 'Understand a violation', slug: 'guides/understand-a-violation' },
 						{ label: 'Turn off a rule for a file', slug: 'guides/suppress-a-rule' },
 						{ label: 'Block violations before commit', slug: 'guides/block-violations-before-commit' },
 						{ label: 'Run chisel in GitHub Actions', slug: 'guides/run-in-github-actions' },
-						{ label: 'Give your AI agent the rules', slug: 'guides/install-agent-skills' },
 						{ label: 'Upgrade chisel and refresh skills', slug: 'guides/upgrade-chisel' },
 					],
 				},
 				{
-					label: 'Reference',
+					label: 'Look up',
 					items: [
 						{ label: 'Commands', slug: 'reference/commands' },
 						{ label: 'Constraints spec', slug: 'reference/constraints' },

@@ -1,0 +1,73 @@
+---
+title: Agentic engineering
+description: Agents thrive on automatic success signals. Chisel turns architecture into one.
+---
+
+import LoopDiagram from '../../../components/LoopDiagram.astro';
+
+Andrej Karpathy describes the shift happening in software as a move from
+vibe coding to [agentic engineering](https://karpathy.bearblog.dev/sequoia-ascent-2026/):
+vibe coding raises the floor, letting anyone produce software, while
+agentic engineering raises the ceiling. It is an engineering discipline
+where you coordinate agents that are "spiky, fallible and stochastic", but
+extremely powerful, without sacrificing your quality bar.
+
+## Agents need success signals
+
+Karpathy's observation: agents do best in environments with automatic
+reward signals, where "tests pass or fail, programs run or crash, diffs
+can be inspected."
+
+Correctness has such a signal (tests). Interfaces have one (types).
+Architecture usually has neither. It lives in review comments, tribal
+knowledge, and taste. An agent that puts ORM queries in a service or ships
+a 400-line page component doesn't crash anything. It just quietly makes
+the codebase worse, and nobody tells it until a human reads the diff.
+
+## Chisel makes architecture a signal
+
+`chisel check .` gives architecture the same shape as a failing test:
+deterministic pass or fail, a list of violations, and a fix for each. It
+becomes part of the automatic reward signal an agent can loop against, in
+the terminal, in a pre-commit hook, or in CI.
+
+<LoopDiagram />
+
+The order matters. You don't have to hope the agent read your conventions
+before writing code. The check runs *after* the code exists, and every
+violation names the skill that teaches the pattern it skipped. The agent is
+pointed at the rule at exactly the moment it broke it, then fixes and
+re-checks.
+
+## Why chisel is so opinionated
+
+Writing code has become cheap. Reading it and evolving it have not. When
+an agent produces most of the diff, comprehension becomes the bottleneck:
+the code has to stay in a shape that a human, or the next agent, can pick
+up and extend. A tool that enforces that shape deterministically can't hedge,
+so chisel is forced to be highly opinionated.
+
+The architecture it enforces is chosen for exactly that: strong cohesion
+inside controllers, low coupling between services, statelessness and
+immutability by default. Services that don't reach into each other can be
+changed, tested, and reasoned about in isolation, which makes the codebase
+an ideal candidate for building feature after feature without seizing up.
+None of this is new. These were good ways to build software before agents
+existed. Agents just don't do any of it by default, which is why it has to
+be checked rather than hoped for.
+
+## What stays yours
+
+Karpathy's list of skills that stay human: spec design, eval loops, and
+oversight. Chisel doesn't change that. You still own the spec, the product
+judgment, and the quality bar. What chisel contributes is one narrow,
+automated slice of review: checking, every single time, that the code fits
+its architecture.
+
+To be clear about the trade: the rules are chisel's, not yours. It ships
+one opinionated architecture and enforces it as-is. Whether that is the
+right deal for your project is the next page.
+
+---
+
+**Next:** [Should you use chisel? →](/chisel/concepts/should-you-use-chisel/)

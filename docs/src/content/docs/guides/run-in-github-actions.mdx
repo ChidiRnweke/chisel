@@ -5,7 +5,7 @@ description: Gate pull requests on a clean chisel check in GitHub Actions CI.
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
-You want pull requests to fail when chisel finds violations — the same
+You want pull requests to fail when chisel finds violations: the same
 contract as the local pre-commit hook, applied remotely. This guide adds
 a CI job that runs the check on every PR.
 
@@ -40,7 +40,7 @@ For a SvelteKit frontend:
       - run: chisel-js check ./your-frontend
 ```
 
-CI runs the checker the same way a human does — no special mode — so the
+CI runs the checker the same way a human does, no special mode, so the
 behaviour you see locally is exactly what blocks a pull request.
 
 ## Capture the JSON report for agents
@@ -60,7 +60,7 @@ The JSON shape is documented in
 
 ## What's next
 
-- [Block violations before commit](/chisel/guides/block-violations-before-commit/)
-  — the local hook that catches violations before they reach CI.
-- [Commands reference](/chisel/reference/commands/) — every flag, side by
+- [Block violations before commit](/chisel/guides/block-violations-before-commit/):
+  the local hook that catches violations before they reach CI.
+- [Commands reference](/chisel/reference/commands/): every flag, side by
   side for both CLIs.
