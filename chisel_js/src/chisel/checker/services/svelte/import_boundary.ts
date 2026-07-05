@@ -87,7 +87,7 @@ export class ImportBoundaryService {
 
   private _checkConcreteServiceImport(file: { path: string; source: string }) {
     const violations: Violation[] = [];
-    if (file.path.includes("factories/") || file.path.includes("factory.ts") || file.path.includes("tests/")) return violations;
+    if (file.path.includes("controllers/") || file.path.includes("factories/") || file.path.includes("factory.ts") || file.path.includes("tests/")) return violations;
     const lines = file.source.split("\n");
     for (let i = 0; i < lines.length; i++) {
       const matches = lines[i].matchAll(/import\s+\{([^}]+)\}\s+from\s+["'][^"']*services[^"']*["']/g);
@@ -98,7 +98,7 @@ export class ImportBoundaryService {
             violations.push(createViolation({
               file: file.path, line: i + 1, severity: Severity.ERROR,
               ruleId: "import-boundary:concrete-service-import",
-              message: `Concrete service "${name}" imported outside factories/. Only factories assemble concrete implementations. Import the Protocol interface instead.`,
+              message: `Concrete service "${name}" imported outside controllers/ or factories/. Controllers and factories assemble concrete implementations. Import the Protocol interface instead.`,
             }));
           }
         }
@@ -109,7 +109,7 @@ export class ImportBoundaryService {
 
   private _checkAppFactoryImport(file: { path: string; source: string }) {
     const violations: Violation[] = [];
-    if (file.path.includes("routes/") || file.path.includes("factories/") || file.path.includes("factory.ts") || file.path.includes("cli/")) return violations;
+    if (file.path.includes("routes/") || file.path.includes("factories/") || file.path.includes("factory.ts") || file.path.includes("cli/") || file.path.includes("tests/")) return violations;
     const lines = file.source.split("\n");
     for (let i = 0; i < lines.length; i++) {
       if (/import\s+.*AppFactory/.test(lines[i]) || /from\s+["'][^"']*factory[^"']*["']/.test(lines[i])) {
@@ -182,8 +182,8 @@ export class ImportBoundaryService {
         description: "createApiClient" + "() called outside factories/",
         fixGuidance: "createApiClient" + "() must only be called in factories/." },
       { id: "import-boundary:concrete-service-import", category: "import-boundary",
-        description: "Concrete service imported outside factories/",
-        fixGuidance: "Only factories assemble concrete implementations. Import the Protocol interface everywhere else." },
+        description: "Concrete service imported outside controllers/ or factories/",
+        fixGuidance: "Controllers and factories assemble concrete implementations. Import the Protocol interface everywhere else." },
       { id: "import-boundary:factory-import-location", category: "import-boundary",
         description: "AppFactory imported outside src/routes/",
         fixGuidance: "AppFactory must only be imported in src/routes/. Import the service interface everywhere else." },

@@ -18,6 +18,8 @@ chisel rules                        # list all ~55 rules grouped by category
 chisel explain structural:print-banned  # detailed fix guidance
 chisel check . --json               # violations with message refs + skill names
 chisel check . --no-strict          # skip src-layout enforcement
+chisel update self                  # upgrade the installed CLI package
+chisel update skills --target codex # overwrite installed skills with bundled copies
 ```
 
 ## Commands
@@ -32,6 +34,8 @@ chisel check . --no-strict          # skip src-layout enforcement
 | `chisel explain <rule-id>` | Detailed description + fix guidance for a rule |
 | `chisel explain <category>` | All rules in a category (e.g. `structural`) |
 | `chisel setup [path]` | Install Chisel agent skills into a repo for Codex, Claude Code, or OpenCode |
+| `chisel update self` | Upgrade the installed Chisel package |
+| `chisel update skills [path]` | Refresh installed Chisel skills after confirmation |
 
 ## Agent skills
 
@@ -44,6 +48,14 @@ chisel setup --target opencode   # writes .opencode/skills/
 ```
 
 Without `--target`, `chisel setup` asks which agent to configure when running interactively. Use `--skill qa` to install one skill, `--dry-run --json` to preview, and `--overwrite` to replace existing skill directories.
+
+Refresh previously installed skills after upgrading Chisel:
+
+```bash
+chisel update skills --target codex
+```
+
+This overwrites local modifications in the selected skill directories, so Chisel asks for confirmation before writing. Use `--yes` in automation and `--dry-run --json` to preview.
 
 Agent-facing JSON output deduplicates repeated violation messages: each
 violation carries `message_ref`, and the top-level `messages` array contains

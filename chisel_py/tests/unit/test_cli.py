@@ -131,3 +131,58 @@ class TestSetupCommand:
         with tempfile.TemporaryDirectory() as tmp:
             _stdout, stderr = _invoke_with_stderr(["setup", tmp])
             assert "--target codex" in stderr
+
+
+class TestUpdateCommand:
+    def test_update_self_dry_run_prints_upgrade_command(self):
+        output = _invoke(["update", "self", "--manager", "pip", "--dry-run"])
+        assert "Would run:" in output
+        assert "pip install --upgrade chisel_checker" in output
+
+    def test_update_skills_dry_run_json_outputs_install_plan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = _invoke(
+                [
+                    "update",
+                    "skills",
+                    tmp,
+                    "--target",
+                    "codex",
+                    "--dry-run",
+                    "--json",
+                ]
+            )
+            data = json.loads(output)
+            assert data["target"] == "codex"
+            assert data["target_dir"] == ".agents/skills"
+            assert any(r["status"] == "would_install" for r in data["results"])
+
+    def test_update_skills_requires_yes_in_noninteractive_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _stdout, stderr = _invoke_with_stderr(
+                ["update", "skills", tmp, "--target", "codex"]
+            )
+            assert "Pass --yes" in stderr
+
+    def test_update_skills_yes_overwrites_existing_skill(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp) / ".agents" / "skills" / "qa"
+            destination.mkdir(parents=True)
+            (destination / "SKILL.md").write_text("local edits\n", encoding="utf-8")
+
+            _invoke(
+                [
+                    "update",
+                    "skills",
+                    tmp,
+                    "--target",
+                    "codex",
+                    "--skill",
+                    "qa",
+                    "--yes",
+                ]
+            )
+
+            assert "name: qa" in (destination / "SKILL.md").read_text(
+                encoding="utf-8"
+            )

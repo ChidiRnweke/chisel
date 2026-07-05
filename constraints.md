@@ -11,8 +11,8 @@
 | `config.py` | stdlib, third-party only | all internal layers |
 | `services/` | `models/`, repository Protocols, `errors` | other services, `sqlalchemy`, `fastapi`, `starlette`, `controllers`, `factory`, `config` |
 | `repositories/` | `models/`, `errors`, ORM models (internal only) | `services`, `controllers`, `fastapi`, `config` |
-| `controllers/` | service Protocols, `models/`, `errors` | `fastapi`, `starlette`, `sqlalchemy`, `config`, other controllers |
-| `factory.py` | all concrete implementations, `sqlalchemy.ext.asyncio` session types | nothing banned, but must contain zero logic |
+| `controllers/` | service Protocols/concrete services for workflow composition, `models/`, `errors` | `fastapi`, `starlette`, `sqlalchemy`, `config`, other controllers |
+| `factory.py` | concrete implementations for app/checker construction, `sqlalchemy.ext.asyncio` session types | nothing banned, but must contain zero logic |
 | `routes/` | `factory`, `models`, `fastapi` | `services`, `repositories`, `sqlalchemy` |
 | `dependencies.py` | `factory`, `models`, `fastapi`, `config`, `sqlalchemy.ext.asyncio.AsyncSession` for request-scoped session wiring | `services`, `repositories`, raw SQLAlchemy query APIs |
 | `app.py` | `fastapi`, `routes`, `dependencies`, `error_handlers`, `config` | domain service/repository/controller assembly |
@@ -23,7 +23,7 @@
 - `HTTPException`, `status_code` never appear outside `error_handlers.py`
 - `os.getenv()` called only in `config.py`
 - `fastapi` imported only in `app.py`, `routes/`, `dependencies.py`, `error_handlers.py`
-- Concrete service classes imported only in `factory.py` — importing a concrete service anywhere else is banned
+- Concrete service classes imported only in `factory.py` or `controllers/` — importing a concrete service anywhere else is banned
 - `factory.py` imported only in `routes/` and `dependencies.py` — importing it in any other layer is banned
 
 ### Structural Invariants
@@ -109,8 +109,8 @@
 |---|---|---|
 | `models/` | nothing | everything |
 | `services/` | `models/`, API client types | other services, `@sveltejs/kit`, `stores/` |
-| `controllers/` | service interfaces, `models/` | `@sveltejs/kit`, other controllers, `createApiClient`, `fetch` (global) |
-| `factories/` | concrete services, controllers | logic of any kind |
+| `controllers/` | service interfaces/concrete services for workflow composition, `models/` | `@sveltejs/kit`, other controllers, `createApiClient`, `fetch` (global) |
+| `factories/` | concrete services for app construction, controllers | logic of any kind |
 | `stores/` | `models/` | `services/`, `controllers/`, `@sveltejs/kit/server`, `fetch` (global) |
 | `hooks.server.ts` | `AppFactory`, auth service only | `services/` directly, `controllers/` directly |
 | `+page.server.ts` | `AppFactory`, `models/`, SvelteKit utilities | business logic, `fetch` (global) |

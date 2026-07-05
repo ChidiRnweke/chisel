@@ -5,13 +5,17 @@ from dataclasses import asdict
 
 import typer
 
+from chisel.checker.controllers.update_controller import UpdateController
 from chisel.checker.factory import CheckerFactory
 from chisel.checker.models.agent_skill import SkillTarget
+from chisel.checker.models.self_update import SelfUpdateManager
 from chisel.checker.reporter import Reporter
 from chisel.checker.rule_metadata import skill_name_for_category
 from chisel.checker.services.protocols import RuleInfo
 
 app = typer.Typer()
+update_app = typer.Typer()
+app.add_typer(update_app, name="update")
 
 
 def _choose_target_interactively() -> SkillTarget:
@@ -34,6 +38,20 @@ def _choose_target_interactively() -> SkillTarget:
         if selected == number or selected == target.value:
             return target
     raise RuntimeError("Unknown target selection.")
+
+
+def _confirm_skill_overwrite(yes: bool, dry_run: bool) -> None:
+    if yes or dry_run:
+        return
+    message = (
+        "This will overwrite local modifications in the selected Chisel skill "
+        "directories. Continue? [y/N] "
+    )
+    if not sys.stdin.isatty():
+        raise RuntimeError("Pass --yes to overwrite bundled skills in non-interactive mode.")
+    selected = input(message).strip().lower()
+    if selected not in {"y", "yes"}:
+        raise RuntimeError("Skill update cancelled.")
 
 
 @app.command()
@@ -184,14 +202,105 @@ def setup(
         help="Output installation results as JSON.",
     ),
 ) -> None:
-    controller = CheckerFactory().create_skill_setup_controller()
+    controller = UpdateController()
     try:
         selected_target = target or _choose_target_interactively()
-        result = controller.setup(
+        result = controller.update_skills(
             project_path,
             selected_target,
             skill_names=skills,
             overwrite=overwrite,
+            dry_run=dry_run,
+        )
+    except Exception as exc:
+        sys.stderr.write(f"Error: {exc}\n")
+        raise typer.Exit(code=1)
+
+    if json_output:
+        data = {
+            "target": result.target.value,
+            "target_dir": result.target_dir,
+            "results": [asdict(item) for item in result.results],
+        }
+        sys.stdout.write(json.dumps(data, indent=2) + "\n")
+        return
+
+    sys.stdout.write(
+        f"Target: {result.target.value} "
+        f"({result.target_dir})\n"
+    )
+    for item in result.results:
+        sys.stdout.write(
+            f"{item.status:15s} {item.name:32s} {item.destination}\n"
+        )
+
+
+@update_app.command("self")
+def update_self(
+    manager: SelfUpdateManager = typer.Option(
+        SelfUpdateManager.AUTO,
+        "--manager",
+        help="Package manager: auto, pip, pipx, or uv.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show the upgrade command without running it.",
+    ),
+) -> None:
+    result = UpdateController().update_self(
+        manager=manager,
+        dry_run=dry_run,
+    )
+    command = " ".join(result.command)
+    if dry_run:
+        sys.stdout.write(f"Would run: {command}\n")
+        return
+    if result.returncode != 0:
+        sys.stderr.write(f"Self update failed: {command}\n")
+        raise typer.Exit(code=result.returncode)
+    sys.stdout.write("Chisel updated. Restart the CLI to use the new version.\n")
+
+
+@update_app.command("skills")
+def update_skills(
+    project_path: str = typer.Argument(".", help="Path to project root"),
+    target: SkillTarget | None = typer.Option(
+        None,
+        "--target",
+        help="Agent target: codex, claude, or opencode",
+    ),
+    skills: list[str] | None = typer.Option(
+        None,
+        "--skill",
+        help="Update only this bundled skill. May be passed multiple times.",
+    ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Confirm overwriting existing skill directories.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show what would be updated without writing files.",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output update results as JSON.",
+    ),
+) -> None:
+    controller = UpdateController()
+    try:
+        selected_target = target or _choose_target_interactively()
+        _confirm_skill_overwrite(yes=yes, dry_run=dry_run)
+        result = controller.update_skills(
+            project_path,
+            selected_target,
+            skill_names=skills,
+            overwrite=True,
             dry_run=dry_run,
         )
     except Exception as exc:

@@ -376,12 +376,12 @@ class TestHttpExceptionLocation:
         assert _count_rule(violations, "http-exception-location") == 1
 
 class TestConcreteServiceImport:
-    def test_detects_concrete_service_import_outside_factory(self):
+    def test_detects_concrete_service_import_outside_factory_or_controller(self):
         source = (
             'from __future__ import annotations\n'
             'from myapp.services.user import UserService\n'
         )
-        violations = _check_source(source, layer=Layer.CONTROLLERS)
+        violations = _check_source(source, layer=Layer.ROUTES)
         assert _count_rule(violations, "concrete-service-import") == 1
 
     def test_accepts_protocol_import_from_services(self):
@@ -398,6 +398,14 @@ class TestConcreteServiceImport:
             'from myapp.services.user import UserService\n'
         )
         violations = _check_source(source, layer=Layer.FACTORY)
+        assert _count_rule(violations, "concrete-service-import") == 0
+
+    def test_accepts_concrete_service_import_in_controller(self):
+        source = (
+            'from __future__ import annotations\n'
+            'from myapp.services.user import UserService\n'
+        )
+        violations = _check_source(source, layer=Layer.CONTROLLERS)
         assert _count_rule(violations, "concrete-service-import") == 0
 
 
@@ -514,4 +522,3 @@ class TestDescribeRules:
             assert r.id.startswith("structural:")
             assert len(r.description) > 0
             assert len(r.fix_guidance) > 0
-

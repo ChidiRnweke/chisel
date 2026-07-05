@@ -74,13 +74,15 @@ chisel explain structural:isinstance-banned  # rule description + fix guidance
 chisel explain structural                 # all rules in a category
 chisel check . --json                     # violations with message refs + skill names
 chisel setup --target codex               # install repo agent skills to .agents/skills/
+chisel update self                        # upgrade the installed Python CLI package
+chisel update skills --target codex       # overwrite installed skills with bundled copies
 ```
 
 `chisel check --json` and `chisel-js check --json` deduplicate repeated messages:
 violations carry `message_ref` / `messageRef`, and the top-level `messages`
 array contains each full message once with its `skill_name` / `skillName`.
 
-`chisel-js` equivalents: `chisel-js rules`, `chisel-js explain`, `chisel-js check . --json`.
+`chisel-js` equivalents: `chisel-js rules`, `chisel-js explain`, `chisel-js check . --json`, `chisel-js update self`, and `chisel-js update skills`.
 
 ## Agent skills
 
@@ -93,6 +95,15 @@ chisel setup --target opencode   # .opencode/skills/ for OpenCode native skills
 ```
 
 Run `chisel setup` without `--target` in an interactive terminal to choose the destination. Chisel installs one target format per run to avoid duplicate skill discovery in tools like OpenCode.
+
+To refresh installed skills after upgrading Chisel:
+
+```bash
+chisel update skills --target codex
+chisel-js update skills --target codex
+```
+
+Skill updates overwrite local modifications in the selected skill directories, so Chisel asks for confirmation before writing. Use `--yes` in automation and `--dry-run --json` to preview.
 
 ## What gets checked
 

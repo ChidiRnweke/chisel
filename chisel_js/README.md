@@ -19,6 +19,8 @@ chisel-js check .                  # check the current project
 chisel-js rules                    # list all ~55 rules grouped by category
 chisel-js explain structural:console-log-banned  # detailed fix guidance
 chisel-js check . --json           # violations with message refs + skill names
+chisel-js update self              # upgrade the installed CLI package
+chisel-js update skills --target codex # overwrite installed skills with bundled copies
 ```
 
 Non-zero exit code when ERROR-level violations are found.
@@ -37,6 +39,20 @@ each full message once with its `skillName`.
 | `chisel-js rules --json` | Machine-readable rule listing |
 | `chisel-js explain <rule-id>` | Detailed description + fix guidance for a rule |
 | `chisel-js explain <category>` | All rules in a category (e.g. `structural`) |
+| `chisel-js update self` | Upgrade the installed Chisel JS package |
+| `chisel-js update skills [path]` | Refresh installed Chisel skills after confirmation |
+
+## Agent skills
+
+Refresh installed Chisel skills in a project:
+
+```bash
+chisel-js update skills --target codex      # writes .agents/skills/
+chisel-js update skills --target claude     # writes .claude/skills/
+chisel-js update skills --target opencode   # writes .opencode/skills/
+```
+
+This overwrites local modifications in the selected skill directories, so Chisel JS asks for confirmation before writing. Use `--yes` in automation and `--dry-run --json` to preview.
 
 ## What gets checked
 

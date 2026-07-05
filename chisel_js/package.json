@@ -2,12 +2,18 @@
   "name": "@chidirnweke/chisel-js",
   "module": "index.ts",
   "type": "module",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "bin": {
     "chisel-js": "./dist/main.js"
   },
+  "files": [
+    "dist",
+    "bundled_skills",
+    "README.md"
+  ],
   "scripts": {
     "build": "bun build ./src/chisel/cli/main.ts --target=node --outdir=./dist --external typescript --external svelte",
+    "prepack": "bun run scripts/copy_skills.ts",
     "test": "bun test"
   },
   "repository": {

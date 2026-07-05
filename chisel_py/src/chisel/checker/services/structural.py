@@ -124,8 +124,8 @@ class StructuralService:
                      description="status imported from fastapi/starlette outside error_handlers.py",
                      fix_guidance="HTTP status codes must only appear in error_handlers.py. Raise a domain error and map it to HTTP status in the error handler."),
             RuleInfo(id="structural:concrete-service-import", category="structural",
-                     description="Concrete service class imported outside factory.py",
-                     fix_guidance="Only the factory assembles concrete implementations. Import the Protocol interface everywhere else."),
+                     description="Concrete service class imported outside factory.py or controllers/",
+                     fix_guidance="Factories and controllers assemble concrete implementations. Import the Protocol interface everywhere else."),
         ]
 
     def _v(
@@ -766,7 +766,7 @@ class StructuralService:
     def _check_concrete_service_import(
         self, file: FileInfo, tree: ast.Module
     ) -> list[Violation]:
-        if file.layer == Layer.FACTORY:
+        if file.layer in (Layer.FACTORY, Layer.CONTROLLERS):
             return []
         if file.layer == Layer.TESTS:
             return []
@@ -792,7 +792,7 @@ class StructuralService:
                                 self._v(
                                     file, node.lineno,
                                     "concrete-service-import",
-                                    "Only the factory assembles concrete implementations. "
+                                    "Factories and controllers assemble concrete implementations. "
                                     "Import the Protocol interface everywhere else.",
                                 )
                             )
