@@ -115,3 +115,58 @@ Before concluding any implementation task, copy this checklist into your respons
 - [ ] Run the linter (`pnpm lint`).
 - [ ] Run tests if applicable.
 - [ ] If errors occur, autonomously fix them and repeat the loop until the checks pass. Do not ask the human to fix your structural or typing errors.
+
+## Enforced Rule IDs
+
+`chisel-js` is the deterministic counterpart of this skill. Each rule below is owned by this skill — `chisel-js explain <rule-id>` prints fix guidance, and `chisel-js check .` flags violations. The paired UI skill (`designing-svelte-ui`) owns the colour/component/responsiveness rules listed in its own SKILL.md.
+
+### Structural (SvelteKit runtime invariants)
+- `structural:console-log-banned` — `console.*` banned in `.svelte`/`.ts` outside `scripts/`.
+- `structural:timers-banned` — `setTimeout`/`setInterval` banned in `.svelte` and `$lib/`.
+- `structural:inline-style-banned` — inline `style=` outside `components/ui/`.
+- `structural:style-block-banned` — `<style>` blocks banned outside `app.css` and `components/ui/`.
+- `structural:app-stores-banned` — `import from "$app/stores"` (use `$app/state`).
+- `structural:writable-banned` — Svelte 4 `writable()`/`readable()` (use `$state`).
+- `structural:inline-svg-banned` — Inline `<svg>` with >2 child elements outside `components/`.
+- `structural:effect-no-cleanup` — `$effect` without `return () => {}` cleanup.
+- `structural:effect-single-call` — `$effect` that only calls a single function with no reactive deps (use `onMount`).
+- `structural:effect-present` — Any `$effect` warrants review (warning).
+- `structural:onmount-no-browser-api` — `onMount` without `localStorage`/`sessionStorage`/DOM ref/WebSocket.
+- `structural:store-should-use-derived` — `$effect` syncing `data`/`$props` into `$state` (use `$derived`).
+- `structural:derived-calls-fetch` — `$derived` calling `fetch` or a service method.
+- `structural:raw-fetch` — Raw `fetch` in `services/` (use the `openapi-fetch` client). Suppress with `// noqa: raw-fetch — <reason>`.
+- `structural:missing-service-interface` — Concrete service without `I<ServiceName>` interface.
+- `structural:factory-static-only` — `AppFactory` (and any `*Factory.ts` / `/factories/` file) must use static methods only.
+- `structural:hooks-locals-limited` — `hooks.server.ts` may set only `locals.user`.
+
+### Import boundaries
+- `import-boundary:*` — services/controllers/routes/stores only import what their row of the Constraints table permits. See `references/layers.md`.
+
+### Complexity
+- `complexity:page-loc-limit` — `+page.svelte` > 100 LoC (hard error).
+- `complexity:page-loc-warning` — `+page.svelte` > 80 LoC (warning, suppressible).
+- `complexity:controller-loc-limit` — Controller method > 40 LoC.
+- `complexity:loader-loc-limit` — `load`/form action > 20 LoC.
+
+### API endpoints
+- `api:request-handler-outside-api` — `RequestHandler` export outside `src/routes/api/`.
+- `api:route-count-ratio` — API routes exceed 20% of page routes (warning).
+
+### Concurrency
+- `concurrency:promise-all-warning` — `Promise.all` across services in a loader (use a controller).
+
+### Error flow
+- `error-flow:raw-http-status` — Raw HTTP status outside `error_handlers` / API `+server.ts` JSON return. API routes under `src/routes/api/**/+server.ts` may `return json(payload, { status })`.
+
+### Project structure
+- `project-structure:*` — `pnpm`-only, `frontend/.env` / `backend/.env` separation, etc. (see `constraints.md` §5).
+
+### Tests (paired with `qa` skill)
+- `test-structure:test-file-location` — Tests must live under `tests/unit/`, `tests/integration/`, or `tests/e2e/`.
+- `test-structure:test-naming` — Names must describe the invariant (`test_cannot_X`, `test_returns_Y_when_Z`).
+- `test-structure:one-assert-per-test` — Exactly one `expect` per test.
+- `test-structure:mocking-banned` — `jest.mock`, `vi.mock`, `spyOn` banned — write a fake.
+- `test-structure:skip-without-reason` — `test.skip` requires a `reason`.
+
+### Suppression
+Inline `// noqa: rule-id — <reason>` (TypeScript) or `<!-- noqa: rule-id — <reason> -->` (Svelte). A suppression without a reason string fails the check.

@@ -465,9 +465,14 @@ export class StructuralSvelteService {
     return violations;
   }
 
-  private _checkAppFactory(file: { path: string; source: string }) {
+  private _checkAppFactory(file: { path: string; source: string; layer: string }) {
     const violations: Violation[] = [];
-    if (!file.path.includes("factory") && !file.path.includes("factories")) return violations;
+    const normalised = file.path.replace(/\\/g, "/");
+    const isFactoryFile = /[\\/]factories[\\/]/.test(normalised)
+      || /(^|[\\/])(?:[A-Z]\w*)?Factory\.(?:ts|js)$/.test(normalised)
+      || normalised.endsWith("/factory.ts")
+      || normalised.endsWith("/factory.js");
+    if (!isFactoryFile) return violations;
     const nonStatic = file.source.matchAll(/(?:public\s+|private\s+|protected\s+)?(?<!\bstatic\s)\b(\w+)\s*\([^)]*\)\s*:/g);
     for (const m of nonStatic) {
       if (m[1] === "constructor") continue;

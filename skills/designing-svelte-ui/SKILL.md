@@ -330,3 +330,44 @@ Copy this checklist into your initial response scratchpad to track your progress
 - [ ] Loading states use skeleton UIs matching the layout pattern.
 - [ ] Empty states exist and follow the visual style rules (and ornament budget).
 - [ ] Focus/contrast/tap targets pass accessibility guardrails.
+
+## Enforced Rule IDs
+
+`chisel-js` is the deterministic counterpart of this skill. Each rule below is owned by this skill — `chisel-js explain <rule-id>` prints fix guidance, and `chisel-js check .` flags violations. The paired SvelteKit skill (`building-sveltekit-frontend`) owns the structural/complexity/error-flow/import-boundary rules listed in its own SKILL.md.
+
+### Colour enforcement
+- `colour:arbitrary-value-banned` — Arbitrary Tailwind colour value syntax (`bg-[#...]`, `text-[#...]`, `border-[...]`, `ring-[...]`, `fill-[...]`, `stroke-[...]`, `shadow-[...]`, `outline-[...]`, `decoration-[...]`, `accent-[...]`, `caret-[...]`, `divide-[...]`, `placeholder-[...]`). Add the colour as a CSS custom property in `app.css` first, then reference it as a Tailwind token.
+- `colour:dynamic-class-banned` — Dynamic class construction (`class={\`bg-${variable}\`}`). Use a lookup object of pre-approved token names.
+- `colour:modifier-on-semantic` — Experimental modifier classes (`.glass`, `.neumorphic`, `.claymorph`) on semantic HTML (`<form>`, `<table>`, `<nav>`, `<fieldset>`). Restricted to Hero components and Overlay widgets only.
+
+### Typography
+- `typography:arbitrary-value-banned` — Arbitrary Tailwind typography value syntax (`text-[10px]`, `tracking-[0.4em]`, `leading-[1.6]`). Define the size/leading/tracking as a CSS custom property in `app.css` (e.g. `--text-sm`) and reference it as a Tailwind token.
+
+### Spacing
+- `spacing:arbitrary-value-banned` — Arbitrary Tailwind spacing/sizing value syntax (`w-[400px]`, `min-h-[80vh]`, `gap-[14px]`). Define the size as a CSS custom property in `app.css` (e.g. `--space-4`) and reference it as a Tailwind token.
+
+### Component enforcement (shadcn mapping)
+- `component-enforcement:html-button-banned` — Raw `<button>` → Button / Toggle.
+- `component-enforcement:html-input-*-banned` — Raw `<input type="*">` → Input, InputOTP, Checkbox, Switch, Slider, RadioGroup.
+- `component-enforcement:html-textarea-banned` — Raw `<textarea>` → Textarea.
+- `component-enforcement:html-select-banned` — Raw `<select>` → Select / NativeSelect / Combobox.
+- `component-enforcement:html-label-banned` — Raw `<label>` → Label.
+- `component-enforcement:html-table-*-banned` — Raw `<table>`, `<thead>`, `<tbody>`, `<tr>`, `<th>`, `<td>` → Table / DataTable.
+- `component-enforcement:html-progress-banned` — Raw `<progress>` → Progress.
+- `component-enforcement:html-details-banned` / `html-summary-banned` — Raw `<details>`/`<summary>` → Accordion / Collapsible.
+- `component-enforcement:html-dialog-banned` — Raw `<dialog>` → Dialog / AlertDialog / Drawer / Sheet.
+- `component-enforcement:html-nav-banned` — Raw `<nav>` → NavigationMenu / Breadcrumb / Menubar / Sidebar / Pagination.
+- `component-enforcement:html-kbd-banned` — Raw `<kbd>` → Kbd.
+- `component-enforcement:html-hr-banned` — Raw `<hr>` → Separator.
+- `component-enforcement:html-form-banned` — Raw `<form>` → Formsnap.
+- `component-enforcement:html-fieldset-banned` — Raw `<fieldset>` → Field.
+
+### Responsiveness
+- `responsiveness:fixed-width-banned` — Fixed pixel width classes (`w-[400px]`, `w-96`) on root elements of `+page.svelte`. Use responsive or fluid widths.
+- `responsiveness:absolute-no-breakpoint` — Absolute positioning without a responsive breakpoint variant on layout-level elements.
+- `responsiveness:nowrap-no-breakpoint` — `whitespace-nowrap` without a responsive variant on layout-level elements.
+- `responsiveness:missing-page-wrapper` — `+page.svelte` missing an approved layout wrapper (`<PageShell>`, `<Container>`, `<AppLayout>`).
+- `responsiveness:no-breakpoint-classes` — Layout/page `.svelte` file has no responsive breakpoint classes. **Leaf/icon components are exempt** (component files whose name matches `/icon|badge|chip|avatar|skeleton|spinner|dot|tooltip|pill/i` and that do not live under `components/layout/`).
+
+### Suppression
+Inline `<!-- noqa: rule-id — <reason> -->` (Svelte) or `// noqa: rule-id — <reason>` (TypeScript). A suppression without a reason string fails the check.

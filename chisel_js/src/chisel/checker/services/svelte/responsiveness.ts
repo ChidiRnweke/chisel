@@ -2,6 +2,9 @@ import type { ProjectInfo } from "chisel/checker/models/project_info";
 import type { Violation } from "chisel/checker/models/violation";
 import { Severity } from "chisel/checker/models/severity";
 import { createViolation } from "chisel/checker/models/violation";
+import { isLayoutLevelComponentPath, isLeafComponentPath } from "chisel/checker/models/layer";
+
+const BREAKPOINT_RE = /(?:sm|md|lg|xl|2xl):/;
 
 export class ResponsivenessService {
   readonly ruleIdPrefix = "responsiveness";
@@ -25,7 +28,8 @@ export class ResponsivenessService {
     const violations: Violation[] = [];
     if (!file.path.endsWith("+page.svelte")) return violations;
     const lines = file.source.split("\n");
-    for (let i = 0; i < lines.length; i++) {
+    const rootLines = rootClassLines(file.source);
+    for (const i of rootLines) {
       if (/\bw-\[\d+px\]/.test(lines[i]) || /\bw-\d{2,3}(?!\/)/.test(lines[i])) {
         violations.push(createViolation({
           file: file.path, line: i + 1, severity: Severity.ERROR,
@@ -39,6 +43,7 @@ export class ResponsivenessService {
 
   private _checkAbsoluteWithoutBreakpoint(file: { path: string; source: string }) {
     const violations: Violation[] = [];
+    if (!isLayoutLevelComponentPath(file.path)) return violations;
     const lines = file.source.split("\n");
     for (let i = 0; i < lines.length; i++) {
       const classes = lines[i].match(/class="([^"]+)"/)?.[1] ?? "";
@@ -55,6 +60,7 @@ export class ResponsivenessService {
 
   private _checkWhitespaceNowrap(file: { path: string; source: string }) {
     const violations: Violation[] = [];
+    if (!isLayoutLevelComponentPath(file.path)) return violations;
     const lines = file.source.split("\n");
     for (let i = 0; i < lines.length; i++) {
       const classes = lines[i].match(/class="([^"]+)"/)?.[1] ?? "";
@@ -86,24 +92,38 @@ export class ResponsivenessService {
 
   private _checkBreakpointPresence(file: { path: string; source: string }) {
     const violations: Violation[] = [];
-    const breakpoints = /(?:sm|md|lg|xl|2xl):/;
-    if (!breakpoints.test(file.source)) {
-      violations.push(createViolation({
-        file: file.path, line: 1, severity: Severity.WARNING,
-        ruleId: "responsiveness:no-breakpoint-classes",
-        message: "This .svelte file has no responsive breakpoint classes (sm:, md:, lg:). Consider adding responsive variants.",
-      }));
-    }
+    if (isLeafComponentPath(file.path)) return violations;
+    if (!isLayoutLevelComponentPath(file.path)
+      && !file.path.endsWith("+page.svelte")
+      && !file.path.endsWith("+layout.svelte")) return violations;
+    if (BREAKPOINT_RE.test(file.source)) return violations;
+    violations.push(createViolation({
+      file: file.path, line: 1, severity: Severity.WARNING,
+      ruleId: "responsiveness:no-breakpoint-classes",
+      message: "This layout/page file has no responsive breakpoint classes (sm:, md:, lg:). Add responsive variants for layout-affecting utilities.",
+    }));
     return violations;
   }
 
   describeRules() {
     return [
       { id: "responsiveness:fixed-width-banned", category: "responsiveness", description: "Fixed pixel width on page root", fixGuidance: "Use responsive or fluid widths instead of fixed pixel values." },
-      { id: "responsiveness:absolute-no-breakpoint", category: "responsiveness", description: "Absolute positioning without breakpoint", fixGuidance: "Add a responsive breakpoint variant (md:, lg:) to absolute positioning on layout elements." },
-      { id: "responsiveness:nowrap-no-breakpoint", category: "responsiveness", description: "whitespace-nowrap without responsive variant", fixGuidance: "Add a responsive breakpoint variant to whitespace-nowrap on layout elements." },
+      { id: "responsiveness:absolute-no-breakpoint", category: "responsiveness", description: "Absolute positioning without breakpoint on layout-level element", fixGuidance: "Add a responsive breakpoint variant (md:, lg:) to absolute positioning on layout elements." },
+      { id: "responsiveness:nowrap-no-breakpoint", category: "responsiveness", description: "whitespace-nowrap without responsive variant on layout-level element", fixGuidance: "Add a responsive breakpoint variant to whitespace-nowrap on layout elements." },
       { id: "responsiveness:missing-page-wrapper", category: "responsiveness", description: "+page.svelte missing layout wrapper", fixGuidance: "Wrap the page content in <PageShell>, <Container>, or <AppLayout> as the direct root child." },
-      { id: "responsiveness:no-breakpoint-classes", category: "responsiveness", description: "No responsive breakpoint classes in .svelte file", fixGuidance: "Add responsive breakpoint variants (sm:, md:, lg:) for layouts." },
+      { id: "responsiveness:no-breakpoint-classes", category: "responsiveness", description: "Layout/page .svelte file has no responsive breakpoint classes", fixGuidance: "Add responsive breakpoint variants (sm:, md:, lg:) for layout-affecting utilities. Leaf/icon components are exempt." },
     ];
   }
+}
+
+function rootClassLines(source: string): number[] {
+  const lines = source.split("\n");
+  const out: number[] = [];
+  let inTemplate = false;
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i];
+    if (/class=/.test(t)) out.push(i);
+    if (t.includes("`")) inTemplate = !inTemplate;
+  }
+  return out.slice(0, 3);
 }

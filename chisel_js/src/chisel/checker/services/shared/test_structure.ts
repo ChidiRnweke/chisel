@@ -20,20 +20,25 @@ export class TestStructureService {
     return violations;
   }
 
-  // Test files must be under tests/unit/, tests/integration/, tests/e2e/
   private _checkTestLocation(file: { path: string; source: string }) {
     const violations: Violation[] = [];
     const name = file.path.split("/").pop() ?? "";
-    if (name.startsWith("test_") || name.endsWith(".test.ts") || name.endsWith(".spec.ts")) {
-      const validRoots = ["tests/unit/", "tests/integration/", "tests/e2e/"];
-      const inValidRoot = validRoots.some(r => file.path.startsWith(r));
-      if (!inValidRoot) {
-        violations.push(createViolation({
-          file: file.path, line: 1, severity: Severity.ERROR,
-          ruleId: "test-structure:test-file-location",
-          message: "Test files must live under tests/unit/, tests/integration/, or tests/e2e/.",
-        }));
-      }
+    const isTestFile = name.startsWith("test_")
+      || name.endsWith(".test.ts")
+      || name.endsWith(".test.js")
+      || name.endsWith(".spec.ts")
+      || name.endsWith(".spec.js");
+    if (!isTestFile) return violations;
+
+    const normal = file.path.replace(/\\/g, "/");
+    const validRoots = ["tests/unit/", "tests/integration/", "tests/e2e/"];
+    const inValidRoot = validRoots.some(r => normal === r.slice(0, -1) || normal.startsWith(r));
+    if (!inValidRoot) {
+      violations.push(createViolation({
+        file: file.path, line: 1, severity: Severity.ERROR,
+        ruleId: "test-structure:test-file-location",
+        message: "Test files must live under tests/unit/, tests/integration/, or tests/e2e/.",
+      }));
     }
     return violations;
   }

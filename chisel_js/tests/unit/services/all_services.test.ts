@@ -30,6 +30,32 @@ describe("ColourEnforcementService", () => {
     const v = checkSvc(ColourEnforcementService, '<div class={`bg-${colour}`}>x</div>', "src/Page.svelte", "svelte");
     expect(v.some(x => x.ruleId === "colour:dynamic-class-banned")).toBe(true);
   });
+
+  test("classifies text-[10px] as typography, never as colour", () => {
+    const v = checkSvc(ColourEnforcementService, '<div class="text-[10px]">x</div>', "src/Page.svelte", "svelte");
+    expect({
+      typography: v.some(x => x.ruleId === "typography:arbitrary-value-banned"),
+      colour: v.some(x => x.ruleId === "colour:arbitrary-value-banned"),
+    }).toEqual({ typography: true, colour: false });
+  });
+
+  test("classifies w-[400px] as spacing, never as colour", () => {
+    const v = checkSvc(ColourEnforcementService, '<div class="w-[400px]">x</div>', "src/Page.svelte", "svelte");
+    expect({
+      spacing: v.some(x => x.ruleId === "spacing:arbitrary-value-banned"),
+      colour: v.some(x => x.ruleId === "colour:arbitrary-value-banned"),
+    }).toEqual({ spacing: true, colour: false });
+  });
+
+  test("classifies min-h-[80vh] as spacing", () => {
+    const v = checkSvc(ColourEnforcementService, '<div class="min-h-[80vh]">x</div>', "src/Page.svelte", "svelte");
+    expect(v.some(x => x.ruleId === "spacing:arbitrary-value-banned")).toBe(true);
+  });
+
+  test("classifies text-[#fff] as colour", () => {
+    const v = checkSvc(ColourEnforcementService, '<div class="text-[#fff]">x</div>', "src/Page.svelte", "svelte");
+    expect(v.some(x => x.ruleId === "colour:arbitrary-value-banned")).toBe(true);
+  });
 });
 
 describe("ComplexityService", () => {
@@ -62,16 +88,31 @@ describe("ErrorFlowService", () => {
     const v = checkSvc(ErrorFlowService, "const err = { status: 404 }");
     expect(v[0].ruleId).toBe("error-flow:raw-http-status");
   });
-});
 
-describe("ApiEndpointsService", () => {
-  test("detects RequestHandler export outside api/", () => {
-    const v = checkSvc(ApiEndpointsService, "export const GET = () => new Response('ok')", "src/routes/endpoint.ts");
-    expect(v.length).toBe(1);
+  test("allows json(payload, { status }) in API routes under src/routes/api/", () => {
+    const v = checkSvc(
+      ErrorFlowService,
+      "export const POST = ({ request }) => json({ ok: true }, { status: 200 });",
+      "src/routes/api/chat/+server.ts",
+    );
+    expect(v.length).toBe(0);
   });
 
-  test("reports request-handler-outside-api for GET export outside api/", () => {
-    const v = checkSvc(ApiEndpointsService, "export const GET = () => new Response('ok')", "src/routes/endpoint.ts");
-    expect(v[0].ruleId).toBe("api:request-handler-outside-api");
+  test("still flags bare status in API routes when not via json()", () => {
+    const v = checkSvc(
+      ErrorFlowService,
+      "const send = () => { throw { status: 500 }; }",
+      "src/routes/api/chat/+server.ts",
+    );
+    expect({ count: v.length, ruleId: v[0]?.ruleId }).toEqual({ count: 1, ruleId: "error-flow:raw-http-status" });
+  });
+
+  test("flags raw HTTP status in +page.server.ts", () => {
+    const bare = checkSvc(
+      ErrorFlowService,
+      "const err = { statusCode: 401 };",
+      "src/routes/+page.server.ts",
+    );
+    expect({ count: bare.length, ruleId: bare[0]?.ruleId }).toEqual({ count: 1, ruleId: "error-flow:raw-http-status" });
   });
 });
