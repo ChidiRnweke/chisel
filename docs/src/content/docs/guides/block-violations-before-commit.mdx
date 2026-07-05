@@ -1,0 +1,77 @@
+---
+title: Block violations before commit
+description: Wire chisel as a pre-commit hook so violations never reach your branch.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+You want violations blocked locally before they're committed, so a bad
+commit never even lands on your branch. This guide wires both checkers
+into `pre-commit`.
+
+## Install pre-commit
+
+If you haven't already:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+## Add the hook config
+
+Drop this at the repo root as `.pre-commit-config.yaml`. Adjust the
+`files:` filters to match where your code lives — `chisel_py` /
+`chisel_js` below are chisel's own monorepo dirs, rename them to your
+project.
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: chisel-py
+        name: chisel (Python)
+        entry: chisel check chisel_py --strict
+        language: python
+        language_version: python3.12
+        additional_dependencies: [grimp>=3.0, radon>=6.0, typer>=0.12, rich>=13.0]
+        files: ^chisel_py/src/.*\.py$
+        pass_filenames: false
+
+      - id: chisel-js
+        name: chisel (TypeScript)
+        entry: chisel-js check .
+        language: system
+        files: ^(chisel_js/src/.*\.ts|chisel_js/.*\.svelte)$
+        pass_filenames: false
+```
+
+Use one hook or both depending on your stack — a pure-FastAPI repo only
+needs `chisel-py`; a pure-SvelteKit repo only needs `chisel-js`.
+
+## Install the CLIs the hooks call
+
+```bash
+pip install chisel                # for the chisel-py hook
+npm install -g chisel-js          # for the chisel-js hook (or: bun add -g chisel-js)
+```
+
+## Trigger
+
+Every `git commit` now runs the hooks. They use `pass_filenames: false`
+because chisel scans the whole project, not individual files.
+
+<Aside title="Why pass_filenames: false?">
+Chisel analyses the import graph of your entire project. Passing only
+the staged files would let a file pass because its dependencies weren't
+in the staged set. Scanning the whole tree each run is what makes the
+determinism honest.
+</Aside>
+
+## What's next
+
+- [Run chisel in GitHub Actions](/chisel/guides/run-in-github-actions/) —
+  gate pull requests on the same check.
+- [Turn off a rule for a file](/chisel/guides/suppress-a-rule/) — when a
+  hook failure is a justified exception.

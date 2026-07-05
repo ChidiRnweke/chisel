@@ -1,0 +1,170 @@
+---
+title: Quick start
+description: Get from zero to a passing chisel check in five minutes with either CLI.
+---
+
+import { Tabs, TabItem, Card, CardGrid } from '@astrojs/starlight/components';
+
+Get a deterministic architecture check running on a project in five minutes.
+Both CLIs work the same way; pick the one that matches your stack.
+
+<Tabs>
+  <TabItem label="Python (FastAPI)">
+    ```bash
+    pip install chisel
+    chisel check ./your-backend
+    ```
+  </TabItem>
+  <TabItem label="TypeScript (SvelteKit)">
+    ```bash
+    npm install -g chisel-js
+    chisel-js check ./your-frontend
+    ```
+  </TabItem>
+</Tabs>
+
+### Install
+
+Both CLIs are standalone — install one or both depending on what you ship.
+
+<Tabs>
+  <TabItem label="Python">
+    `pip`, `pipx`, or `uv`:
+
+    ```bash
+    pip install chisel            # or: pipx install chisel
+    chisel --version
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    `npm` or `bun`:
+
+    ```bash
+    npm install -g chisel-js      # or: bun add -g chisel-js
+    chisel-js --version
+    ```
+  </TabItem>
+</Tabs>
+
+### Run a check
+
+Point the checker at your project root. Non-zero exit on any ERROR-level
+violation — perfect for gates.
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel check ./your-backend
+    chisel check ./your-backend --strict   # also enforce src-layout + build config
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js check ./your-frontend
+    ```
+  </TabItem>
+</Tabs>
+
+### Read the violations
+
+Coloured, grouped output by default. For scripts or agents, ask for JSON —
+repeated messages are deduplicated and each carries a `message_ref` /
+`messageRef` plus the `skill_name` / `skillName` that teaches the pattern.
+
+```bash
+chisel check . --json
+# or: chisel-js check . --json
+```
+
+### Get fix guidance for one rule
+
+`explain` prints the rule description and the fix an agent should apply.
+Accepts a rule ID or a category prefix.
+
+```bash
+chisel explain structural:isinstance-banned
+chisel explain structural            # every rule in a category
+chisel-js explain component-enforcement:raw-button
+```
+
+### Install the matching skills
+
+The checker pairs with bundled agent skills. Install them once per repo so
+your agent has the same patterns the checker enforces.
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel setup --target codex      # .agents/skills/  (Codex + OpenCode)
+    chisel setup --target claude     # .claude/skills/  (Claude Code)
+    chisel setup --target opencode   # .opencode/skills/
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js update skills --target codex
+    chisel-js update skills --target claude
+    chisel-js update skills --target opencode
+    ```
+  </TabItem>
+</Tabs>
+
+Run with no `--target` in an interactive terminal to pick the destination
+from a prompt. Chisel installs one target format per run to avoid duplicate
+skill discovery in tools like OpenCode.
+
+### Wire a pre-commit hook (optional but recommended)
+
+Block violations before they land. See the
+[Block violations before commit guide](/chisel/guides/block-violations-before-commit/) for the full config;
+
+the short version:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: chisel-py
+        name: chisel (Python)
+        entry: chisel check chisel_py --strict
+        language: python
+        language_version: python3.12
+        additional_dependencies: [grimp>=3.0, radon>=6.0, typer>=0.12, rich>=13.0]
+        files: ^chisel_py/src/.*\.py$
+        pass_filenames: false
+
+      - id: chisel-js
+        name: chisel (TypeScript)
+        entry: chisel-js check .
+        language: system
+        files: ^(chisel_js/src/.*\.ts|chisel_js/.*\.svelte)$
+        pass_filenames: false
+```
+
+<CardGrid stagger>
+  <Card title="Check a FastAPI backend" icon="bookmark">
+    Install `chisel`, run a check, read the output, `--strict` semantics.
+    [Open →](/chisel/guides/check-fastapi/)
+  </Card>
+  <Card title="Check a SvelteKit frontend" icon="bookmark">
+    Install `chisel-js`, run a check, read the output.
+    [Open →](/chisel/guides/check-sveltekit/)
+  </Card>
+  <Card title="Understand a violation" icon="seti:info">
+    Read a rule's description and fix guidance with `explain`; the JSON shape.
+    [Open →](/chisel/guides/understand-a-violation/)
+  </Card>
+  <Card title="Give your AI agent the rules" icon="rocket">
+    Install the bundled skills so your agent learns the patterns before it writes code.
+    [Open →](/chisel/guides/install-agent-skills/)
+  </Card>
+  <Card title="How chisel works" icon="seti:book">
+    Skills, the checker, the loop, severity tiers, and the JSON contract.
+    [Open →](/chisel/concepts/how-it-works/)
+  </Card>
+  <Card title="Commands reference" icon="seti:shell">
+    Full table of every flag, side by side for both CLIs.
+    [Open →](/chisel/reference/commands/)
+  </Card>
+</CardGrid>

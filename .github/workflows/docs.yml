@@ -60,4 +60,5 @@ jobs:
         with:
           path: docs
           node-version: 22
+          package-manager: bun
           deploy-branch: gh-pages

@@ -1,0 +1,408 @@
+[
+  {
+    "id": "import-boundary:layer-no-internal-imports",
+    "category": "import-boundary",
+    "description": "Layer importing from code it must not depend on",
+    "fix_guidance": "Models are pure data with no dependencies. If you need logic that uses a service or repository, it belongs in a service method.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "import-boundary:layer-banned-import",
+    "category": "import-boundary",
+    "description": "Layer importing from a banned layer",
+    "fix_guidance": "Layer boundary violated. Services never directly import controllers, routes, or other services. Wire dependencies through the factory using Protocol interfaces.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "import-boundary:banned-module",
+    "category": "import-boundary",
+    "description": "Service importing SQLAlchemy or other banned module",
+    "fix_guidance": "Services never touch the database. Move the query into a repository method and inject the repository into the service.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "import-boundary:fastapi-location",
+    "category": "import-boundary",
+    "description": "fastapi imported outside app.py, routes/, dependencies.py, or error_handlers.py",
+    "fix_guidance": "FastAPI imports mean HTTP concerns are leaking into the domain. Move the FastAPI-specific code to a route handler or dependency.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "import-boundary:sqlalchemy-location",
+    "category": "import-boundary",
+    "description": "sqlalchemy imported outside repositories/ or factory.py",
+    "fix_guidance": "Services never touch the database. Move the query into a repository method and inject the repository into the service.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "import-boundary:async-session-location",
+    "category": "import-boundary",
+    "description": "sqlalchemy.ext.asyncio imported outside repositories/, factory.py, or dependencies.py",
+    "fix_guidance": "The session is request-scoped. Create it in dependencies.py, pass it through the factory, and use it inside repositories.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "import-boundary:factory-import-location",
+    "category": "import-boundary",
+    "description": "factory.py imported outside routes/ or dependencies.py",
+    "fix_guidance": "The factory belongs in routes and dependencies only. Thread services through as Protocol-typed parameters everywhere else.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "import-boundary:orm-leak",
+    "category": "import-boundary",
+    "description": "ORM type imported outside repositories/",
+    "fix_guidance": "ORM types never leave the repository layer. Call _to_domain() inside the repository and return a domain model.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:import-not-at-top",
+    "category": "structural",
+    "description": "All imports must be at the top of the file",
+    "fix_guidance": "Use the module-level structlog logger instead. print() has no log level and doesn't appear in your observability stack.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:import-not-at-top-nested",
+    "category": "structural",
+    "description": "Import statements inside functions, methods, or blocks",
+    "fix_guidance": "Import statements inside functions, methods, or blocks are banned \u2014 move them to the top of the file.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:getattr-setattr-banned",
+    "category": "structural",
+    "description": "getattr() or setattr() used in application code",
+    "fix_guidance": "Add the attribute to the Protocol interface or use an explicit typed constructor. Dynamic attribute access erases the type system.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:isinstance-banned",
+    "category": "structural",
+    "description": "isinstance() used in application code",
+    "fix_guidance": "Use match/case for type-based branching. In error handlers the match exc: pattern already handles it. Elsewhere, isinstance checks usually mean logic that belongs on the domain object itself.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:class-attribute-banned",
+    "category": "structural",
+    "description": "__class__ attribute access in application code",
+    "fix_guidance": "Metaprogramming via __class__ is banned. Use match/case for type-based branching instead.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:percent-interpolation-banned",
+    "category": "structural",
+    "description": "Percent (%) string interpolation used",
+    "fix_guidance": "Use f-strings for application strings. For logger calls use structured keyword arguments: logger.info('message', key=value).",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:logger-fstring",
+    "category": "structural",
+    "description": "f-string passed to a logger call",
+    "fix_guidance": "Pass context as keyword arguments, not interpolated strings. Replace logger.info(f'Created {x}') with logger.info('Created item', id=x).",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:print-banned",
+    "category": "structural",
+    "description": "print() called in src/",
+    "fix_guidance": "Use the module-level structlog logger instead. print() has no log level and doesn't appear in your observability stack.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:non-dataclass-in-layer",
+    "category": "structural",
+    "description": "Class in services/, controllers/, or repositories/ is not a @dataclass",
+    "fix_guidance": "Add @dataclass(slots=True) and declare dependencies as typed fields. This makes dependencies explicit and injectable.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:dataclass-no-slots",
+    "category": "structural",
+    "description": "@dataclass without slots=True",
+    "fix_guidance": "Dataclasses must use slots=True for performance and memory efficiency.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:dataclass-no-frozen",
+    "category": "structural",
+    "description": "@dataclass in models/ without frozen=True",
+    "fix_guidance": "Value objects and output models in models/ must use frozen=True to ensure immutability.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:misplaced-dataclass",
+    "category": "structural",
+    "description": "@dataclass with zero methods in services/, controllers/, or repositories/",
+    "fix_guidance": "This is a model, not a service/controller/repository. Move it to models/.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:logger-dataclass-field",
+    "category": "structural",
+    "description": "logger defined as a dataclass field",
+    "fix_guidance": "The logger is a module-level constant, not a dependency. Move it outside the class: logger = structlog.getLogger(__name__).",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:app-error-direct-raise",
+    "category": "structural",
+    "description": "AppError raised directly",
+    "fix_guidance": "Raise a named subclass instead: raise NotFoundError(...). Define new errors in errors.py if needed.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:app-error-http-status",
+    "category": "structural",
+    "description": "HTTP status code in a domain error class",
+    "fix_guidance": "Remove the status code from the error class. The mapping from domain error to HTTP status lives exclusively in error_handlers.py.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:try-except-routes",
+    "category": "structural",
+    "description": "try/except inside a route handler",
+    "fix_guidance": "Route handlers don't catch exceptions \u2014 error_handlers.py does. Remove the try/except and let the exception propagate.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:factory-no-staticmethod",
+    "category": "structural",
+    "description": "@staticmethod on AppFactory or CheckerFactory",
+    "fix_guidance": "The factory is instantiated per-request and carries session and user context. Make it a regular instance method.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:factory-zero-logic",
+    "category": "structural",
+    "description": "Conditional logic in AppFactory or CheckerFactory",
+    "fix_guidance": "The factory wires dependencies and makes no decisions. Move the conditional logic into a service method.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:bare-column-banned",
+    "category": "structural",
+    "description": "Bare Column() used instead of Mapped[T] in ORM models",
+    "fix_guidance": "Use Mapped[T] for ORM column types instead of bare Column().",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:missing-protocol",
+    "category": "structural",
+    "description": "Service implementation has no corresponding Protocol",
+    "fix_guidance": "Define an IYourService Protocol in the same file. Controllers and the factory depend on the interface, not the concrete class.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:http-exception-location",
+    "category": "structural",
+    "description": "HTTPException imported outside error_handlers.py",
+    "fix_guidance": "HTTPExceptions must only appear in error_handlers.py. Raise a domain error from errors.py instead and map it to HTTP status in the error handler.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:match-case-location",
+    "category": "structural",
+    "description": "match/case used outside error_handlers.py",
+    "fix_guidance": "match/case is only allowed in error_handlers.py for exception type branching. Use if/elif everywhere else.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:toplevel-function-in-service",
+    "category": "structural",
+    "description": "Top-level standalone function in services/",
+    "fix_guidance": "Services must be @dataclass classes, not standalone functions. Move this function into a service class.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:status-code-location",
+    "category": "structural",
+    "description": "status imported from fastapi/starlette outside error_handlers.py",
+    "fix_guidance": "HTTP status codes must only appear in error_handlers.py. Raise a domain error and map it to HTTP status in the error handler.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "structural:concrete-service-import",
+    "category": "structural",
+    "description": "Concrete service class imported outside factory.py or controllers/",
+    "fix_guidance": "Factories and controllers assemble concrete implementations. Import the Protocol interface everywhere else.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "complexity:app-loc-limit",
+    "category": "complexity",
+    "description": "app.py exceeds 50 lines of code",
+    "fix_guidance": "app.py should contain only create_app() and the lifespan context. Move everything else into the appropriate layer.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "complexity:route-loc-limit",
+    "category": "complexity",
+    "description": "Route handler exceeds 20 lines of code",
+    "fix_guidance": "Route handlers parse input, call the factory, return output \u2014 nothing else. Move anything else into a controller or service.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "complexity:controller-loc-limit",
+    "category": "complexity",
+    "description": "Controller method exceeds 30 lines of code",
+    "fix_guidance": "Controllers orchestrate \u2014 they don't contain logic. Extract business logic into a service or split concerns across services composed with asyncio.TaskGroup.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "complexity:controller-complexity-limit",
+    "category": "complexity",
+    "description": "Controller method cyclomatic complexity exceeds 3",
+    "fix_guidance": "Controllers orchestrate \u2014 they don't contain logic. Extract business logic into a service or split concerns across services composed with asyncio.TaskGroup.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "complexity:factory-complexity-limit",
+    "category": "complexity",
+    "description": "Factory cyclomatic complexity exceeds 1",
+    "fix_guidance": "The factory wires dependencies and makes no decisions. Move the conditional logic into a service method.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "concurrency:asyncio-gather-banned",
+    "category": "concurrency",
+    "description": "asyncio.gather() used",
+    "fix_guidance": "Replace with asyncio.TaskGroup. TaskGroup cancels sibling tasks on failure and propagates exceptions cleanly.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "session:session-execute-location",
+    "category": "session",
+    "description": "session.execute() called outside repositories/",
+    "fix_guidance": "Extract the query into a repository method, add it to IYourRepository, and call it from there.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "error-flow:http-in-error",
+    "category": "error-flow",
+    "description": "HTTP status code in a domain error class",
+    "fix_guidance": "Remove the status code from the error class. The mapping from domain error to HTTP status lives exclusively in error_handlers.py.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "config-startup:getenv-outside-config",
+    "category": "config-startup",
+    "description": "os.getenv() called outside config.py",
+    "fix_guidance": "All environment variables are read once at startup in Config.from_env(). Access config values via the injected config instance.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "project-structure:src-layout-missing",
+    "category": "project-structure",
+    "description": "Project does not use src layout",
+    "fix_guidance": "All application code lives under the src layout. Create src/<appname>/ and move all .py files there.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "project-structure:root-py-file",
+    "category": "project-structure",
+    "description": ".py file found at project root",
+    "fix_guidance": "All application code lives under the src layout. Move this file into src/<appname>/.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "project-structure:src-root-py-file",
+    "category": "project-structure",
+    "description": ".py file found at src/ root",
+    "fix_guidance": "All application code lives under the src layout. Move this file into src/<appname>/.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "project-structure:setup-py-banned",
+    "category": "project-structure",
+    "description": "setup.py found in project",
+    "fix_guidance": "Use pyproject.toml exclusively. Remove setup.py and consolidate dependencies there.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "project-structure:requirements-txt-banned",
+    "category": "project-structure",
+    "description": "requirements.txt found in project",
+    "fix_guidance": "Use pyproject.toml exclusively. Remove requirements.txt and consolidate dependencies there.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "project-structure:pyproject-missing",
+    "category": "project-structure",
+    "description": "pyproject.toml not found",
+    "fix_guidance": "pyproject.toml is required as the single build configuration file.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "project-structure:orm-init-empty",
+    "category": "project-structure",
+    "description": "ORM __init__.py has no imports",
+    "fix_guidance": "repositories/orm/__init__.py must import all ORM models for Alembic autogeneration.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "project-structure:missing-test-coverage",
+    "category": "project-structure",
+    "description": "Service or controller has no corresponding test file",
+    "fix_guidance": "Add a test file under tests/unit/ covering its core invariants.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "app-file:app-loc-limit",
+    "category": "app-file",
+    "description": "app.py exceeds 50 lines of code",
+    "fix_guidance": "app.py should contain only create_app() and the lifespan context. Move everything else into the appropriate layer.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "app-file:route-in-app",
+    "category": "app-file",
+    "description": "Route definition inside app.py",
+    "fix_guidance": "app.py only creates the app and registers routers. Move this route into routes/ and register it via app.include_router().",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "app-file:app-complexity-limit",
+    "category": "app-file",
+    "description": "app.py cyclomatic complexity exceeds 1",
+    "fix_guidance": "app.py should contain only create_app() and the lifespan context. Move everything else into the appropriate layer.",
+    "skill_name": "building-python-backend"
+  },
+  {
+    "id": "test-structure:test-file-location",
+    "category": "test-structure",
+    "description": "Test file outside tests/unit/, tests/integration/, or tests/e2e/",
+    "fix_guidance": "Move into the correct directory. Unit tests in tests/unit/, repository tests in tests/integration/, full-stack tests in tests/e2e/.",
+    "skill_name": "qa"
+  },
+  {
+    "id": "test-structure:one-assert-per-test",
+    "category": "test-structure",
+    "description": "More than one assert in a test function",
+    "fix_guidance": "Split into separate test functions, one per assertion. Name each after the invariant it proves: test_cannot_X, test_returns_Y_when_Z.",
+    "skill_name": "qa"
+  },
+  {
+    "id": "test-structure:test-naming",
+    "category": "test-structure",
+    "description": "Test name does not describe an invariant",
+    "fix_guidance": "Name the test after the invariant it proves: test_cannot_X, test_returns_Y_when_Z, test_detects_X, test_allows_X_under_Y.",
+    "skill_name": "qa"
+  },
+  {
+    "id": "test-structure:skip-without-reason",
+    "category": "test-structure",
+    "description": "@pytest.mark.skip without a reason",
+    "fix_guidance": "Add reason= explaining why this test is skipped and when it should be re-enabled.",
+    "skill_name": "qa"
+  },
+  {
+    "id": "test-structure:banned-import-in-tests",
+    "category": "test-structure",
+    "description": "TestClient, uvicorn, or httpx imported in unit/integration tests",
+    "fix_guidance": "Inject fakes and call the service or controller directly. The factory pattern exists to make this possible without spinning up the app.",
+    "skill_name": "qa"
+  }
+]

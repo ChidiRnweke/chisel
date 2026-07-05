@@ -1,0 +1,140 @@
+---
+title: Understand a violation
+description: Read chisel's output, ask for fix guidance on a rule, and consume the JSON shape agents use.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+A check found violations and you want to know what each one means and how
+to fix it. This guide shows how to read chisel's output, ask for fix
+guidance on a single rule, and consume the JSON shape that agents and CI
+use.
+
+## Read the human output
+
+By default both CLIs print violations grouped by category, one block per
+violation. Each block names the file, line, rule ID, and a short message.
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel check ./your-backend
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js check ./your-frontend
+    ```
+  </TabItem>
+</Tabs>
+
+The rule ID is the key you'll use everywhere else — it has the form
+`category:rule-name`, e.g. `structural:isinstance-banned` or
+`component-enforcement:raw-button`.
+
+## Ask for fix guidance on one rule
+
+`explain` prints the rule's description and the fix an agent should
+apply. Accepts a single rule ID **or** a category prefix (which expands
+to every rule in that category).
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel explain structural:isinstance-banned
+    chisel explain structural            # every rule in the category
+    chisel explain --json
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js explain component-enforcement:raw-button
+    chisel-js explain component-enforcement
+    chisel-js explain --json
+    ```
+  </TabItem>
+</Tabs>
+
+This is the command an agent runs in its fix loop — the same guidance a
+human reads, in context.
+
+## List every rule
+
+`rules` lists all rules the installed version enforces, grouped by
+category.
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel rules            # human-readable
+    chisel rules --json     # machine-readable
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js rules
+    chisel-js rules --json
+    ```
+  </TabItem>
+</Tabs>
+
+See the full rendered list with fix guidance per rule:
+[Python rules](/chisel/reference/python-rules/) ·
+[TypeScript rules](/chisel/reference/js-rules/).
+
+## Consume the JSON output
+
+`check --json` is designed for agents and CI. Two things make it pleasant
+to consume:
+
+1. **Deduplicated messages.** Repeated messages across many files are
+   stored once in a top-level `messages` array. Each violation references
+   its message by `message_ref` (Python) / `messageRef` (TypeScript).
+2. **Skill cross-reference.** Each message carries `skill_name` /
+   `skillName` — the bundled skill that teaches the pattern being
+   violated. An agent can read that skill next if it needs more context.
+
+<Aside title="Why dedup?">
+A single bad pattern (e.g. `console.log` left in 30 files) should produce
+one message on the agent's radar, not 30. The agent reads the fix
+guidance once, applies it broadly, and re-checks.
+</Aside>
+
+The shape differs only in casing between the two CLIs:
+
+<Tabs>
+  <TabItem label="Python (snake_case)">
+    ```json
+    {
+      "violations": [
+        { "file": "...", "line": 12, "rule_id": "...", "message_ref": "..." }
+      ],
+      "messages": [
+        { "ref": "...", "rule_id": "...", "text": "...", "skill_name": "building-python-backend" }
+      ]
+    }
+    ```
+  </TabItem>
+  <TabItem label="TypeScript (camelCase)">
+    ```json
+    {
+      "violations": [
+        { "file": "...", "line": 12, "ruleId": "...", "messageRef": "..." }
+      ],
+      "messages": [
+        { "ref": "...", "ruleId": "...", "text": "...", "skillName": "building-sveltekit-frontend" }
+      ]
+    }
+    ```
+  </TabItem>
+</Tabs>
+
+See the [Commands reference](/chisel/reference/commands/#json-output-shape)
+for the full shape.
+
+## What's next
+
+- [Turn off a rule for a file](/chisel/guides/suppress-a-rule/) — when a
+  rule genuinely shouldn't apply to a file.
+- [Give your AI agent the rules](/chisel/guides/install-agent-skills/) —
+  install the skills whose `skill_name` shows up in the JSON.

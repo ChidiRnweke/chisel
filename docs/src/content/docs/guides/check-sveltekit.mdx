@@ -1,0 +1,62 @@
+---
+title: Check a SvelteKit frontend
+description: Install the TypeScript checker, point it at a SvelteKit project, and read what it finds.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+You have a SvelteKit frontend and want chisel-js to find architecture
+violations in it. This guide installs the TypeScript CLI, runs a check,
+and explains how to read the output.
+
+## Install
+
+```bash
+npm install -g chisel-js      # or: bun add -g chisel-js
+chisel-js --version
+```
+
+Requires Node 20+. TypeScript is a peer dependency (`^5`). Runtime deps
+(`chalk`, `commander`, `estree-walker`, `fast-glob`, `smol-toml`,
+`svelte`) install automatically.
+
+## Run a check
+
+Point `chisel-js check` at your project root. Default path is `.`.
+
+```bash
+chisel-js check ./your-frontend
+```
+
+Non-zero exit on any ERROR-level violation — that's what makes it safe to
+gate commits and CI on.
+
+<Aside title="No --strict flag">
+Unlike the Python CLI, `chisel-js` has no `--strict` flag. The
+project-structure rules (pnpm-only, env-file separation, etc.) are
+always on.
+</Aside>
+
+## Read the output
+
+Coloured, grouped by category, one block per violation. Each violation
+names the file, line, rule ID, and a short message.
+
+```bash
+chisel-js check ./your-frontend
+```
+
+For scripts, agents, or CI, ask for JSON — see
+[Understand a violation](/chisel/guides/understand-a-violation/) for how
+to read the deduplicated `--json` output.
+
+## What's next
+
+- [Understand a violation](/chisel/guides/understand-a-violation/) — read
+  a rule's description and fix guidance with `chisel-js explain`.
+- [Turn off a rule for a file](/chisel/guides/suppress-a-rule/) — exempt
+  legacy files or justified exceptions.
+- [Block violations before commit](/chisel/guides/block-violations-before-commit/)
+  — wire `chisel-js` into a pre-commit hook.
+- [TypeScript rules reference](/chisel/reference/js-rules/) — every rule,
+  grouped by category.

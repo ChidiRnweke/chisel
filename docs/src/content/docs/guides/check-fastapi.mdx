@@ -1,0 +1,67 @@
+---
+title: Check a FastAPI backend
+description: Install the Python checker, point it at a FastAPI project, and read what it finds.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+You have a FastAPI backend and want chisel to find architecture violations
+in it. This guide installs the Python CLI, runs a check, and explains how
+to read the output.
+
+## Install
+
+```bash
+pip install chisel           # or: pipx install chisel,  uv tool install chisel
+chisel --version
+```
+
+Requires Python ≥ 3.11. Runtime deps (`grimp`, `radon`, `typer`, `rich`)
+install automatically.
+
+## Run a check
+
+Point `chisel check` at your project root. Default path is `.`.
+
+```bash
+chisel check ./your-backend
+```
+
+Non-zero exit on any ERROR-level violation — that's what makes it safe to
+gate commits and CI on.
+
+### Strict mode
+
+`--strict` (the default) additionally enforces project-structure rules:
+src-layout, `pyproject.toml`-only, build-config. Turn it off if you're
+checking a project that doesn't follow src-layout yet and you only want
+the code-level rules.
+
+```bash
+chisel check ./your-backend --strict          # default — also enforce layout
+chisel check ./your-backend --no-strict       # code rules only
+```
+
+## Read the output
+
+Coloured, grouped by category, one block per violation. Each violation
+names the file, line, rule ID, and a short message.
+
+```bash
+chisel check ./your-backend
+```
+
+For scripts, agents, or CI, ask for JSON — see
+[Understand a violation](/chisel/guides/understand-a-violation/) for how
+to read the deduplicated `--json` output.
+
+## What's next
+
+- [Understand a violation](/chisel/guides/understand-a-violation/) — read
+  a rule's description and fix guidance with `chisel explain`.
+- [Turn off a rule for a file](/chisel/guides/suppress-a-rule/) — exempt
+  legacy files or justified exceptions.
+- [Block violations before commit](/chisel/guides/block-violations-before-commit/)
+  — wire `chisel` into a pre-commit hook.
+- [Python rules reference](/chisel/reference/python-rules/) — every rule,
+  grouped by category.

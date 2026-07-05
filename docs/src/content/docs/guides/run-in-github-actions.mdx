@@ -1,0 +1,66 @@
+---
+title: Run chisel in GitHub Actions
+description: Gate pull requests on a clean chisel check in GitHub Actions CI.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+You want pull requests to fail when chisel finds violations — the same
+contract as the local pre-commit hook, applied remotely. This guide adds
+a CI job that runs the check on every PR.
+
+## Minimal job
+
+Here's a job that runs `chisel check` on a FastAPI backend. Adjust the
+path and `--strict` to match your project.
+
+```yaml
+# .github/workflows/ci.yml
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install chisel
+      - run: chisel check ./your-backend --strict
+```
+
+For a SvelteKit frontend:
+
+```yaml
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm install -g chisel-js
+      - run: chisel-js check ./your-frontend
+```
+
+CI runs the checker the same way a human does — no special mode — so the
+behaviour you see locally is exactly what blocks a pull request.
+
+## Capture the JSON report for agents
+
+If a bot or an agent consumes CI output, pipe the JSON to a file and
+upload it as an artifact. Use `|| true` so a non-zero exit doesn't stop
+the step before the artifact is uploaded.
+
+```yaml
+- run: chisel check . --json > chisel-report.json || true
+- uses: actions/upload-artifact@v4
+  with: { name: chisel-report, path: chisel-report.json }
+```
+
+The JSON shape is documented in
+[Understand a violation](/chisel/guides/understand-a-violation/#consume-the-json-output).
+
+## What's next
+
+- [Block violations before commit](/chisel/guides/block-violations-before-commit/)
+  — the local hook that catches violations before they reach CI.
+- [Commands reference](/chisel/reference/commands/) — every flag, side by
+  side for both CLIs.

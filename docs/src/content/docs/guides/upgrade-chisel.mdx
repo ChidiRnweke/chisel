@@ -1,0 +1,94 @@
+---
+title: Upgrade chisel and refresh skills
+description: Upgrade the installed CLI and overwrite installed agent skills with the bundled copies that match.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+You upgraded chisel and want your installed agent skills to match the new
+version's rules. This guide upgrades the CLI package and refreshes the
+installed skills in one go.
+
+## Upgrade the CLI
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel update self
+    chisel update self --manager uv          # auto | pip | pipx | uv
+    chisel update self --dry-run
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js update self
+    chisel-js update self --manager bun      # auto | npm | bun
+    chisel-js update self --dry-run
+    ```
+  </TabItem>
+</Tabs>
+
+`update self` detects how the package was installed and re-installs the
+latest version. Use `--manager` to force a specific package manager, and
+`--dry-run` to preview.
+
+## Refresh the installed skills
+
+Skills shipped with the new version may have changed — fix guidance
+wording, new rules, restructured references. `update skills` overwrites
+the installed skills with the bundled copies so they always match the
+checker version you're on.
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel update skills --target codex
+    chisel update skills --target claude -y            # no confirmation (automation)
+    chisel update skills --target codex --dry-run --json
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js update skills --target codex
+    chisel-js update skills --target claude -y
+    chisel-js update skills --target codex --dry-run --json
+    ```
+  </TabItem>
+</Tabs>
+
+`update skills` always overwrites local modifications, so chisel asks for
+confirmation before writing.
+
+<Aside title="First install vs refresh">
+If skills aren't installed yet in the target directory, the Python CLI
+uses `chisel setup` for the first install and `chisel update skills` for
+refreshes. The TypeScript CLI uses `chisel-js update skills` for both —
+there is no separate `setup` command.
+</Aside>
+
+## Verify
+
+After upgrading, run a check to confirm the new ruleset behaves as
+expected on your code:
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel --version
+    chisel check ./your-backend --strict
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js --version
+    chisel-js check ./your-frontend
+    ```
+  </TabItem>
+</Tabs>
+
+## What's next
+
+- [Give your AI agent the rules](/chisel/guides/install-agent-skills/) —
+  the first-install flow (if you skipped it).
+- [Commands reference](/chisel/reference/commands/) — every flag for
+  `update self` and `update skills`, side by side.

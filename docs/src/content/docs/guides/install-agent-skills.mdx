@@ -1,0 +1,90 @@
+---
+title: Give your AI agent the rules
+description: Install chisel's bundled agent skills so your coding agent learns the same patterns the checker enforces.
+---
+
+import { Tabs, TabItem, Steps, Aside } from '@astrojs/starlight/components';
+
+You want your AI coding agent (Codex, Claude Code, OpenCode) to know the
+patterns chisel enforces — before it writes code, not after. This guide
+installs the bundled agent skills into your repo so the agent reads them
+and writes code that already matches the rules.
+
+## Pick a target
+
+Skills install into a different directory depending on which agent
+tooling you use. One target per run — chisel won't install two targets
+at once to avoid duplicate skill discovery in tools like OpenCode.
+
+| `--target` | Where it installs | For |
+| --- | --- | --- |
+| `codex` | `.agents/skills/` | OpenAI Codex **and** OpenCode compatibility |
+| `claude` | `.claude/skills/` | Claude Code |
+| `opencode` | `.opencode/skills/` | OpenCode native |
+
+## Install
+
+<Tabs>
+  <TabItem label="Python CLI">
+    ```bash
+    chisel setup --target codex
+    chisel setup --target claude
+    chisel setup --target opencode
+    ```
+  </TabItem>
+  <TabItem label="TypeScript CLI">
+    The JS CLI uses `update skills` for installation (no standalone
+    `setup` command):
+
+    ```bash
+    chisel-js update skills --target codex
+    chisel-js update skills --target claude
+    chisel-js update skills --target opencode
+    ```
+  </TabItem>
+</Tabs>
+
+Run either with no `--target` in an interactive terminal to pick the
+destination from a prompt.
+
+## Install only specific skills
+
+`--skill` is repeatable. Omit it to install every bundled skill.
+
+<Tabs>
+  <TabItem label="Python CLI">
+    ```bash
+    chisel setup --target codex --skill qa --skill building-python-backend
+    ```
+  </TabItem>
+  <TabItem label="TypeScript CLI">
+    ```bash
+    chisel-js update skills --target opencode --skill designing-svelte-ui
+    ```
+  </TabItem>
+</Tabs>
+
+## Preview without writing
+
+Use `--dry-run --json` to see what would change before committing to it —
+useful in automation.
+
+```bash
+chisel setup --target codex --dry-run --json
+chisel-js update skills --target codex --dry-run --json
+```
+
+<Aside title="Why one target per run?">
+Tools like OpenCode discover skills from more than one directory. If
+chisel wrote the same skill into both `.agents/skills/` and
+`.opencode/skills/`, the tool would surface the same skill twice. So you
+choose one format per run, and re-run with a different `--target` to
+install into the other directory.
+</Aside>
+
+## What's next
+
+- [Upgrade chisel and refresh skills](/chisel/guides/upgrade-chisel/) —
+  keep installed skills in sync with the checker version.
+- [How chisel works](/chisel/concepts/how-it-works/) — what the six
+  bundled skills teach and how rules cross-reference them.

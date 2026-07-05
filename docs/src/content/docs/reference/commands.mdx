@@ -1,0 +1,201 @@
+---
+title: Commands
+description: Every flag and option for chisel and chisel-js, side by side.
+tableOfContents:
+  minHeadingLevel: 2
+  maxHeadingLevel: 3
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+The two CLIs mirror each other. Where they differ, both columns are
+shown. JSON output uses snake_case in `chisel` and camelCase in
+`chisel-js`.
+
+## `check`
+
+Scan a project for architectural violations. Non-zero exit on any
+ERROR-level violation.
+
+| Option | `chisel` | `chisel-js` |
+| --- | --- | --- |
+| `[path]` default `.` | ✅ | ✅ |
+| `--json` | ✅ | ✅ |
+| `--strict` / `--no-strict` (default strict) | ✅ | ❌ (project-structure rules always on) |
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel check ./your-backend
+    chisel check ./your-backend --strict
+    chisel check ./your-backend --no-strict --json
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js check ./your-frontend
+    chisel-js check ./your-frontend --json
+    ```
+  </TabItem>
+</Tabs>
+
+Exit codes: `0` when no ERROR violations; non-zero otherwise. WARNINGs
+also block unless suppressed with a `reason` (see
+[Turn off a rule for a file](/chisel/guides/suppress-a-rule/)).
+
+## `rules`
+
+List all rules grouped by category.
+
+| Option | `chisel` | `chisel-js` |
+| --- | --- | --- |
+| `--json` | ✅ | ✅ |
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel rules
+    chisel rules --json
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js rules
+    chisel-js rules --json
+    ```
+  </TabItem>
+</Tabs>
+
+## `explain`
+
+Print description + fix guidance for one rule, or every rule in a
+category.
+
+| Argument | Description |
+| --- | --- |
+| `<rule-id>` | e.g. `structural:isinstance-banned` |
+| `<category>` | e.g. `structural` — expands to every rule in that category |
+
+| Option | `chisel` | `chisel-js` |
+| --- | --- | --- |
+| `--json` | ✅ | ✅ |
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel explain structural:isinstance-banned
+    chisel explain structural
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js explain component-enforcement:raw-button
+    chisel-js explain component-enforcement
+    ```
+  </TabItem>
+</Tabs>
+
+## `setup` (Python only)
+
+Install bundled skills into a repo. One target per run.
+
+| Option | Description |
+| --- | --- |
+| `[path]` default `.` | Project to install into |
+| `--target <codex\|claude\|opencode>` | Destination directory |
+| `--skill <name>` (repeatable) | Install only the named skills |
+| `--overwrite` | Re-install over existing skills |
+| `--dry-run` | Print what would change without writing |
+| `--json` | Machine-readable output |
+
+```bash
+chisel setup --target codex
+chisel setup --target claude --skill qa --skill building-python-backend
+chisel setup --target opencode --dry-run --json
+```
+
+The TypeScript CLI uses `update skills` for the same job — see below.
+
+## `update skills`
+
+Overwrite installed skills with bundled copies. Same flags on both CLIs
+except `--overwrite` (Python only — `update skills` always overwrites).
+
+| Option | `chisel` | `chisel-js` |
+| --- | --- | --- |
+| `[path]` default `.` | ✅ | ✅ |
+| `--target <codex\|claude\|opencode>` | ✅ | ✅ |
+| `--skill <name>` (repeatable) | ✅ | ✅ |
+| `-y` / `--yes` | ✅ | ✅ |
+| `--dry-run` | ✅ | ✅ |
+| `--json` | ✅ | ✅ |
+| `--overwrite` | ✅ | ❌ (always overwrites) |
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel update skills --target codex
+    chisel update skills --target claude -y --json
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js update skills --target codex
+    chisel-js update skills --target claude -y --json
+    ```
+  </TabItem>
+</Tabs>
+
+## `update self`
+
+Upgrade the installed CLI package.
+
+| Option | `chisel` | `chisel-js` |
+| --- | --- | --- |
+| `--manager <auto\|pip\|pipx\|uv>` | ✅ | ❌ |
+| `--manager <auto\|npm\|bun>` | ❌ | ✅ |
+| `--dry-run` | ✅ | ✅ |
+
+<Tabs>
+  <TabItem label="Python">
+    ```bash
+    chisel update self
+    chisel update self --manager uv --dry-run
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```bash
+    chisel-js update self
+    chisel-js update self --manager bun --dry-run
+    ```
+  </TabItem>
+</Tabs>
+
+## JSON output shape
+
+<Tabs>
+  <TabItem label="Python (`snake_case`)">
+    ```json
+    {
+      "violations": [
+        { "file": "...", "line": 12, "rule_id": "...", "message_ref": "..." }
+      ],
+      "messages": [
+        { "ref": "...", "rule_id": "...", "text": "...", "skill_name": "building-python-backend" }
+      ]
+    }
+    ```
+  </TabItem>
+  <TabItem label="TypeScript (`camelCase`)">
+    ```json
+    {
+      "violations": [
+        { "file": "...", "line": 12, "ruleId": "...", "messageRef": "..." }
+      ],
+      "messages": [
+        { "ref": "...", "ruleId": "...", "text": "...", "skillName": "building-sveltekit-frontend" }
+      ]
+    }
+    ```
+  </TabItem>
+</Tabs>

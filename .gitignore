@@ -169,6 +169,11 @@ venv.bak/
 # mkdocs documentation
 /site
 
+# Astro Starlight docs site (./docs/)
+docs/node_modules/
+docs/dist/
+docs/.astro/
+
 # mypy
 .mypy_cache/
 .dmypy.json

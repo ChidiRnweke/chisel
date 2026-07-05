@@ -1,0 +1,10 @@
+:root {
+  --sl-color-accent: #f59e0b;
+  --sl-color-accent-low: #3a2a05;
+  --sl-color-accent-high: #fde68a;
+}
+
+/* Use Solarized-ish amber accent on links/code */
+a:hover {
+  text-decoration-thickness: 2px;
+}

@@ -1,0 +1,21 @@
+{
+  "name": "chisel-docs",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Documentation site for Chisel, built with Astro Starlight.",
+  "scripts": {
+    "dev": "astro dev --host",
+    "start": "astro dev --host",
+    "prebuild": "bun run scripts/sync-constraints.mjs && bun run scripts/sync-rules.mjs",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "sync-rules": "bun run scripts/sync-rules.mjs"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.41.3",
+    "astro": "^7.0.2",
+    "sharp": "^0.34.5"
+  }
+}

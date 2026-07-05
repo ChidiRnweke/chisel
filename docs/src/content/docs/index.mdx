@@ -1,0 +1,76 @@
+---
+title: Chisel
+description: Agent writes. Chisel carves. Deterministic architecture constraints that pair with agent skills.
+template: splash
+hero:
+  tagline: Agent writes. Chisel carves.
+  actions:
+    - text: Quick start
+      link: /chisel/quick-start/
+      variant: primary
+    - text: How it works
+      link: /chisel/concepts/how-it-works/
+---
+
+import { Badge } from '@astrojs/starlight/components';
+
+**Skills teach the pattern. The checker enforces it. Deterministic, not vibes.**
+
+Chisel carves structure into the code your AI agent writes. Your agent
+reads a skill that teaches the right pattern, writes code, and the checker
+enforces that pattern deterministically — no scoring, no judgement, just a
+list of violations and the fix for each. Run it as a pre-commit hook to
+block violations before they land, or interactively to steer an agent
+while it works.
+
+| Package | Language | Target | Command |
+| --- | --- | --- | --- |
+| `chisel` <Badge text="Python" variant="note" /> | Python | FastAPI backends | `chisel check .` |
+| `chisel-js` <Badge text="TypeScript" variant="note" /> | TypeScript | SvelteKit frontends | `chisel-js check .` |
+
+Both checkers read from a single source of truth: [`constraints.md`][spec]
+at the repo root. One spec, two implementations — so your backend and
+frontend enforce the same architectural intent.
+
+[spec]: /chisel/reference/constraints/
+
+## The loop
+
+```
+skills/                        ← teaches the pattern (LLM-readable Markdown)
+  building-python-backend/SKILL.md
+  building-sveltekit-frontend/SKILL.md
+  designing-svelte-ui/SKILL.md
+  qa/SKILL.md
+
+chisel check .                  ← enforces every rule deterministically
+chisel explain <rule-id>        ← fix guidance the agent reads in context
+```
+
+1. An agent reads `building-python-backend/SKILL.md` and learns that
+   services never import `sqlalchemy`.
+2. It writes code. The checker catches it deterministically if the rule
+   was violated.
+3. The agent runs `chisel explain import-boundary:banned-module` for fix
+   guidance in context, and loops until clean.
+
+The skills are opinionated. The checker is deterministic. Neither argues.
+
+## What it catches
+
+- **Import boundaries** — services don't import SQLAlchemy, routes don't
+  import services directly, ORM types stay in repositories.
+- **Structural invariants** — `getattr`/`setattr` banned, `isinstance`
+  requires `match/case`, logger is module-level, dataclasses use
+  `slots=True`.
+- **Component & colour enforcement** (JS) — raw HTML elements must use
+  shadcn replacements, arbitrary Tailwind values banned, dynamic class
+  construction flagged.
+
+Plus complexity, testing, project structure, concurrency, and error-flow
+rules. See the full list: [Python rules](/chisel/reference/python-rules/) ·
+[TypeScript rules](/chisel/reference/js-rules/).
+
+---
+
+Get a passing check in five minutes → [**Quick start**](/chisel/quick-start/)

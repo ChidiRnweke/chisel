@@ -63,6 +63,15 @@ npm install -g chisel-js
 chisel-js check ./your-frontend
 ```
 
+## Documentation
+
+The full docs live at **<https://chidirnweke.github.io/chisel>** — quick start,
+guide pages for both CLIs, the constraints spec, and a per-rule reference.
+
+The site source is in [`docs/`](docs/) (Astro Starlight, built with bun).
+`docs.yml` builds and deploys it to the `gh-pages` branch on every push to
+`master` that touches `docs/` or `constraints.md`.
+
 ## Agent-facing commands
 
 These are designed for LLM consumption — an agent queries them to understand what a rule means and how to fix it:
