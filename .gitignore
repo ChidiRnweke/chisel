@@ -14,8 +14,11 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Anchored to the repo root: these are Python build artifacts. Unanchored,
+# `lib/` also matches src/lib/ in any JavaScript fixture or sample app, which
+# silently dropped most of chisel_js/tests/fixtures/ from a commit.
+/lib/
+/lib64/
 parts/
 sdist/
 var/
