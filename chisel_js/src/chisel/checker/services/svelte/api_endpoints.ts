@@ -12,7 +12,6 @@ export class ApiEndpointsService {
       if (!file.source) continue;
       violations.push(...this._checkRequestHandler(file));
     }
-    violations.push(...this._checkApiRouteRatio(project));
     return violations;
   }
 
@@ -35,26 +34,11 @@ export class ApiEndpointsService {
     return violations;
   }
 
-  private _checkApiRouteRatio(project: ProjectInfo) {
-    const violations: Violation[] = [];
-    const apiRoutes = project.files.filter(f => f.path.includes("routes/api/")).length;
-    const pageRoutes = project.files.filter(f => f.path.endsWith("+page.svelte")).length;
-    if (pageRoutes > 0 && apiRoutes / pageRoutes > 0.2) {
-      violations.push(createViolation({
-        file: "project", line: 1, severity: Severity.WARNING,
-        ruleId: "api:route-count-ratio",
-        message: `API route count (${apiRoutes}) exceeds 20% of total page route count (${pageRoutes}). Prefer loaders and form actions over API routes.`,
-      }));
-    }
-    return violations;
-  }
 
   describeRules() {
     return [
       { id: "api:request-handler-outside-api", category: "api-endpoints",
         description: "RequestHandler export outside src/routes/api/", fixGuidance: "Use loaders and form actions instead of raw API endpoints." },
-      { id: "api:route-count-ratio", category: "api-endpoints",
-        description: "API route count exceeds 20% of page routes", fixGuidance: "Prefer loaders and form actions over API routes." },
     ];
   }
 }

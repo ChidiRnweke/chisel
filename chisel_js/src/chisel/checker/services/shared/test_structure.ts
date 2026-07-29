@@ -102,16 +102,24 @@ export class TestStructureService {
   private _checkSkipReason(file: { path: string; source: string }) {
     const violations: Violation[] = [];
     if (!file.path.includes("tests/")) return violations;
-    const skips = file.source.matchAll(/test\.skip\s*\(/g);
+    // A skip is justified when it carries an explanatory string — which is what
+    // `test.skip(cond, 'the dev database must seed two notes')` already is. The
+    // previous version required the literal *word* "reason" on the line, so
+    // every properly-explained skip was reported and only one containing the
+    // word itself passed.
+    const skips = file.source.matchAll(/\b(?:test|it|describe)\.skip\s*\(/g);
     for (const m of skips) {
       const idx = m.index!;
       const lineNum = file.source.substring(0, idx).split("\n").length;
-      const line = file.source.split("\n")[lineNum - 1];
-      if (!line.includes("reason")) {
+      const call = file.source.slice(idx, idx + 400);
+      const hasExplanation = /["'`][^"'`]{12,}["'`]/.test(call);
+
+      if (!hasExplanation) {
         violations.push(createViolation({
           file: file.path, line: lineNum, severity: Severity.ERROR,
           ruleId: "test-structure:skip-without-reason",
-          message: "test.skip must include a reason explaining why this test is skipped and when it should be re-enabled.",
+          message: "A skipped test must say why, and when it should come back. "
+            + "Pass an explanation string: test.skip(condition, 'why this is skipped').",
         }));
       }
     }

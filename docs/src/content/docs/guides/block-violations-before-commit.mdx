@@ -57,6 +57,21 @@ pip install chisel                # for the chisel-py hook
 npm install -g chisel-js          # for the chisel-js hook (or: bun add -g chisel-js)
 ```
 
+## Commit a `chisel.config.json`
+
+Run `chisel-js init` once and commit the result:
+
+```bash
+chisel-js init .
+git add chisel.config.json
+```
+
+This matters more for a hook than for an ad-hoc check. Without the config
+chisel-js re-detects the topology on every run, so a dependency change
+could quietly alter which rules gate your commits. Committing the file
+pins the mode and makes any change to it show up in review, like any other
+change.
+
 ## Trigger
 
 Every `git commit` now runs the hooks. They use `pass_filenames: false`

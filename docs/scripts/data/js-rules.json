@@ -1,446 +1,401 @@
 [
   {
-    "id": "structural:console-log-banned",
-    "category": "structural",
-    "description": "console.log / console.error / console.warn in committed code",
-    "fixGuidance": "Remove before committing. Use structured logging or your observability tooling instead."
+    "id": "import-boundary:layer-no-internal-imports",
+    "category": "import-boundary",
+    "description": "A pure layer (models, errors, config) imported another internal layer — including another file of its own layer.",
+    "fixGuidance": "models, errors and config sit at the bottom of the dependency graph. Importing upward: move the shared type down into models. Importing sideways: one model file per domain, self-contained — the ID type lives with the model that owns it. A shared.ts kernel of branded IDs is the anti-pattern, not the fix; distribute those types to their domains. An index.ts barrel is the layer's surface for consumers, and cannot resolve a file-to-file dependency inside the layer.",
+    "skillName": "building-sveltekit-frontend"
   },
   {
-    "id": "structural:timers-banned",
-    "category": "structural",
-    "description": "setTimeout/setInterval in .svelte or $lib/",
-    "fixGuidance": "Use a reactive pattern, loader with streaming, or debounce with a derived."
+    "id": "import-boundary:banned-layer-import",
+    "category": "import-boundary",
+    "description": "An import crossed a layer boundary in a banned direction.",
+    "fixGuidance": "Dependencies point one way: components/stores/client -> routes/remote -> factory -> controllers -> services -> repositories. Import the interface, or get the value from the layer above.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "import-boundary:orm-leak",
+    "category": "import-boundary",
+    "description": "Drizzle was imported outside the repository layer.",
+    "fixGuidance": "ORM types never leave the repository layer. Query inside a repository and return a domain model.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "import-boundary:framework-leak",
+    "category": "import-boundary",
+    "description": "@sveltejs/kit was imported by a layer that must stay framework-agnostic.",
+    "fixGuidance": "Services, repositories, controllers and stores know nothing about SvelteKit. Handle framework concerns in the route or remote function.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "import-boundary:server-only-specifier",
+    "category": "import-boundary",
+    "description": "$app/server or a private $env entry point was imported from a client-reachable module.",
+    "fixGuidance": "Move the import into a *.server.ts, a *.remote.ts, or a module under $lib/server.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "import-boundary:api-client-location",
+    "category": "import-boundary",
+    "description": "The generated API client was constructed outside the factory (BFF mode).",
+    "fixGuidance": "Construct the client once in the factory and inject it. Import only its type elsewhere.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "import-boundary:unresolved-import",
+    "category": "import-boundary",
+    "description": "An import specifier resolved to no file in the project.",
+    "fixGuidance": "Fix the path. A dangling import is invisible to every layer rule, so it hides architectural violations as well as being broken.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "server-layer-leak:client-reachable-import",
+    "category": "server-layer-leak",
+    "description": "A client-reachable module imported a server-only module.",
+    "fixGuidance": "Server-only code lives under $lib/server or in a *.server.ts / *.remote.ts file, and may only be imported from other server-only modules. A universal +page.ts is not server-only, even next to a +page.server.ts. Import types with `import type`.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "structure:layer-outside-server",
+    "category": "structure",
+    "description": "A server-side layer sits at a universal path instead of under $lib/server/.",
+    "fixGuidance": "Move services, controllers, repositories and the factory under $lib/server/. SvelteKit then makes a client import of them a build error, which is stronger than anything a linter can offer. Reported once per directory.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "structure:unknown-server-folder",
+    "category": "structure",
+    "description": "A folder under $lib/server/ does not name a layer.",
+    "fixGuidance": "$lib/server/ holds db/, repositories/, services/, controllers/, config.ts and the factory. An adapter for an external capability is a service, not a repository — repositories are persistence. Reported once per folder.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "structure:unclassified-module",
+    "category": "structure",
+    "description": "A src/lib/ module matches no canonical layer location.",
+    "fixGuidance": "Give it a home. An ad-hoc folder gets no boundary rules of its own, so it silently opts out of the architecture it lives in.",
+    "skillName": "building-sveltekit-frontend"
   },
   {
     "id": "structural:inline-style-banned",
     "category": "structural",
     "description": "inline style= attribute in .svelte",
-    "fixGuidance": "Use Tailwind utility classes defined in app.css."
+    "fixGuidance": "Use Tailwind utility classes defined in app.css. Styling comes from the design system, not from the element.",
+    "skillName": "building-sveltekit-frontend"
   },
   {
     "id": "structural:style-block-banned",
     "category": "structural",
     "description": "<style> block in .svelte",
-    "fixGuidance": "Remove the <style> block and express styles as Tailwind utility classes."
-  },
-  {
-    "id": "structural:app-stores-banned",
-    "category": "structural",
-    "description": "import from $app/stores",
-    "fixGuidance": "Use $app/state instead (Svelte 5 API)."
-  },
-  {
-    "id": "structural:writable-banned",
-    "category": "structural",
-    "description": "writable / readable Svelte 4 stores",
-    "fixGuidance": "Use $state runes for reactive state."
-  },
-  {
-    "id": "structural:inline-svg-banned",
-    "category": "structural",
-    "description": "Inline <svg> with >2 children",
-    "fixGuidance": "Check Lucide first. Extract to $lib/components/ otherwise."
-  },
-  {
-    "id": "structural:effect-no-cleanup",
-    "category": "structural",
-    "description": "$effect without return cleanup",
-    "fixGuidance": "Add return cleanup, or use $derived/onMount instead."
-  },
-  {
-    "id": "structural:onmount-no-browser-api",
-    "category": "structural",
-    "description": "onMount without browser API reference",
-    "fixGuidance": "Use $derived for computed state. Only onMount with localStorage/sessionStorage/DOM refs."
-  },
-  {
-    "id": "structural:effect-single-call",
-    "category": "structural",
-    "description": "$effect that only calls a single function",
-    "fixGuidance": "Use onMount instead for single-function calls with no reactive dependencies."
-  },
-  {
-    "id": "structural:effect-present",
-    "category": "structural",
-    "description": "$effect usage (warrants review)",
-    "fixGuidance": "Confirm $effect has a cleanup function and references a browser-only imperative API."
-  },
-  {
-    "id": "structural:raw-fetch",
-    "category": "structural",
-    "description": "Raw fetch in services/",
-    "fixGuidance": "Use the typed openapi-fetch client from AppFactory in production code."
+    "fixGuidance": "Remove the <style> block and express the styles as Tailwind utility classes.",
+    "skillName": "building-sveltekit-frontend"
   },
   {
     "id": "structural:missing-service-interface",
     "category": "structural",
-    "description": "Service without I<ServiceName> interface",
-    "fixGuidance": "Define an I<ServiceName> TypeScript interface in the same file."
+    "description": "Concrete service without a matching I<ServiceName> interface",
+    "fixGuidance": "Declare an I<ServiceName> interface in the same file. Controllers depend on the interface and the factory supplies the implementation. It has to be the same file — a sibling contracts.ts is a same-layer import, which the boundary rules ban.",
+    "skillName": "building-sveltekit-frontend"
   },
   {
-    "id": "structural:factory-static-only",
+    "id": "structural:factory-contains-logic",
     "category": "structural",
-    "description": "AppFactory has non-static method",
-    "fixGuidance": "AppFactory uses static methods only and contains zero business logic."
+    "description": "A factory contains branching or looping",
+    "fixGuidance": "A factory wires concrete implementations together and decides nothing — no if, for, while, switch, try or ternary. Instance methods are fine: holding injected collaborators is what a factory is for.",
+    "skillName": "building-sveltekit-frontend"
   },
   {
     "id": "structural:hooks-locals-limited",
     "category": "structural",
-    "description": "hooks.server.ts sets non-user local",
-    "fixGuidance": "hooks.server.ts sets only locals.user — no other locals, no route guards, no data fetching."
-  },
-  {
-    "id": "structural:store-should-use-derived",
-    "category": "structural",
-    "description": "$effect writes $state from data/$props",
-    "fixGuidance": "Use $derived(by => data.X) instead of $effect to sync data into $state."
-  },
-  {
-    "id": "structural:derived-calls-fetch",
-    "category": "structural",
-    "description": "$derived calls fetch or a service method",
-    "fixGuidance": "$derived must be a pure computation — move async work to a loader."
+    "description": "hooks.server.ts sets a local other than locals.user",
+    "fixGuidance": "hooks.server.ts attaches the authenticated user and nothing else. Route guards and data fetching belong in a loader.",
+    "skillName": "building-sveltekit-frontend"
   },
   {
     "id": "component-enforcement:html-button-banned",
     "category": "component-enforcement",
     "description": "Raw <button> element",
-    "fixGuidance": "Use <Button, Toggle> from shadcn."
+    "fixGuidance": "Use <Button, Toggle> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-textarea-banned",
     "category": "component-enforcement",
     "description": "Raw <textarea> element",
-    "fixGuidance": "Use <Textarea> from shadcn."
+    "fixGuidance": "Use <Textarea> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-select-banned",
     "category": "component-enforcement",
     "description": "Raw <select> element",
-    "fixGuidance": "Use <Select, NativeSelect, Combobox> from shadcn."
+    "fixGuidance": "Use <Select, NativeSelect, Combobox> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-label-banned",
     "category": "component-enforcement",
     "description": "Raw <label> element",
-    "fixGuidance": "Use <Label> from shadcn."
+    "fixGuidance": "Use <Label> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-progress-banned",
     "category": "component-enforcement",
     "description": "Raw <progress> element",
-    "fixGuidance": "Use <Progress> from shadcn."
+    "fixGuidance": "Use <Progress> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-dialog-banned",
     "category": "component-enforcement",
     "description": "Raw <dialog> element",
-    "fixGuidance": "Use <Dialog, AlertDialog, Drawer, Sheet> from shadcn."
+    "fixGuidance": "Use <Dialog, AlertDialog, Drawer, Sheet> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-nav-banned",
     "category": "component-enforcement",
     "description": "Raw <nav> element",
-    "fixGuidance": "Use <NavigationMenu, Breadcrumb, Menubar, Sidebar, Pagination> from shadcn."
+    "fixGuidance": "Use <NavigationMenu, Breadcrumb, Menubar, Sidebar, Pagination> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-kbd-banned",
     "category": "component-enforcement",
     "description": "Raw <kbd> element",
-    "fixGuidance": "Use <Kbd> from shadcn."
+    "fixGuidance": "Use <Kbd> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-hr-banned",
     "category": "component-enforcement",
     "description": "Raw <hr> element",
-    "fixGuidance": "Use <Separator> from shadcn."
+    "fixGuidance": "Use <Separator> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-form-banned",
     "category": "component-enforcement",
     "description": "Raw <form> element",
-    "fixGuidance": "Use <Formsnap> from shadcn."
+    "fixGuidance": "Use <Formsnap> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-fieldset-banned",
     "category": "component-enforcement",
     "description": "Raw <fieldset> element",
-    "fixGuidance": "Use <Field> from shadcn."
+    "fixGuidance": "Use <Field> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-table-banned",
     "category": "component-enforcement",
     "description": "Raw <table> element",
-    "fixGuidance": "Use <Table, DataTable> from shadcn."
+    "fixGuidance": "Use <Table, DataTable> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-thead-banned",
     "category": "component-enforcement",
     "description": "Raw <thead> element",
-    "fixGuidance": "Use <Table, DataTable> from shadcn."
+    "fixGuidance": "Use <Table, DataTable> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-tbody-banned",
     "category": "component-enforcement",
     "description": "Raw <tbody> element",
-    "fixGuidance": "Use <Table, DataTable> from shadcn."
+    "fixGuidance": "Use <Table, DataTable> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-tr-banned",
     "category": "component-enforcement",
     "description": "Raw <tr> element",
-    "fixGuidance": "Use <Table, DataTable> from shadcn."
+    "fixGuidance": "Use <Table, DataTable> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-th-banned",
     "category": "component-enforcement",
     "description": "Raw <th> element",
-    "fixGuidance": "Use <Table, DataTable> from shadcn."
+    "fixGuidance": "Use <Table, DataTable> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-td-banned",
     "category": "component-enforcement",
     "description": "Raw <td> element",
-    "fixGuidance": "Use <Table, DataTable> from shadcn."
+    "fixGuidance": "Use <Table, DataTable> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-details-banned",
     "category": "component-enforcement",
     "description": "Raw <details> element",
-    "fixGuidance": "Use <Accordion, Collapsible> from shadcn."
+    "fixGuidance": "Use <Accordion, Collapsible> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-summary-banned",
     "category": "component-enforcement",
     "description": "Raw <summary> element",
-    "fixGuidance": "Use <Accordion, Collapsible> from shadcn."
+    "fixGuidance": "Use <Accordion, Collapsible> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-input-banned",
     "category": "component-enforcement",
     "description": "Raw <input> element",
-    "fixGuidance": "Use <Input>, <InputOTP>, <Checkbox>, <Slider>, or <RadioGroup> from shadcn depending on the type attribute."
+    "fixGuidance": "Use <Input>, <InputOTP>, <Checkbox>, <Slider>, or <RadioGroup> from shadcn depending on the type attribute.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-img-avatar-banned",
     "category": "component-enforcement",
     "description": "Raw <img> used as avatar",
-    "fixGuidance": "Use <Avatar> from shadcn."
+    "fixGuidance": "Use <Avatar> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-ol-menu-banned",
     "category": "component-enforcement",
     "description": "Raw <ol> used as menu structure",
-    "fixGuidance": "Use <DropdownMenu>, <ContextMenu>, or <Command> from shadcn."
+    "fixGuidance": "Use <DropdownMenu>, <ContextMenu>, or <Command> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-ul-menu-banned",
     "category": "component-enforcement",
     "description": "Raw <ul> used as menu structure",
-    "fixGuidance": "Use <DropdownMenu>, <ContextMenu>, or <Command> from shadcn."
+    "fixGuidance": "Use <DropdownMenu>, <ContextMenu>, or <Command> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "component-enforcement:html-li-menu-banned",
     "category": "component-enforcement",
     "description": "Raw <li> used as menu structure",
-    "fixGuidance": "Use <DropdownMenu>, <ContextMenu>, or <Command> from shadcn."
+    "fixGuidance": "Use <DropdownMenu>, <ContextMenu>, or <Command> from shadcn.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "colour:arbitrary-value-banned",
     "category": "colour-enforcement",
-    "description": "Arbitrary Tailwind value syntax (bg-[...], text-[...], etc.)",
-    "fixGuidance": "Add the colour as a CSS custom property in app.css first, then reference it as a Tailwind token."
+    "description": "Arbitrary Tailwind colour value syntax (bg-[...], text-[#...], border-[...], etc.)",
+    "fixGuidance": "Add the colour as a CSS custom property in app.css first, then reference it as a Tailwind token (e.g. bg-primary).",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "typography:arbitrary-value-banned",
+    "category": "typography",
+    "description": "Arbitrary Tailwind typography value syntax (text-[10px], tracking-[0.4em], leading-[1.6])",
+    "fixGuidance": "Define the size/leading/tracking as a CSS custom property in app.css (e.g. --text-sm) and reference it as a Tailwind token.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "spacing:arbitrary-value-banned",
+    "category": "spacing",
+    "description": "Arbitrary Tailwind spacing/sizing value syntax (w-[400px], min-h-[80vh], gap-[14px])",
+    "fixGuidance": "Define the size as a CSS custom property in app.css (e.g. --space-4) and reference it as a Tailwind token.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "colour:palette-class-banned",
+    "category": "colour-enforcement",
+    "description": "Hardcoded Tailwind palette colour (text-red-500, bg-slate-800, from-blue-500)",
+    "fixGuidance": "Use a semantic token from app.css (bg-background, text-muted-foreground, text-destructive). A palette class pins one appearance and cannot follow the theme, so it looks wrong in whichever mode it was not written for.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "colour:dynamic-class-banned",
     "category": "colour-enforcement",
     "description": "Dynamic class construction (class={`bg-${variable}`})",
-    "fixGuidance": "Use a lookup object of pre-approved token names instead: const colourMap = { primary: 'bg-primary' }."
+    "fixGuidance": "Use a lookup object of pre-approved token names instead: const colourMap = { primary: 'bg-primary' }.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "colour:modifier-on-semantic",
     "category": "colour-enforcement",
     "description": "Experimental modifier class on semantic HTML",
-    "fixGuidance": "Modifier classes (.glass, .neumorphic) restricted to Hero components and Overlay widgets."
-  },
-  {
-    "id": "import-boundary:service-banned-import",
-    "category": "import-boundary",
-    "description": "Service importing another service, store, or framework module",
-    "fixGuidance": "Services never import other services or stores. Use a controller to orchestrate multiple services."
-  },
-  {
-    "id": "import-boundary:controller-banned-import",
-    "category": "import-boundary",
-    "description": "Controller importing @sveltejs/kit or another controller",
-    "fixGuidance": "Controllers have no framework knowledge. Move @sveltejs/kit imports to the loader."
-  },
-  {
-    "id": "import-boundary:stores-banned-import",
-    "category": "import-boundary",
-    "description": "Store importing services, controllers, or @sveltejs/kit",
-    "fixGuidance": "Stores hold reactive state only. Move service/controller calls to the loader."
-  },
-  {
-    "id": "import-boundary:page-banned-import",
-    "category": "import-boundary",
-    "description": "+page.svelte importing services or controllers",
-    "fixGuidance": "Data comes from the loader via $props. Don't call services directly from the page."
-  },
-  {
-    "id": "import-boundary:loader-banned-import",
-    "category": "import-boundary",
-    "description": "Loader/action importing raw fetch",
-    "fixGuidance": "Use the typed openapi-fetch client via AppFactory."
-  },
-  {
-    "id": "import-boundary:hooks-banned-import",
-    "category": "import-boundary",
-    "description": "hooks.server.ts importing unauthorized modules",
-    "fixGuidance": "hooks.server.ts sets only locals.user. Move service calls to the loader."
-  },
-  {
-    "id": "import-boundary:create-api-client-location",
-    "category": "import-boundary",
-    "description": "createApiClient() called outside factories/",
-    "fixGuidance": "createApiClient() must only be called in factories/."
-  },
-  {
-    "id": "import-boundary:concrete-service-import",
-    "category": "import-boundary",
-    "description": "Concrete service imported outside factories/",
-    "fixGuidance": "Only factories assemble concrete implementations. Import the Protocol interface everywhere else."
-  },
-  {
-    "id": "import-boundary:factory-import-location",
-    "category": "import-boundary",
-    "description": "AppFactory imported outside src/routes/",
-    "fixGuidance": "AppFactory must only be imported in src/routes/. Import the service interface everywhere else."
-  },
-  {
-    "id": "complexity:page-loc-limit",
-    "category": "complexity",
-    "description": "+page.svelte exceeds 100 LoC",
-    "fixGuidance": "Extract logical sections into components/domain/."
-  },
-  {
-    "id": "complexity:page-loc-warning",
-    "category": "complexity",
-    "description": "+page.svelte exceeds 80 LoC",
-    "fixGuidance": "Consider extracting sections into components/domain/."
-  },
-  {
-    "id": "complexity:controller-loc-limit",
-    "category": "complexity",
-    "description": "Controller method exceeds 40 LoC",
-    "fixGuidance": "Extract business logic into a service. Controllers orchestrate — services do the work."
-  },
-  {
-    "id": "complexity:loader-loc-limit",
-    "category": "complexity",
-    "description": "Loader or form action exceeds 20 LoC",
-    "fixGuidance": "Move logic into a controller or service. Loaders parse input, call factory, return output."
-  },
-  {
-    "id": "api:request-handler-outside-api",
-    "category": "api-endpoints",
-    "description": "RequestHandler export outside src/routes/api/",
-    "fixGuidance": "Use loaders and form actions instead of raw API endpoints."
-  },
-  {
-    "id": "api:route-count-ratio",
-    "category": "api-endpoints",
-    "description": "API route count exceeds 20% of page routes",
-    "fixGuidance": "Prefer loaders and form actions over API routes."
-  },
-  {
-    "id": "concurrency:promise-all-warning",
-    "category": "concurrency",
-    "description": "Promise.all used directly in a loader",
-    "fixGuidance": "Move Promise.all into a controller method. Single-service controllers are an anti-pattern — call service directly from loader via factory."
+    "fixGuidance": "Modifier classes (.glass, .neumorphic) restricted to Hero components and Overlay widgets.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "error-flow:raw-http-status",
     "category": "error-flow",
-    "description": "Raw HTTP status code outside error handler",
-    "fixGuidance": "Use throw error(status, ...) for unrecoverable errors (renders +error.svelte) or return fail(status, ...) for recoverable form errors."
-  },
-  {
-    "id": "responsiveness:fixed-width-banned",
-    "category": "responsiveness",
-    "description": "Fixed pixel width on page root",
-    "fixGuidance": "Use responsive or fluid widths instead of fixed pixel values."
-  },
-  {
-    "id": "responsiveness:absolute-no-breakpoint",
-    "category": "responsiveness",
-    "description": "Absolute positioning without breakpoint",
-    "fixGuidance": "Add a responsive breakpoint variant (md:, lg:) to absolute positioning on layout elements."
-  },
-  {
-    "id": "responsiveness:nowrap-no-breakpoint",
-    "category": "responsiveness",
-    "description": "whitespace-nowrap without responsive variant",
-    "fixGuidance": "Add a responsive breakpoint variant to whitespace-nowrap on layout elements."
-  },
-  {
-    "id": "responsiveness:missing-page-wrapper",
-    "category": "responsiveness",
-    "description": "+page.svelte missing layout wrapper",
-    "fixGuidance": "Wrap the page content in <PageShell>, <Container>, or <AppLayout> as the direct root child."
-  },
-  {
-    "id": "responsiveness:no-breakpoint-classes",
-    "category": "responsiveness",
-    "description": "No responsive breakpoint classes in .svelte file",
-    "fixGuidance": "Add responsive breakpoint variants (sm:, md:, lg:) for layouts."
+    "description": "Raw HTTP status code outside error handler / api route",
+    "fixGuidance": "Pages/actions: throw error(status, ...) or return fail(status, ...). API routes under src/routes/api/**/+server.ts: return json(payload, { status }). Services: throw a typed domain error; HTTP status is decided only in error_handlers.",
+    "skillName": "building-sveltekit-frontend"
   },
   {
     "id": "test-structure:test-file-location",
     "category": "test-structure",
     "description": "Test file outside tests/unit/, tests/integration/, or tests/e2e/",
-    "fixGuidance": "Move into the correct directory."
+    "fixGuidance": "Move into the correct directory.",
+    "skillName": "qa"
   },
   {
     "id": "test-structure:test-naming",
     "category": "test-structure",
     "description": "Test name does not describe an invariant",
-    "fixGuidance": "Name the test after the invariant it proves: test_cannot_X, test_returns_Y_when_Z."
+    "fixGuidance": "Name the test after the invariant it proves: test_cannot_X, test_returns_Y_when_Z.",
+    "skillName": "qa"
   },
   {
     "id": "test-structure:one-assert-per-test",
     "category": "test-structure",
     "description": "More than one assert/expect in a test",
-    "fixGuidance": "Split into separate test functions, one per assertion. Name each after the invariant it proves."
+    "fixGuidance": "Split into separate test functions, one per assertion. Name each after the invariant it proves.",
+    "skillName": "qa"
   },
   {
     "id": "test-structure:mocking-banned",
     "category": "test-structure",
     "description": "Mocking library usage (jest.mock, vi.mock, spyOn)",
-    "fixGuidance": "Write a fake that implements the full Protocol/interface. Put it in tests/fakes/."
+    "fixGuidance": "Write a fake that implements the full Protocol/interface. Put it in tests/fakes/.",
+    "skillName": "qa"
   },
   {
     "id": "test-structure:skip-without-reason",
     "category": "test-structure",
     "description": "test.skip without reason",
-    "fixGuidance": "Add a reason string explaining why this test is skipped and when it should be re-enabled."
+    "fixGuidance": "Add a reason string explaining why this test is skipped and when it should be re-enabled.",
+    "skillName": "qa"
   },
   {
     "id": "project-structure:wrong-package-manager",
     "category": "project-structure",
     "description": "npm or yarn lockfile found instead of pnpm",
-    "fixGuidance": "Use pnpm exclusively for the frontend."
+    "fixGuidance": "Use pnpm exclusively for the frontend.",
+    "skillName": "building-sveltekit-frontend"
   },
   {
     "id": "project-structure:backend-env-in-frontend",
     "category": "project-structure",
     "description": "Backend infrastructure variables in frontend .env",
-    "fixGuidance": "Keep frontend/.env and backend/.env separate. Never share secrets."
+    "fixGuidance": "Keep frontend/.env and backend/.env separate. Never share secrets.",
+    "skillName": "building-sveltekit-frontend"
   },
   {
     "id": "project-structure:missing-test-coverage",
     "category": "project-structure",
     "description": "Service has no test file",
-    "fixGuidance": "Add a test file under tests/unit/ covering its core invariants."
+    "fixGuidance": "Add a test file under tests/unit/ covering its core invariants.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "route-style:prefer-remote-function",
+    "category": "route-style",
+    "description": "An API route serves the app's own UI instead of a remote function.",
+    "fixGuidance": "Move it to a remote function in $lib/remote/*.remote.ts, or to a loader / form action if the data belongs to a page. Routes that are genuinely HTTP — OAuth callbacks, webhooks, SSE streams, file downloads, protocol endpoints — are detected and exempt.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "suppression:missing-reason",
+    "category": "suppression",
+    "description": "A chisel-ignore comment gave no reason, so it suppressed nothing.",
+    "fixGuidance": "Write `chisel-ignore <rule-id> -- <why this case is different>`. A suppression nobody has to justify is one nobody will revisit.",
+    "skillName": "building-sveltekit-frontend"
   }
 ]

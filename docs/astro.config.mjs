@@ -60,7 +60,6 @@ export default defineConfig({
 					label: 'Look up',
 					items: [
 						{ label: 'Commands', slug: 'reference/commands' },
-						{ label: 'Constraints spec', slug: 'reference/constraints' },
 						{ label: 'Python rules', slug: 'reference/python-rules' },
 						{ label: 'TypeScript rules', slug: 'reference/js-rules' },
 					],

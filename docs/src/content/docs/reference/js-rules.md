@@ -13,33 +13,31 @@ tableOfContents:
 This page mirrors `scripts/data/js-rules.json` captured at release time. Run `chisel-js rules --json` to see the live list for your installed version.
 :::
 
-74 rules across 11 categories, enforced by `chisel-js`.
-
-## Api Endpoints
-
-`api-endpoints` · 2 rules
-
-### `api:request-handler-outside-api`
-
-RequestHandler export outside src/routes/api/
-
-**Fix.** Use loaders and form actions instead of raw API endpoints.
-
-### `api:route-count-ratio`
-
-API route count exceeds 20% of page routes
-
-**Fix.** Prefer loaders and form actions over API routes.
+57 rules across 13 categories, enforced by `chisel-js`.
 
 ## Colour Enforcement
 
-`colour-enforcement` · 3 rules
+`colour-enforcement` · 4 rules
 
 ### `colour:arbitrary-value-banned`
 
-Arbitrary Tailwind value syntax (bg-[...], text-[...], etc.)
+Arbitrary Tailwind colour value syntax (bg-[...], text-[#...], border-[...], etc.)
 
-**Fix.** Add the colour as a CSS custom property in app.css first, then reference it as a Tailwind token.
+**Fix.** Add the colour as a CSS custom property in app.css first, then reference it as a Tailwind token (e.g. bg-primary).
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `colour:palette-class-banned`
+
+Hardcoded Tailwind palette colour (text-red-500, bg-slate-800, from-blue-500)
+
+**Fix.** Use a semantic token from app.css (bg-background, text-muted-foreground, text-destructive). A palette class pins one appearance and cannot follow the theme, so it looks wrong in whichever mode it was not written for.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `colour:dynamic-class-banned`
 
@@ -47,39 +45,19 @@ Dynamic class construction (class={`bg-${variable}`})
 
 **Fix.** Use a lookup object of pre-approved token names instead: const colourMap = { primary: 'bg-primary' }.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `colour:modifier-on-semantic`
 
 Experimental modifier class on semantic HTML
 
 **Fix.** Modifier classes (.glass, .neumorphic) restricted to Hero components and Overlay widgets.
 
-## Complexity
-
-`complexity` · 4 rules
-
-### `complexity:page-loc-limit`
-
-+page.svelte exceeds 100 LoC
-
-**Fix.** Extract logical sections into components/domain/.
-
-### `complexity:page-loc-warning`
-
-+page.svelte exceeds 80 LoC
-
-**Fix.** Consider extracting sections into components/domain/.
-
-### `complexity:controller-loc-limit`
-
-Controller method exceeds 40 LoC
-
-**Fix.** Extract business logic into a service. Controllers orchestrate — services do the work.
-
-### `complexity:loader-loc-limit`
-
-Loader or form action exceeds 20 LoC
-
-**Fix.** Move logic into a controller or service. Loaders parse input, call factory, return output.
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ## Component Enforcement
 
@@ -91,11 +69,19 @@ Raw <button> element
 
 **Fix.** Use <Button, Toggle> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-textarea-banned`
 
 Raw <textarea> element
 
 **Fix.** Use <Textarea> from shadcn.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `component-enforcement:html-select-banned`
 
@@ -103,11 +89,19 @@ Raw <select> element
 
 **Fix.** Use <Select, NativeSelect, Combobox> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-label-banned`
 
 Raw <label> element
 
 **Fix.** Use <Label> from shadcn.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `component-enforcement:html-progress-banned`
 
@@ -115,11 +109,19 @@ Raw <progress> element
 
 **Fix.** Use <Progress> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-dialog-banned`
 
 Raw <dialog> element
 
 **Fix.** Use <Dialog, AlertDialog, Drawer, Sheet> from shadcn.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `component-enforcement:html-nav-banned`
 
@@ -127,11 +129,19 @@ Raw <nav> element
 
 **Fix.** Use <NavigationMenu, Breadcrumb, Menubar, Sidebar, Pagination> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-kbd-banned`
 
 Raw <kbd> element
 
 **Fix.** Use <Kbd> from shadcn.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `component-enforcement:html-hr-banned`
 
@@ -139,11 +149,19 @@ Raw <hr> element
 
 **Fix.** Use <Separator> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-form-banned`
 
 Raw <form> element
 
 **Fix.** Use <Formsnap> from shadcn.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `component-enforcement:html-fieldset-banned`
 
@@ -151,11 +169,19 @@ Raw <fieldset> element
 
 **Fix.** Use <Field> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-table-banned`
 
 Raw <table> element
 
 **Fix.** Use <Table, DataTable> from shadcn.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `component-enforcement:html-thead-banned`
 
@@ -163,11 +189,19 @@ Raw <thead> element
 
 **Fix.** Use <Table, DataTable> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-tbody-banned`
 
 Raw <tbody> element
 
 **Fix.** Use <Table, DataTable> from shadcn.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `component-enforcement:html-tr-banned`
 
@@ -175,11 +209,19 @@ Raw <tr> element
 
 **Fix.** Use <Table, DataTable> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-th-banned`
 
 Raw <th> element
 
 **Fix.** Use <Table, DataTable> from shadcn.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `component-enforcement:html-td-banned`
 
@@ -187,11 +229,19 @@ Raw <td> element
 
 **Fix.** Use <Table, DataTable> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-details-banned`
 
 Raw <details> element
 
 **Fix.** Use <Accordion, Collapsible> from shadcn.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `component-enforcement:html-summary-banned`
 
@@ -199,11 +249,19 @@ Raw <summary> element
 
 **Fix.** Use <Accordion, Collapsible> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-input-banned`
 
 Raw <input> element
 
 **Fix.** Use <Input>, <InputOTP>, <Checkbox>, <Slider>, or <RadioGroup> from shadcn depending on the type attribute.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `component-enforcement:html-img-avatar-banned`
 
@@ -211,11 +269,19 @@ Raw <img> used as avatar
 
 **Fix.** Use <Avatar> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-ol-menu-banned`
 
 Raw <ol> used as menu structure
 
 **Fix.** Use <DropdownMenu>, <ContextMenu>, or <Command> from shadcn.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `component-enforcement:html-ul-menu-banned`
 
@@ -223,21 +289,19 @@ Raw <ul> used as menu structure
 
 **Fix.** Use <DropdownMenu>, <ContextMenu>, or <Command> from shadcn.
 
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `component-enforcement:html-li-menu-banned`
 
 Raw <li> used as menu structure
 
 **Fix.** Use <DropdownMenu>, <ContextMenu>, or <Command> from shadcn.
 
-## Concurrency
-
-`concurrency` · 1 rule
-
-### `concurrency:promise-all-warning`
-
-Promise.all used directly in a loader
-
-**Fix.** Move Promise.all into a controller method. Single-service controllers are an anti-pattern — call service directly from loader via factory.
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ## Error Flow
 
@@ -245,67 +309,87 @@ Promise.all used directly in a loader
 
 ### `error-flow:raw-http-status`
 
-Raw HTTP status code outside error handler
+Raw HTTP status code outside error handler / api route
 
-**Fix.** Use throw error(status, ...) for unrecoverable errors (renders +error.svelte) or return fail(status, ...) for recoverable form errors.
+**Fix.** Pages/actions: throw error(status, ...) or return fail(status, ...). API routes under src/routes/api/**/+server.ts: return json(payload, { status }). Services: throw a typed domain error; HTTP status is decided only in error_handlers.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ## Import Boundary
 
-`import-boundary` · 9 rules
+`import-boundary` · 7 rules
 
-### `import-boundary:service-banned-import`
+### `import-boundary:layer-no-internal-imports`
 
-Service importing another service, store, or framework module
+A pure layer (models, errors, config) imported another internal layer — including another file of its own layer.
 
-**Fix.** Services never import other services or stores. Use a controller to orchestrate multiple services.
+**Fix.** models, errors and config sit at the bottom of the dependency graph. Importing upward: move the shared type down into models. Importing sideways: one model file per domain, self-contained — the ID type lives with the model that owns it. A shared.ts kernel of branded IDs is the anti-pattern, not the fix; distribute those types to their domains. An index.ts barrel is the layer's surface for consumers, and cannot resolve a file-to-file dependency inside the layer.
 
-### `import-boundary:controller-banned-import`
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
-Controller importing @sveltejs/kit or another controller
+### `import-boundary:banned-layer-import`
 
-**Fix.** Controllers have no framework knowledge. Move @sveltejs/kit imports to the loader.
+An import crossed a layer boundary in a banned direction.
 
-### `import-boundary:stores-banned-import`
+**Fix.** Dependencies point one way: components/stores/client -> routes/remote -> factory -> controllers -> services -> repositories. Import the interface, or get the value from the layer above.
 
-Store importing services, controllers, or @sveltejs/kit
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
-**Fix.** Stores hold reactive state only. Move service/controller calls to the loader.
+### `import-boundary:orm-leak`
 
-### `import-boundary:page-banned-import`
+Drizzle was imported outside the repository layer.
 
-+page.svelte importing services or controllers
+**Fix.** ORM types never leave the repository layer. Query inside a repository and return a domain model.
 
-**Fix.** Data comes from the loader via $props. Don't call services directly from the page.
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
-### `import-boundary:loader-banned-import`
+### `import-boundary:framework-leak`
 
-Loader/action importing raw fetch
+@sveltejs/kit was imported by a layer that must stay framework-agnostic.
 
-**Fix.** Use the typed openapi-fetch client via AppFactory.
+**Fix.** Services, repositories, controllers and stores know nothing about SvelteKit. Handle framework concerns in the route or remote function.
 
-### `import-boundary:hooks-banned-import`
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
-hooks.server.ts importing unauthorized modules
+### `import-boundary:server-only-specifier`
 
-**Fix.** hooks.server.ts sets only locals.user. Move service calls to the loader.
+$app/server or a private $env entry point was imported from a client-reachable module.
 
-### `import-boundary:create-api-client-location`
+**Fix.** Move the import into a *.server.ts, a *.remote.ts, or a module under $lib/server.
 
-createApiClient() called outside factories/
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
-**Fix.** createApiClient() must only be called in factories/.
+### `import-boundary:api-client-location`
 
-### `import-boundary:concrete-service-import`
+The generated API client was constructed outside the factory (BFF mode).
 
-Concrete service imported outside factories/
+**Fix.** Construct the client once in the factory and inject it. Import only its type elsewhere.
 
-**Fix.** Only factories assemble concrete implementations. Import the Protocol interface everywhere else.
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
-### `import-boundary:factory-import-location`
+### `import-boundary:unresolved-import`
 
-AppFactory imported outside src/routes/
+An import specifier resolved to no file in the project.
 
-**Fix.** AppFactory must only be imported in src/routes/. Import the service interface everywhere else.
+**Fix.** Fix the path. A dangling import is invisible to every layer rule, so it hides architectural violations as well as being broken.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ## Project Structure
 
@@ -317,11 +401,19 @@ npm or yarn lockfile found instead of pnpm
 
 **Fix.** Use pnpm exclusively for the frontend.
 
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `project-structure:backend-env-in-frontend`
 
 Backend infrastructure variables in frontend .env
 
 **Fix.** Keep frontend/.env and backend/.env separate. Never share secrets.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `project-structure:missing-test-coverage`
 
@@ -329,145 +421,153 @@ Service has no test file
 
 **Fix.** Add a test file under tests/unit/ covering its core invariants.
 
-## Responsiveness
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
-`responsiveness` · 5 rules
+## Route Style
 
-### `responsiveness:fixed-width-banned`
+`route-style` · 1 rule
 
-Fixed pixel width on page root
+### `route-style:prefer-remote-function`
 
-**Fix.** Use responsive or fluid widths instead of fixed pixel values.
+An API route serves the app's own UI instead of a remote function.
 
-### `responsiveness:absolute-no-breakpoint`
+**Fix.** Move it to a remote function in $lib/remote/*.remote.ts, or to a loader / form action if the data belongs to a page. Routes that are genuinely HTTP — OAuth callbacks, webhooks, SSE streams, file downloads, protocol endpoints — are detected and exempt.
 
-Absolute positioning without breakpoint
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
-**Fix.** Add a responsive breakpoint variant (md:, lg:) to absolute positioning on layout elements.
+## Server Layer Leak
 
-### `responsiveness:nowrap-no-breakpoint`
+`server-layer-leak` · 1 rule
 
-whitespace-nowrap without responsive variant
+### `server-layer-leak:client-reachable-import`
 
-**Fix.** Add a responsive breakpoint variant to whitespace-nowrap on layout elements.
+A client-reachable module imported a server-only module.
 
-### `responsiveness:missing-page-wrapper`
+**Fix.** Server-only code lives under $lib/server or in a *.server.ts / *.remote.ts file, and may only be imported from other server-only modules. A universal +page.ts is not server-only, even next to a +page.server.ts. Import types with `import type`.
 
-+page.svelte missing layout wrapper
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
-**Fix.** Wrap the page content in <PageShell>, <Container>, or <AppLayout> as the direct root child.
+## Spacing
 
-### `responsiveness:no-breakpoint-classes`
+`spacing` · 1 rule
 
-No responsive breakpoint classes in .svelte file
+### `spacing:arbitrary-value-banned`
 
-**Fix.** Add responsive breakpoint variants (sm:, md:, lg:) for layouts.
+Arbitrary Tailwind spacing/sizing value syntax (w-[400px], min-h-[80vh], gap-[14px])
+
+**Fix.** Define the size as a CSS custom property in app.css (e.g. --space-4) and reference it as a Tailwind token.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ## Structural
 
-`structural` · 17 rules
-
-### `structural:console-log-banned`
-
-console.log / console.error / console.warn in committed code
-
-**Fix.** Remove before committing. Use structured logging or your observability tooling instead.
-
-### `structural:timers-banned`
-
-setTimeout/setInterval in .svelte or $lib/
-
-**Fix.** Use a reactive pattern, loader with streaming, or debounce with a derived.
+`structural` · 5 rules
 
 ### `structural:inline-style-banned`
 
 inline style= attribute in .svelte
 
-**Fix.** Use Tailwind utility classes defined in app.css.
+**Fix.** Use Tailwind utility classes defined in app.css. Styling comes from the design system, not from the element.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `structural:style-block-banned`
 
 <style> block in .svelte
 
-**Fix.** Remove the <style> block and express styles as Tailwind utility classes.
+**Fix.** Remove the <style> block and express the styles as Tailwind utility classes.
 
-### `structural:app-stores-banned`
-
-import from $app/stores
-
-**Fix.** Use $app/state instead (Svelte 5 API).
-
-### `structural:writable-banned`
-
-writable / readable Svelte 4 stores
-
-**Fix.** Use $state runes for reactive state.
-
-### `structural:inline-svg-banned`
-
-Inline <svg> with >2 children
-
-**Fix.** Check Lucide first. Extract to $lib/components/ otherwise.
-
-### `structural:effect-no-cleanup`
-
-$effect without return cleanup
-
-**Fix.** Add return cleanup, or use $derived/onMount instead.
-
-### `structural:onmount-no-browser-api`
-
-onMount without browser API reference
-
-**Fix.** Use $derived for computed state. Only onMount with localStorage/sessionStorage/DOM refs.
-
-### `structural:effect-single-call`
-
-$effect that only calls a single function
-
-**Fix.** Use onMount instead for single-function calls with no reactive dependencies.
-
-### `structural:effect-present`
-
-$effect usage (warrants review)
-
-**Fix.** Confirm $effect has a cleanup function and references a browser-only imperative API.
-
-### `structural:raw-fetch`
-
-Raw fetch in services/
-
-**Fix.** Use the typed openapi-fetch client from AppFactory in production code.
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `structural:missing-service-interface`
 
-Service without I<ServiceName> interface
+Concrete service without a matching I<ServiceName> interface
 
-**Fix.** Define an I<ServiceName> TypeScript interface in the same file.
+**Fix.** Declare an I<ServiceName> interface in the same file. Controllers depend on the interface and the factory supplies the implementation. It has to be the same file — a sibling contracts.ts is a same-layer import, which the boundary rules ban.
 
-### `structural:factory-static-only`
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
-AppFactory has non-static method
+### `structural:factory-contains-logic`
 
-**Fix.** AppFactory uses static methods only and contains zero business logic.
+A factory contains branching or looping
+
+**Fix.** A factory wires concrete implementations together and decides nothing — no if, for, while, switch, try or ternary. Instance methods are fine: holding injected collaborators is what a factory is for.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `structural:hooks-locals-limited`
 
-hooks.server.ts sets non-user local
+hooks.server.ts sets a local other than locals.user
 
-**Fix.** hooks.server.ts sets only locals.user — no other locals, no route guards, no data fetching.
+**Fix.** hooks.server.ts attaches the authenticated user and nothing else. Route guards and data fetching belong in a loader.
 
-### `structural:store-should-use-derived`
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
-$effect writes $state from data/$props
+## Structure
 
-**Fix.** Use $derived(by => data.X) instead of $effect to sync data into $state.
+`structure` · 3 rules
 
-### `structural:derived-calls-fetch`
+### `structure:layer-outside-server`
 
-$derived calls fetch or a service method
+A server-side layer sits at a universal path instead of under $lib/server/.
 
-**Fix.** $derived must be a pure computation — move async work to a loader.
+**Fix.** Move services, controllers, repositories and the factory under $lib/server/. SvelteKit then makes a client import of them a build error, which is stronger than anything a linter can offer. Reported once per directory.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `structure:unknown-server-folder`
+
+A folder under $lib/server/ does not name a layer.
+
+**Fix.** $lib/server/ holds db/, repositories/, services/, controllers/, config.ts and the factory. An adapter for an external capability is a service, not a repository — repositories are persistence. Reported once per folder.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `structure:unclassified-module`
+
+A src/lib/ module matches no canonical layer location.
+
+**Fix.** Give it a home. An ad-hoc folder gets no boundary rules of its own, so it silently opts out of the architecture it lives in.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+## Suppression
+
+`suppression` · 1 rule
+
+### `suppression:missing-reason`
+
+A chisel-ignore comment gave no reason, so it suppressed nothing.
+
+**Fix.** Write `chisel-ignore <rule-id> -- <why this case is different>`. A suppression nobody has to justify is one nobody will revisit.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ## Test Structure
 
@@ -479,11 +579,19 @@ Test file outside tests/unit/, tests/integration/, or tests/e2e/
 
 **Fix.** Move into the correct directory.
 
+:::tip[Skill]
+Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `test-structure:test-naming`
 
 Test name does not describe an invariant
 
 **Fix.** Name the test after the invariant it proves: test_cannot_X, test_returns_Y_when_Z.
+
+:::tip[Skill]
+Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ### `test-structure:one-assert-per-test`
 
@@ -491,14 +599,40 @@ More than one assert/expect in a test
 
 **Fix.** Split into separate test functions, one per assertion. Name each after the invariant it proves.
 
+:::tip[Skill]
+Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `test-structure:mocking-banned`
 
 Mocking library usage (jest.mock, vi.mock, spyOn)
 
 **Fix.** Write a fake that implements the full Protocol/interface. Put it in tests/fakes/.
 
+:::tip[Skill]
+Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ### `test-structure:skip-without-reason`
 
 test.skip without reason
 
 **Fix.** Add a reason string explaining why this test is skipped and when it should be re-enabled.
+
+:::tip[Skill]
+Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+## Typography
+
+`typography` · 1 rule
+
+### `typography:arbitrary-value-banned`
+
+Arbitrary Tailwind typography value syntax (text-[10px], tracking-[0.4em], leading-[1.6])
+
+**Fix.** Define the size/leading/tracking as a CSS custom property in app.css (e.g. --text-sm) and reference it as a Tailwind token.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::

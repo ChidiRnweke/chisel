@@ -30,10 +30,17 @@ jobs:
           bun-version: latest
       - name: Install
         run: bun install
+      - name: Typecheck
+        run: bunx tsc --noEmit
       - name: Test
         run: bun test --coverage
       - name: Self Check
         run: bun run src/chisel/cli/main.ts check .
+      - name: Rules snapshot is current
+        run: |
+          bun run src/chisel/cli/main.ts rules --json > /tmp/js-rules.json
+          diff -u ../docs/scripts/data/js-rules.json /tmp/js-rules.json \
+            || { echo "::error::docs/scripts/data/js-rules.json is stale. Regenerate it with: cd chisel_js && bun run src/chisel/cli/main.ts rules --json > ../docs/scripts/data/js-rules.json"; exit 1; }
       - name: Build
         run: bun build ./src/chisel/cli/main.ts --target=node --outdir=./dist --external typescript --external svelte
       - uses: actions/upload-artifact@v4

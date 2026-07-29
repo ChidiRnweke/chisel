@@ -1,6 +1,6 @@
 ---
 title: Turn off a rule for a file
-description: Exempt files or lines from chisel rules with a project-level exceptions file or inline noqa; both require a reason.
+description: Exempt files or lines from chisel rules with a project-level exceptions file or an inline directive; both require a reason.
 ---
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
@@ -39,9 +39,9 @@ entry maps file globs to rule IDs and a reason.
     {
       "exceptions": [
         {
-          "files": ["src/routes/embed/*.svelte"],
-          "rules": ["responsiveness"],
-          "reason": "Embeds render inside a fixed-size iframe."
+          "files": ["src/lib/components/edra/*"],
+          "rules": ["component-enforcement"],
+          "reason": "Vendored editor; upstream markup, not ours to restyle."
         },
         {
           "files": ["src/lib/generated/*"],
@@ -64,28 +64,54 @@ entry maps file globs to rule IDs and a reason.
   entry without one won't survive review; say why so the next reader
   doesn't have to guess.
 
-## Inline: `noqa`
+## Inline suppression
 
-For a single line where the rule shouldn't apply, suppress inline.
+For a single line where the rule shouldn't apply, suppress inline. Each
+checker uses its own ecosystem's idiom.
 
 <Tabs>
   <TabItem label="Python">
     ```python
     print("boot banner")  # noqa: structural:print-banned — CLI startup banner
     ```
+
+    Form: `# noqa: <rule-id> — <reason>`, on the offending line.
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```ts
+    // chisel-ignore structural:raw-fetch -- liveness probe, no domain model
+    await fetch("/healthz");
+    ```
+
+    Form: `// chisel-ignore <rule-id> -- <reason>`. The directive may sit on
+    the offending line or the line directly above it.
   </TabItem>
   <TabItem label="Svelte">
     ```svelte
-    <!-- noqa: component-enforcement:raw-button — toolbar trigger, no shadcn slot -->
+    <!-- chisel-ignore component-enforcement:html-button-banned -- toolbar trigger, no shadcn slot -->
     <button class="...">x</button>
     ```
   </TabItem>
 </Tabs>
 
-Form: `# noqa: <rule-id> — <reason>` (Python) /
-`<!-- noqa: <rule-id> — <reason> -->` (Svelte). The `—` (em dash) and
-reason are required; chisel won't accept a bare `noqa: rule-id` with no
-justification.
+A **reason is required**. A directive without one suppresses nothing: the
+original violation stands *and* the checker adds
+`suppression:missing-reason` on top of it. Silencing a rule is a decision
+someone should have to justify in the diff.
+
+Other forms `chisel-js` accepts:
+
+- **Several rules at once** —
+  `// chisel-ignore structural:raw-fetch, colour:dynamic-class -- generated file`
+- **A whole category** — `// chisel-ignore structural -- reviewed`
+- **A whole file** — `// chisel-ignore-file <rule-id> -- <reason>`, in the
+  first five lines.
+
+<Aside title="Syntax differs between the checkers">
+`chisel` (Python) uses `# noqa:`; `chisel-js` uses `// chisel-ignore`. Each
+matches what its ecosystem already reads — `noqa` in Python, an
+`eslint-disable`-shaped directive in TypeScript.
+</Aside>
 
 <Aside title="Find the rule ID first">
 Run [`chisel explain`](/chisel/guides/understand-a-violation/) or read the
@@ -95,15 +121,22 @@ rules](/chisel/reference/js-rules/) reference to get the exact rule ID.
 
 ## Severity and suppression
 
-| Severity | Suppressible? | How |
+| Severity | Blocks the build? | Suppressible? |
 | --- | --- | --- |
-| **ERROR** | No | n/a |
-| **WARNING** | Yes | Inline `noqa` or the project-level exceptions file |
-| **INFO** | n/a | Never blocks, so no need to suppress |
+| **ERROR** | Yes | Yes — but always with a recorded reason |
+| **WARNING** | No | Yes |
+| **INFO** | No | Never blocks, so no need to suppress |
 
-Suppressions on ERROR rules are ignored; those rules are non-negotiable.
-If you genuinely need an ERROR rule to not apply to a file, the right fix
-is usually to change the architecture, not to silence the checker.
+Every severity can be suppressed, by either mechanism, and every
+suppression must carry a reason. The guard is not that some rules are
+unsuppressible — it is that no suppression is anonymous: an inline
+directive without a reason fails, and an exceptions entry lives in a
+tracked file that shows up in review.
+
+That said, most ERROR rules describe a structural problem. If you find
+yourself silencing one, the fix is usually to move the code, not to quiet
+the checker. `chisel explain <rule-id>` states what the rule wants
+instead.
 
 ## Verify the exemption worked
 
@@ -111,14 +144,14 @@ is usually to change the architecture, not to silence the checker.
   <TabItem label="Python">
     ```bash
     chisel check . --json | jq '.violations | length'   # before
-    # (add the exception / noqa)
+    # (add the exception / inline directive)
     chisel check . --json | jq '.violations | length'   # after
     ```
   </TabItem>
   <TabItem label="TypeScript">
     ```bash
     chisel-js check . --json | jq '.violations | length'   # before
-    # (add the exception / noqa)
+    # (add the exception / inline directive)
     chisel-js check . --json | jq '.violations | length'   # after
     ```
   </TabItem>
@@ -132,5 +165,5 @@ control so exemptions are reviewed like any other change.
 
 - [Block violations before commit](/chisel/guides/block-violations-before-commit/):
   gate commits on a clean check.
-- [How chisel works](/chisel/concepts/how-it-works/): why ERROR rules
-  can't be suppressed.
+- [How chisel works](/chisel/concepts/how-it-works/): why the rules are
+  fixed rather than configurable.

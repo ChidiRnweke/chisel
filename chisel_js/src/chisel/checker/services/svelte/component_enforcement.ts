@@ -2,7 +2,7 @@ import type { ProjectInfo } from "chisel/checker/models/project_info";
 import type { Violation } from "chisel/checker/models/violation";
 import { Severity } from "chisel/checker/models/severity";
 import { createViolation } from "chisel/checker/models/violation";
-import { parse } from "svelte/compiler";
+import { DEFAULT_ALLOW_IN } from "chisel/checker/config";
 
 const BANNED_HTML: Record<string, string> = {
   button: "Button, Toggle",
@@ -36,13 +36,36 @@ const INPUT_TYPE_REPLACEMENT: Record<string, string> = {
 const AVATAR_PATTERNS = ["avatar"];
 const MENU_PATTERNS = ["menu", "nav", "dropdown", "context", "listbox", "menubar"];
 
-function walkAst(node: any, fn: (node: any) => void) {
-  fn(node);
-  if (node.children) {
-    for (const child of node.children) {
-      walkAst(child, fn);
+/**
+ * Visit every node in a Svelte template.
+ *
+ * Walks the object graph generically rather than following named child
+ * properties. The modern AST reaches children through a different key for
+ * almost every construct — `fragment.nodes` on an element, `body` on an each
+ * block, `consequent`/`alternate` on an if block — and enumerating them means
+ * silently missing elements nested inside whichever construct was overlooked.
+ */
+function walkAst(root: any, fn: (node: any) => void): void {
+  const seen = new Set<any>();
+
+  const visit = (value: any): void => {
+    if (value === null || typeof value !== "object") return;
+    if (seen.has(value)) return;
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
     }
-  }
+
+    if (typeof value.type === "string") fn(value);
+    for (const key of Object.keys(value)) {
+      if (key === "parent") continue;
+      visit(value[key]);
+    }
+  };
+
+  visit(root);
 }
 
 function getAttributeValue(node: any, attrName: string): string | null {
@@ -141,27 +164,34 @@ export class ComponentEnforcementService {
   readonly ruleIdPrefix = "component-enforcement";
 
   private readonly _rules = buildRules();
+  private readonly _allowIn: readonly string[];
+
+  /**
+   * @param allowIn Folders exempt from the ban — where vendored and generated
+   *   components live. This is the one configurable part of the design system
+   *   rule set, and it is deliberately a list of paths rather than an on/off
+   *   switch: it says *where* third-party markup lives, which is a fact about
+   *   the repository, and it cannot silence the ban on first-party UI.
+   */
+  constructor(allowIn: readonly string[] = DEFAULT_ALLOW_IN) {
+    this._allowIn = allowIn;
+  }
 
   check(project: ProjectInfo): Violation[] {
     const violations: Violation[] = [];
     for (const file of project.files) {
       if (file.language !== "svelte") continue;
       if (!file.source) continue;
-      if (
-        file.path.includes("components/ui/") ||
-        file.path.includes("components/primitives/")
-      )
-        continue;
-
-      let ast: any;
-      try {
-        ast = parse(file.source, { filename: file.path });
-      } catch {
+      if (this._allowIn.some(prefix => file.path.startsWith(prefix) || file.path.includes(prefix))) {
         continue;
       }
 
-      walkAst(ast.html, (node: any) => {
-        if (node.type !== "Element") return;
+      // Parsed once by the controller; no second parse here.
+      const fragment = file.ast?.fragment;
+      if (fragment === undefined) continue;
+
+      walkAst(fragment, (node: any) => {
+        if (node.type !== "RegularElement") return;
 
         const name: string = node.name;
         const line = getLineFromOffset(file.source, node.start);
@@ -173,7 +203,7 @@ export class ComponentEnforcementService {
               line,
               severity: Severity.ERROR,
               ruleId: `component-enforcement:html-${name}-banned`,
-              message: `Raw <${name}> element is banned outside components/ui/ and components/primitives/. Use <${BANNED_HTML[name]}> from shadcn.`,
+              message: `Raw <${name}> element is banned outside the allowed component folders. Use <${BANNED_HTML[name]}> from shadcn.`,
             })
           );
           return;
@@ -192,7 +222,7 @@ export class ComponentEnforcementService {
               line,
               severity: Severity.ERROR,
               ruleId: "component-enforcement:html-input-banned",
-              message: `Raw <input type="${type}"> is banned outside components/ui/ and components/primitives/. Use <${replacement}> from shadcn.`,
+              message: `Raw <input type="${type}"> is banned outside the allowed component folders. Use <${replacement}> from shadcn.`,
             })
           );
           return;

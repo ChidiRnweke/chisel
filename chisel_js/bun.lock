@@ -10,13 +10,11 @@
         "estree-walker": "^3.0.3",
         "fast-glob": "^3.3.3",
         "svelte": "^5.56.0",
+        "typescript": "^5",
       },
       "devDependencies": {
         "@types/bun": "latest",
         "@types/node": "^25.9.1",
-      },
-      "peerDependencies": {
-        "typescript": "^5",
       },
     },
   },

@@ -56,8 +56,9 @@ function toStringList(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string");
 }
 
-// Mirrors Python's fnmatch so the same chisel-exceptions.toml behaves
-// identically under both checkers: `*` matches across `/`, `?` matches any
+// Mirrors Python's fnmatch so patterns behave identically under both checkers,
+// even though the files differ by ecosystem (chisel-exceptions.json here,
+// chisel-exceptions.toml in chisel_py): `*` matches across `/`, `?` matches any
 // single character, `[seq]`/`[!seq]` are character classes.
 function fnmatchToRegExp(pattern: string): RegExp {
   let regex = "";

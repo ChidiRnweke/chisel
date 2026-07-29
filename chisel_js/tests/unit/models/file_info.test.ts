@@ -18,7 +18,7 @@ describe("FileInfo", () => {
   test("stores source when provided", () => {
     const f = createFileInfo({
       path: "src/app.ts",
-      layer: Layer.APP_FILE,
+      layer: Layer.CONFIG,
       language: "ts",
       source: "console.log('hi')",
     });

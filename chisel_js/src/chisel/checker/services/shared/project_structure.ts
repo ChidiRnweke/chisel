@@ -2,6 +2,7 @@ import type { ProjectInfo } from "chisel/checker/models/project_info";
 import type { Violation } from "chisel/checker/models/violation";
 import { Severity } from "chisel/checker/models/severity";
 import { createViolation } from "chisel/checker/models/violation";
+import { Layer } from "chisel/checker/models/layer";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -58,23 +59,50 @@ export class ProjectStructureService {
     return violations;
   }
 
+  /**
+   * Every service should have a test somewhere.
+   *
+   * Counts colocated specs. The previous version built its candidate set from
+   * files under `tests/` only, so a project that puts `management.spec.ts`
+   * beside `management.ts` — the SvelteKit default — had every service
+   * reported as untested. Interface-only modules are skipped: there is nothing
+   * to test in a type.
+   */
   private _checkStructuralCoverage(project: ProjectInfo): Violation[] {
     const violations: Violation[] = [];
-    const serviceFiles = project.files.filter(f => f.path.includes("services/") && !f.path.includes("protocols") && !f.path.startsWith("tests/") && !f.path.startsWith("src/chisel/"));
-    const testFiles = new Set(project.files.filter(f => f.path.includes("tests/")).map(f => f.path));
-    for (const sf of serviceFiles) {
-      const name = sf.path.split("/").pop()?.replace(/\.(ts|js)$/, "") ?? "";
-      const testPath = `tests/unit/services/${name}.test.ts`;
-      if (![...testFiles].some(t => t.endsWith(`${name}.test.ts`) || t.endsWith(`${name}.spec.ts`))) {
-        violations.push(createViolation({
-          file: sf.path, line: 1, severity: Severity.ERROR,
-          ruleId: "project-structure:missing-test-coverage",
-          message: `Service "${name}" has no corresponding test file. Add tests/unit/services/${name}.test.ts.`,
-        }));
-      }
+
+    const isSpec = (path: string) => /\.(spec|test)\.(ts|js)$/.test(path);
+    const stem = (path: string) =>
+      path.split("/").pop()?.replace(/\.(spec|test)?\.?(ts|js)$/, "") ?? "";
+
+    const tested = new Set(
+      project.files.filter(f => isSpec(f.path)).map(f => stem(f.path)),
+    );
+
+    const services = project.files.filter(f =>
+      f.layer === Layer.SERVICES
+      && !isSpec(f.path)
+      && !f.path.endsWith("contracts.ts")
+      && !f.path.endsWith("index.ts")
+      && !f.path.endsWith(".d.ts"),
+    );
+
+    for (const service of services) {
+      const name = stem(service.path);
+      if (tested.has(name)) continue;
+      violations.push(createViolation({
+        file: service.path,
+        line: 1,
+        severity: Severity.ERROR,
+        ruleId: "project-structure:missing-test-coverage",
+        message: `Service "${name}" has no test. Add ${name}.spec.ts beside it, or a test `
+          + `under tests/unit/.`,
+      }));
     }
+
     return violations;
   }
+
 
   describeRules() {
     return [

@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "astro dev --host",
     "start": "astro dev --host",
-    "prebuild": "bun run scripts/sync-constraints.mjs && bun run scripts/sync-rules.mjs",
+    "prebuild": "bun run scripts/sync-rules.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",

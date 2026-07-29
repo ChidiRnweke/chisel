@@ -1,0 +1,13 @@
+{
+  "mode": "sveltekit-standalone",
+  "tsconfig": "tsconfig.json",
+  "ignore": [
+    "tests/fixtures/**"
+  ],
+  "designSystem": {
+    "allowIn": [
+      "src/lib/components/ui/",
+      "src/lib/components/primitives/"
+    ]
+  }
+}

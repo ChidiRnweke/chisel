@@ -95,6 +95,46 @@ category.
   </TabItem>
 </Tabs>
 
+## `init` (TypeScript only)
+
+Detect the project topology and write `chisel.config.json`. Run this once,
+before the first `check`.
+
+| Option | Description |
+| --- | --- |
+| `[path]` default `.` | Project to initialise |
+| `--mode <sveltekit-standalone\|sveltekit-bff>` | Set the mode instead of detecting it |
+| `--overwrite` | Replace an existing `chisel.config.json` |
+| `--dry-run` | Print the config that would be written |
+| `--json` | Machine-readable output |
+
+```bash
+chisel-js init
+chisel-js init ./your-frontend --mode sveltekit-bff
+chisel-js init --dry-run --json
+```
+
+Detection is a **one-time** step. `check` reads the mode from the file and
+never re-derives it, so adding a dependency can't quietly change which
+rules run. If the signals conflict, `init` says so and picks
+`sveltekit-standalone`; pass `--mode` to settle it.
+
+Without a config file `check` still works — it detects a mode, warns, and
+suggests running `init`.
+
+### `chisel.config.json`
+
+| Key | Description |
+| --- | --- |
+| `mode` | `sveltekit-standalone` or `sveltekit-bff` |
+| `tsconfig` | Path to the tsconfig whose `paths` define the aliases. Default `tsconfig.json` |
+| `ignore` | Extra globs to exclude from discovery |
+| `designSystem.allowIn` | Folders exempt from the native-HTML ban — where vendored and generated components live |
+
+There are no rule toggles, by design. The config carries facts about the
+project, not decisions about which rules apply; an unknown key is an error
+rather than being silently ignored. If you need different rules, fork.
+
 ## `setup` (Python only)
 
 Install bundled skills into a repo. One target per run.

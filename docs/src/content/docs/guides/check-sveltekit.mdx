@@ -16,9 +16,32 @@ npm install -g chisel-js      # or: bun add -g chisel-js
 chisel-js --version
 ```
 
-Requires Node 20+. TypeScript is a peer dependency (`^5`). Runtime deps
-(`chalk`, `commander`, `estree-walker`, `fast-glob`, `smol-toml`,
-`svelte`) install automatically.
+Requires Node 20+. Runtime deps (`chalk`, `commander`, `estree-walker`,
+`fast-glob`, `svelte`, `typescript`) install automatically — TypeScript is
+used to parse and resolve your imports, so it ships with the CLI.
+
+## Initialise
+
+Run `init` once. It works out which topology your project has and writes
+`chisel.config.json`:
+
+```bash
+chisel-js init ./your-frontend
+```
+
+| Mode | What it means |
+| --- | --- |
+| `sveltekit-standalone` | SvelteKit owns its data layer — Drizzle under `$lib/server`, no separate backend |
+| `sveltekit-bff` | SvelteKit fronts a separate API through a generated `openapi-fetch` client |
+
+The mode decides which rules apply: a standalone app has repositories and
+remote functions, a BFF has a generated API client. Detection runs **only**
+here — from then on `check` reads the file, so the rule set can't change
+because someone edited a dependency. Override with
+`--mode sveltekit-bff` if the guess is wrong.
+
+`check` still works without a config; it detects a mode, says so, and
+suggests running `init`.
 
 ## Run a check
 
@@ -49,6 +72,18 @@ chisel-js check ./your-frontend
 For scripts, agents, or CI, ask for JSON; see
 [Understand a violation](/chisel/guides/understand-a-violation/) for how
 to read the deduplicated `--json` output.
+
+<Aside title="Unresolved imports are reported">
+`chisel-js` builds a real import graph, resolving `$lib` and relative
+specifiers against your tsconfig. A specifier that resolves to nothing is
+reported as `import-boundary:unresolved-import` — a dangling import is
+broken *and* invisible to every layer rule, so it hides violations as well
+as being a bug.
+
+If `$lib` imports come back unresolved across the board, run
+`svelte-kit sync` to generate `.svelte-kit/tsconfig.json`, which is where
+SvelteKit puts the alias definitions.
+</Aside>
 
 ## What's next
 

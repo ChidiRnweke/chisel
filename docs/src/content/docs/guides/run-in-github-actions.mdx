@@ -3,7 +3,7 @@ title: Run chisel in GitHub Actions
 description: Gate pull requests on a clean chisel check in GitHub Actions CI.
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
 You want pull requests to fail when chisel finds violations: the same
 contract as the local pre-commit hook, applied remotely. This guide adds
@@ -39,6 +39,20 @@ For a SvelteKit frontend:
       - run: npm install -g chisel-js
       - run: chisel-js check ./your-frontend
 ```
+
+This assumes `chisel.config.json` is committed — run `chisel-js init` once
+locally and commit it. CI should never be the place the topology gets
+detected: a build that decides its own rule set is a build whose results
+you cannot compare across commits. If the file is missing, chisel-js falls
+back to detection and warns on stderr rather than failing.
+
+<Aside title="Generated SvelteKit aliases">
+chisel-js resolves `$lib` through your tsconfig, and SvelteKit writes that
+alias into the generated `.svelte-kit/tsconfig.json` — which is normally
+gitignored. If CI reports `import-boundary:unresolved-import` across the
+board while local runs are clean, add a `svelte-kit sync` step (or your
+usual `npm ci && npm run prepare`) before the check.
+</Aside>
 
 CI runs the checker the same way a human does, no special mode, so the
 behaviour you see locally is exactly what blocks a pull request.

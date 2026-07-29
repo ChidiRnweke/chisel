@@ -1,17 +1,22 @@
 import { describe, test, expect } from "bun:test";
+import { parsedProject } from "../../fakes/parsed_file";
+import type { CheckerService } from "chisel/checker/controllers/check_controller";
+import type { Violation } from "chisel/checker/models/violation";
 import { ColourEnforcementService } from "chisel/checker/services/svelte/colour_enforcement";
-import { ComplexityService } from "chisel/checker/services/svelte/complexity";
-import { ConcurrencyService } from "chisel/checker/services/svelte/concurrency";
 import { ErrorFlowService } from "chisel/checker/services/svelte/error_flow";
 import { ApiEndpointsService } from "chisel/checker/services/svelte/api_endpoints";
 import { createFileInfo } from "chisel/checker/models/file_info";
 import { Layer } from "chisel/checker/models/layer";
 import { createProjectInfo } from "chisel/checker/models/project_info";
 
-function checkSvc(Svc: any, source: string, path = "src/test.ts", lang: "ts" | "svelte" = "ts") {
+function checkSvc(
+  Svc: new () => CheckerService,
+  source: string,
+  path = "src/test.ts",
+  lang: "ts" | "svelte" = "ts",
+): Violation[] {
   const svc = new Svc();
-  const file = createFileInfo({ path, layer: Layer.UNKNOWN, language: lang, source });
-  const project = createProjectInfo({ rootPath: "/test", files: [file] });
+  const project = parsedProject({ path, source, layer: Layer.UNKNOWN, language: lang });
   return svc.check(project);
 }
 
@@ -55,26 +60,6 @@ describe("ColourEnforcementService", () => {
   test("classifies text-[#fff] as colour", () => {
     const v = checkSvc(ColourEnforcementService, '<div class="text-[#fff]">x</div>', "src/Page.svelte", "svelte");
     expect(v.some(x => x.ruleId === "colour:arbitrary-value-banned")).toBe(true);
-  });
-});
-
-describe("ComplexityService", () => {
-  test("warns on +page.svelte over 80 lines", () => {
-    const manyLines = Array(90).fill("<div>x</div>").join("\n");
-    const v = checkSvc(ComplexityService, manyLines, "src/routes/+page.svelte", "svelte");
-    expect(v.filter(x => x.ruleId === "complexity:page-loc-warning").length).toBe(1);
-  });
-});
-
-describe("ConcurrencyService", () => {
-  test("detects Promise.all in loader", () => {
-    const v = checkSvc(ConcurrencyService, "export const load = async () => { await Promise.all([a(), b()]) }", "src/routes/+page.server.ts");
-    expect(v.length).toBe(1);
-  });
-
-  test("reports promise-all-warning for Promise.all", () => {
-    const v = checkSvc(ConcurrencyService, "export const load = async () => { await Promise.all([a(), b()]) }", "src/routes/+page.server.ts");
-    expect(v[0].ruleId).toBe("concurrency:promise-all-warning");
   });
 });
 

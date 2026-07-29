@@ -1,18 +1,35 @@
 ---
 name: building-sveltekit-frontend
-description: Provides architecture and engineering patterns for SvelteKit BFF frontend projects. Triggered when scaffolding, building, or reviewing SvelteKit features, loaders, stores, or openapi-fetch clients. Enforces layer separation and orchestrates services via controllers.
+description: Provides architecture and engineering patterns for SvelteKit projects, both standalone SSR apps that own their data layer via Drizzle and BFF frontends over a separate API. Triggered when scaffolding, building, or reviewing SvelteKit features, loaders, remote functions, repositories, stores, or openapi-fetch clients. Enforces layer separation and orchestrates services via controllers.
 ---
 
 # SvelteKit SWE Skill
 
-Opinionated architecture for production SvelteKit BFF projects. Every layer has a job — stay in your lane.
+Opinionated architecture for production SvelteKit projects. Every layer has a job — stay in your lane.
+
+## First: which topology?
+
+The layering discipline is identical either way. What differs is what sits
+at the bottom of the stack.
+
+| Mode | Bottom of the stack | Tell |
+| --- | --- | --- |
+| **Standalone SSR** | `repositories` under `$lib/server`, querying Drizzle | `drizzle-orm` dependency, a `src/lib/server/` directory |
+| **BFF** | A generated `openapi-fetch` client | `openapi-fetch` dependency, a generated `schema.d.ts` |
+
+Check `chisel.config.json` for `"mode"`. If there is none, run
+`chisel-js init`, which detects it and writes the file.
+
+Everything else — no business logic in loaders, controllers for
+multi-service orchestration, stores for client state, factories with no
+logic — applies unchanged in both.
 
 ## Reference files
 
 Read these when working in the relevant area:
 
 - `references/layers.md` — Full layer-by-layer guide with patterns and anti-patterns
-- `references/openapi.md` — openapi-fetch + openapi-typescript setup and typed client patterns
+- `references/openapi.md` — **BFF only.** openapi-fetch + openapi-typescript setup and typed client patterns
 - `references/error-handling.md` — Service errors, loader/action errors, error boundaries
 - `references/patterns-examples.md` — Full code examples for all layers
 
@@ -22,28 +39,72 @@ Read these when working in the relevant area:
 
 IMPORTANT: ask the user if they want you to start coding or explicitly invoke the `planning-features` skill to write a detailed plan.
 
-## Architecture Overview
+## Architecture Overview — standalone SSR
 
 ```
 Browser
   └── +page.svelte          # UI only. No service calls. Reads $props, writes to stores.
-        └── stores/          # Client-side singletons. $state fields. Populated from loader data.
+        ├── stores/          # Client-side singletons. $state fields. Populated from loader data.
+        └── client/          # Browser-only adapters: IndexedDB, transports, Svelte hooks
 
 SvelteKit Server
   ├── hooks.server.ts        # Auth only — attach locals.user. No business logic.
   ├── +layout.server.ts      # Session-level data available to all routes
-  ├── +page.server.ts        # load() and actions. No business logic — delegates to controller/service.
-  │     └── AppFactory       # Assembles concrete implementations
+  ├── +page.server.ts        # load() and actions. Delegates to a controller.
+  ├── lib/remote/*.remote.ts # Remote functions. The other entry point; same rules as a loader.
+  │     └── AppFactory       # Assembles concrete implementations. Lives under $lib/server.
   │           └── Controller # Orchestrates multiple services. Has DI (interface-typed deps).
-  │                 └── Service(s)   # One concern each. Wraps API client. Returns domain models.
-  │                       └── openapi-fetch client  # Typed HTTP calls via generated schema
+  │                 └── Service(s)     # One concern each. Returns domain models.
+  │                       └── Repository  # Drizzle queries. Under $lib/server. Returns domain models.
   │
   └── lib/
-        ├── models/          # Shared TS interfaces used across all layers
-        ├── services/        # IServiceName interface + ServiceName implementation
-        ├── controllers/     # Controller classes with injected service interfaces
-        ├── factories/       # AppFactory — concrete assembly, no DI
-        └── stores/          # Client-side $state singletons
+        ├── models/          # Shared domain types. Universal — the UI consumes them.
+        ├── errors.ts        # Universal
+        ├── utils.ts         # Universal pure functions
+        ├── components/      # Client
+        ├── stores/          # Client-side $state singletons
+        ├── client/          # Browser-only adapters
+        ├── remote/          # *.remote.ts — server body, client-callable stub
+        └── server/          # EVERY server-side layer lives here
+              ├── db/              # Drizzle schema and connection (part of repositories)
+              ├── repositories/    # Persistence. The only place Drizzle is importable.
+              ├── services/        # One concern each. Wraps a capability, returns models.
+              ├── controllers/     # Orchestrates services. DI via interface-typed deps.
+              ├── config.ts
+              └── app-factory.ts   # Concrete assembly, no logic
+```
+
+**`$lib/server/<name>/` *is* layer `<name>`.** Nothing is server-only by
+convention, only by location — and SvelteKit refuses to bundle that subtree for
+the client, so a component importing a service is a *build* error rather than
+merely a lint finding. A folder under `server/` that is not a layer name is a
+structure error: an adapter for an external capability (an AI client, a PDF
+generator, a mail sender) is a **service**, because it wraps one concern and
+returns domain models. Repositories are persistence.
+
+`models`, `errors` and `utils` stay universal. They are pure data and pure
+functions, and a remote function's return type flows straight into the UI.
+
+**The rule that catches most mistakes:** anything under `$lib/server`, and
+anything named `*.server.ts` or `*.remote.ts`, is server-only. It may be
+imported *only* from another server-only module. A `.svelte` component or a
+universal `+page.ts` reaching into it is a hard error
+(`server-layer-leak:client-reachable-import`) — note that a `+page.ts` is
+**not** server-only even when a `+page.server.ts` sits beside it. Use
+`import type` when you only need the shape; type imports are erased and
+don't leak.
+
+## Architecture Overview — BFF
+
+Identical, minus the server data layer: a service wraps the generated API
+client instead of calling a repository.
+
+```
++page.server.ts
+  └── AppFactory       # Assembles concrete implementations
+        └── Controller # Orchestrates multiple services
+              └── Service(s)   # One concern each. Wraps API client. Returns domain models.
+                    └── openapi-fetch client  # Typed HTTP calls via generated schema
 ```
 
 ---
@@ -52,17 +113,68 @@ SvelteKit Server
 
 | Layer             | Can do                                                                             | Cannot do                                   |
 | ----------------- | ---------------------------------------------------------------------------------- | ------------------------------------------- |
-| `+page.svelte`    | Render, read `$props`, write to stores, call `enhance`                             | Import services, call fetch, business logic |
-| `+page.server.ts` | Load data, handle form actions, call controllers/services, `error()`, `redirect()` | Business logic, direct API calls            |
+| `+page.svelte`    | Render, read `$props`, write to stores, call `enhance`                             | Import services, controllers, repositories, the factory, or anything server-only |
+| `+page.ts` (universal) | Client-safe transforms of loader data                                         | Import anything server-only — it runs in the browser too |
+| `+page.server.ts` | Load data, handle form actions, build from the factory, `error()`, `redirect()`    | Business logic, importing services or repositories directly |
+| `*.remote.ts`     | Same as a server loader; the other entry point                                     | Business logic, importing services or repositories directly |
 | `hooks.server.ts` | Set `locals.user`, validate session token                                          | Business logic, data fetching               |
-| Controller        | Orchestrate multiple services, map to loader-friendly shape                        | Direct API calls, HTTP concerns             |
-| Service           | Wrap API client, map responses to models, throw domain errors                      | Orchestration, SvelteKit concerns           |
-| Factory           | Instantiate concrete classes, wire dependencies                                    | Logic of any kind                           |
-| Store             | Hold reactive client state, expose methods to mutate                               | Server calls, business logic                |
+| Controller        | Orchestrate multiple services, map to loader-friendly shape                        | Call another controller, touch repositories, know about SvelteKit |
+| Service           | One concern. Call repository interfaces, map to models, throw domain errors        | Call another service, import Drizzle, import `@sveltejs/kit` |
+| Repository        | Drizzle queries, map rows to domain models                                         | Import services/controllers/factory; let an ORM type escape |
+| Factory           | Instantiate concrete classes, wire dependencies                                    | Logic of any kind — no `if`/`for`/`try`     |
+| Store             | Hold reactive client state, expose methods to mutate                               | Server calls, business logic, importing controllers |
+| `client/`         | Browser-only adapters (IndexedDB, transports, hooks)                               | Import any server layer                     |
+
+Dependency direction, one way only:
+
+```
+components / stores / client  →  routes + remote  →  factory  →  controllers  →  services  →  repositories  →  Drizzle
+```
+
+### Never import on the same level
+
+The core spine — `models`, `services`, `controllers`, `factory` — never imports
+sideways. **One service never imports another. One controller never imports
+another. A model never imports another model.**
+
+When two services need the same type, that type is domain data: **move it to
+`$lib/models`**. Service-local data is fine, but no other service may reach for
+it. When two services need the same *behaviour*, that is what a controller is
+for.
+
+### Laying out `$lib/models`
+
+One file per domain, each self-contained, barrelled through `index.ts`:
+
+```
+src/lib/models/
+├── notes.ts        NoteId, Note, NoteRevision — the type lives with its model
+├── agent-runs.ts   AgentRunId, AgentRun
+├── todos.ts        TodoId, Todo
+└── index.ts        export * from './notes'; export * from './agent-runs'; …
+```
+
+Consumers import from the barrel: `import type { Note } from '$lib/models'`.
+
+**Do not create a `shared.ts`** holding branded IDs or common aliases for every
+domain to import. It looks like DRY and is actually a dependency graph inside
+the layer that is supposed to have none — and the barrel cannot rescue it,
+because `index.ts` re-exporting `shared` still leaves `agent-runs.ts` importing
+it directly. `NoteId` belongs in `notes.ts` next to `Note`.
+
+The only same-level import allowed anywhere is an `index.ts` barrel at a layer
+root re-exporting that layer — it declares the layer's public surface rather
+than coupling two siblings.
+
+Components, stores and client adapters are exempt: a Card using a Badge is how
+UI works.
 
 ---
 
 ## File Naming & Location
+
+Standalone SSR. In BFF mode, drop `server/` and put `AppFactory.ts` in
+`lib/factories/`.
 
 ```
 src/lib/
@@ -77,8 +189,14 @@ src/lib/
 ├── controllers/
 │   ├── RecipeController.ts
 │   └── index.ts
-├── factories/
-│   └── AppFactory.ts       # one file, static methods
+├── server/                 # server-only; unreachable from the client bundle
+│   ├── AppFactory.ts       # one file, static methods
+│   ├── db/
+│   │   └── schema.ts       # Drizzle schema
+│   └── repositories/
+│       └── PostgresRecipes.ts
+├── remote/
+│   └── recipes.remote.ts   # the .remote.ts suffix is what defines this layer
 └── stores/
     ├── recipeStore.ts
     └── uiStore.ts
@@ -118,42 +236,46 @@ Before concluding any implementation task, copy this checklist into your respons
 
 ## Enforced Rule IDs
 
-`chisel-js` is the deterministic counterpart of this skill. Each rule below is owned by this skill — `chisel-js explain <rule-id>` prints fix guidance, and `chisel-js check .` flags violations. The paired UI skill (`designing-svelte-ui`) owns the colour/component/responsiveness rules listed in its own SKILL.md.
+`chisel-js` is the deterministic counterpart of this skill. Each rule below is owned by this skill — `chisel-js explain <rule-id>` prints fix guidance, and `chisel-js check .` flags violations. The paired UI skill (`designing-svelte-ui`) owns the colour and component rules listed in its own SKILL.md.
 
-### Structural (SvelteKit runtime invariants)
-- `structural:console-log-banned` — `console.*` banned in `.svelte`/`.ts` outside `scripts/`.
-- `structural:timers-banned` — `setTimeout`/`setInterval` banned in `.svelte` and `$lib/`.
+### Structural
+
+Deliberately small. The `$effect`/`onMount`/`writable`/timers rules were removed: they encoded a position on Svelte reactivity rather than on layering or the design system, and argued with working code. Svelte idiom is the compiler's business.
+
 - `structural:inline-style-banned` — inline `style=` outside `components/ui/`.
 - `structural:style-block-banned` — `<style>` blocks banned outside `app.css` and `components/ui/`.
-- `structural:app-stores-banned` — `import from "$app/stores"` (use `$app/state`).
-- `structural:writable-banned` — Svelte 4 `writable()`/`readable()` (use `$state`).
-- `structural:inline-svg-banned` — Inline `<svg>` with >2 child elements outside `components/`.
-- `structural:effect-no-cleanup` — `$effect` without `return () => {}` cleanup.
-- `structural:effect-single-call` — `$effect` that only calls a single function with no reactive deps (use `onMount`).
-- `structural:effect-present` — Any `$effect` warrants review (warning).
-- `structural:onmount-no-browser-api` — `onMount` without `localStorage`/`sessionStorage`/DOM ref/WebSocket.
-- `structural:store-should-use-derived` — `$effect` syncing `data`/`$props` into `$state` (use `$derived`).
-- `structural:derived-calls-fetch` — `$derived` calling `fetch` or a service method.
-- `structural:raw-fetch` — Raw `fetch` in `services/` (use the `openapi-fetch` client). Suppress with `// noqa: raw-fetch — <reason>`.
 - `structural:missing-service-interface` — Concrete service without `I<ServiceName>` interface.
-- `structural:factory-static-only` — `AppFactory` (and any `*Factory.ts` / `/factories/` file) must use static methods only.
+- `structural:factory-contains-logic` — a factory contains an if/for/while/switch/try/ternary. Instance methods are fine; deciding things is not.
 - `structural:hooks-locals-limited` — `hooks.server.ts` may set only `locals.user`.
 
 ### Import boundaries
-- `import-boundary:*` — services/controllers/routes/stores only import what their row of the Constraints table permits. See `references/layers.md`.
 
-### Complexity
-- `complexity:page-loc-limit` — `+page.svelte` > 100 LoC (hard error).
-- `complexity:page-loc-warning` — `+page.svelte` > 80 LoC (warning, suppressible).
-- `complexity:controller-loc-limit` — Controller method > 40 LoC.
-- `complexity:loader-loc-limit` — `load`/form action > 20 LoC.
+These are checked against a real import graph: `$lib` and relative specifiers are resolved through your tsconfig, so violations carry the actual file and line.
 
-### API endpoints
+- `import-boundary:banned-layer-import` — an import crossed a layer boundary in a banned direction. See the dependency-direction diagram above.
+- `import-boundary:layer-no-internal-imports` — a pure layer (`models`, `errors`, `config`) imported another internal layer.
+- `import-boundary:orm-leak` — Drizzle imported outside the repository layer.
+- `import-boundary:framework-leak` — `@sveltejs/kit` imported by a layer that must stay framework-agnostic.
+- `import-boundary:server-only-specifier` — `$app/server` or a private `$env/*` entry point imported from a client-reachable module.
+- `import-boundary:api-client-location` — **BFF only.** The generated API client constructed outside the factory.
+- `import-boundary:unresolved-import` — a specifier that resolves to no file. Broken, and it hides layer violations behind an edge the graph cannot follow.
+
+### Server-only placement
+- `server-layer-leak:client-reachable-import` — a client-reachable module imported something under `$lib/server` or a `*.server.ts` / `*.remote.ts` file. Move the work server-side, or use `import type` if you only need the shape.
+
+### Structure
+- `structure:layer-outside-server` — a server-side layer at a universal path (`src/lib/services/`). Move it under `$lib/server/`. Reported once per directory.
+- `structure:unknown-server-folder` — a folder under `$lib/server/` that is not a layer name. An external-capability adapter is a service, not a repository. Reported once per folder.
+- `structure:unclassified-module` — a `src/lib/` module that matches no canonical layer location (warning). Ad-hoc folders get no boundary rules of their own, so give it a home.
+
+### Route style
+- `route-style:prefer-remote-function` — a `+server.ts` serving your own UI (warning). A remote function keeps types across the wire and needs no URL. Genuinely-HTTP routes (OAuth callbacks, webhooks, SSE, downloads, protocol endpoints) are detected and exempt.
+
+### API endpoints (BFF mode only)
 - `api:request-handler-outside-api` — `RequestHandler` export outside `src/routes/api/`.
 - `api:route-count-ratio` — API routes exceed 20% of page routes (warning).
 
-### Concurrency
-- `concurrency:promise-all-warning` — `Promise.all` across services in a loader (use a controller).
+These do not run in `sveltekit-standalone` mode, where `+server.ts` endpoints and remote functions are normal.
 
 ### Error flow
 - `error-flow:raw-http-status` — Raw HTTP status outside `error_handlers` / API `+server.ts` JSON return. API routes under `src/routes/api/**/+server.ts` may `return json(payload, { status })`.
@@ -169,4 +291,6 @@ Before concluding any implementation task, copy this checklist into your respons
 - `test-structure:skip-without-reason` — `test.skip` requires a `reason`.
 
 ### Suppression
-Inline `// noqa: rule-id — <reason>` (TypeScript) or `<!-- noqa: rule-id — <reason> -->` (Svelte). A suppression without a reason string fails the check.
+Inline `// chisel-ignore rule-id -- <reason>` (TypeScript) or `<!-- chisel-ignore rule-id -- <reason> -->` (Svelte), on the offending line or the line above it. `// chisel-ignore-file rule-id -- <reason>` in the first five lines covers a whole file.
+
+A suppression without a reason suppresses nothing: the original violation stands and `suppression:missing-reason` is added on top of it.

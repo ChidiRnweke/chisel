@@ -362,12 +362,24 @@ Copy this checklist into your initial response scratchpad to track your progress
 - `component-enforcement:html-form-banned` — Raw `<form>` → Formsnap.
 - `component-enforcement:html-fieldset-banned` — Raw `<fieldset>` → Field.
 
+### Colour
+- `colour:palette-class-banned` — a hardcoded Tailwind palette class (`text-red-500`, `bg-slate-800`, `from-blue-500`). Use a semantic token (`bg-background`, `text-muted-foreground`, `text-destructive`): a palette class pins one appearance and cannot follow the theme, so it looks wrong in whichever mode it was not written for.
+- `colour:arbitrary-value-banned` — an arbitrary colour value (`bg-[#123]`). Judged by the value, so `ring-[2px]` and `shadow-[0_1px_2px]` are geometry, not colour.
+
 ### Responsiveness
-- `responsiveness:fixed-width-banned` — Fixed pixel width classes (`w-[400px]`, `w-96`) on root elements of `+page.svelte`. Use responsive or fluid widths.
-- `responsiveness:absolute-no-breakpoint` — Absolute positioning without a responsive breakpoint variant on layout-level elements.
-- `responsiveness:nowrap-no-breakpoint` — `whitespace-nowrap` without a responsive variant on layout-level elements.
-- `responsiveness:missing-page-wrapper` — `+page.svelte` missing an approved layout wrapper (`<PageShell>`, `<Container>`, `<AppLayout>`).
-- `responsiveness:no-breakpoint-classes` — Layout/page `.svelte` file has no responsive breakpoint classes. **Leaf/icon components are exempt** (component files whose name matches `/icon|badge|chip|avatar|skeleton|spinner|dot|tooltip|pill/i` and that do not live under `components/layout/`).
+No longer machine-checked. The old `responsiveness:*` rules demanded specific
+wrapper components (`<PageShell>`, `<Container>`) and blanket breakpoint
+classes, which produced far more false positives than real findings. Responsive
+layout is now a review concern — see `references/style-*.md` for the patterns.
+
+### Exempting generated and vendored components
+The native-HTML ban skips the folders listed in `designSystem.allowIn` in
+`chisel.config.json`, defaulting to `src/lib/components/ui/` and
+`src/lib/components/primitives/`. Add vendored trees there — a ban that
+drowns a vendored editor in violations is a ban people switch off entirely.
 
 ### Suppression
-Inline `<!-- noqa: rule-id — <reason> -->` (Svelte) or `// noqa: rule-id — <reason>` (TypeScript). A suppression without a reason string fails the check.
+Inline `<!-- chisel-ignore rule-id -- <reason> -->` (Svelte) or
+`// chisel-ignore rule-id -- <reason>` (TypeScript). A suppression without a
+reason suppresses nothing: the violation stands and `suppression:missing-reason`
+is added.

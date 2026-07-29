@@ -5,12 +5,12 @@ on:
     branches: [master]
     paths:
       - docs/**
-      - constraints.md
+      - chisel_js/**
       - .github/workflows/docs.yml
   pull_request:
     paths:
       - docs/**
-      - constraints.md
+      - chisel_js/**
       - .github/workflows/docs.yml
   workflow_dispatch:
 

@@ -18,6 +18,7 @@ Both CLIs work the same way; pick the one that matches your stack.
   <TabItem label="TypeScript (SvelteKit)">
     ```bash
     npm install -g chisel-js
+    chisel-js init ./your-frontend      # once: detects the topology
     chisel-js check ./your-frontend
     ```
   </TabItem>
@@ -60,8 +61,17 @@ violation, perfect for gates.
   </TabItem>
   <TabItem label="TypeScript">
     ```bash
+    chisel-js init ./your-frontend         # once, before the first check
     chisel-js check ./your-frontend
     ```
+
+    `init` works out whether the project is a standalone SSR app (Drizzle
+    under `$lib/server`) or a BFF over a separate API, and writes
+    `chisel.config.json`. That decides which rules apply. Pass
+    `--mode sveltekit-bff` to set it yourself.
+
+    Checking without a config still works — chisel-js detects a mode, says
+    so, and points you at `init`.
   </TabItem>
 </Tabs>
 

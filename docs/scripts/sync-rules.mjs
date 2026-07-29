@@ -2,16 +2,20 @@
 /**
  * sync-rules.mjs
  *
- * Regenerate the rule reference pages from the cached JSON snapshots in
- * `scripts/data/`. Run after upgrading chisel / chisel-js:
+ * Regenerate the rule reference pages into src/content/docs/reference/.
+ *
+ * The JS rules are read from the chisel_js source in this repo when it is
+ * present, so the published page cannot drift from the code that defines it.
+ * The committed snapshot in `scripts/data/` is the fallback for a docs-only
+ * checkout, and CI fails when the two disagree.
+ *
+ * The Python rules still come from their snapshot: the docs build has bun but
+ * no Python toolchain. Refresh it after a release with
  *
  *   PYENV_VERSION=3.12 chisel rules --json > scripts/data/py-rules.json
- *   chisel-js rules --json > scripts/data/js-rules.json
- *   bun run sync-rules
- *
- * The script writes MDX files into src/content/docs/reference/.
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -90,8 +94,33 @@ ${total} rules across ${cats.length} categories, enforced by \`${cli}\`.
 	return head + body + '\n';
 }
 
+/**
+ * Ask the chisel-js CLI in this repo for its rules, refreshing the committed
+ * snapshot as a side effect. Falls back to the snapshot when the package is
+ * not checked out alongside the docs.
+ */
+function loadJsRules() {
+	const snapshot = join(dataDir, 'js-rules.json');
+	const cliDir = join(root, '..', 'chisel_js');
+	const entry = join(cliDir, 'src', 'chisel', 'cli', 'main.ts');
+
+	if (!existsSync(entry)) {
+		console.log('chisel_js not found; using the committed js-rules.json snapshot.');
+		return JSON.parse(readFileSync(snapshot, 'utf8'));
+	}
+
+	const json = execFileSync('bun', ['run', entry, 'rules', '--json'], {
+		cwd: cliDir,
+		encoding: 'utf8',
+		maxBuffer: 32 * 1024 * 1024,
+	});
+	writeFileSync(snapshot, json);
+	console.log('Refreshed js-rules.json from the chisel-js CLI.');
+	return JSON.parse(json);
+}
+
 const pyRules = JSON.parse(readFileSync(join(dataDir, 'py-rules.json'), 'utf8'));
-const jsRules = JSON.parse(readFileSync(join(dataDir, 'js-rules.json'), 'utf8'));
+const jsRules = loadJsRules();
 
 writeFileSync(
 	join(outDir, 'python-rules.md'),

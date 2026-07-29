@@ -17,32 +17,31 @@ bun run build    # outputs dist/
 bun run preview  # serve the built site locally
 ```
 
-The `prebuild` step regenerates two reference pages from sources at the repo
-root so the docs never drift:
+The `prebuild` step regenerates the rule reference pages so the docs never
+drift from the checkers:
 
-- `reference/constraints.md` ← `../constraints.md` (the canonical spec)
-- `reference/python-rules.md` and `reference/js-rules.md` ←
-  `scripts/data/{py,js}-rules.json` (snapshots of `chisel rules --json`
-  and `chisel-js rules --json`)
+- `reference/js-rules.md` ← the `chisel-js` CLI in `../chisel_js`, invoked
+  directly at build time. The snapshot in `scripts/data/js-rules.json` is
+  refreshed as a side effect and is only a fallback for a docs-only checkout.
+- `reference/python-rules.md` ← `scripts/data/py-rules.json`, still a snapshot
+  because the docs build has bun but no Python toolchain.
 
 ## Keeping the rule pages in sync
 
-After a chisel or chisel-js release, refresh the rule snapshots and rebuild:
+The TypeScript rules need no manual step — they come from the CLI on every
+build, and `ci-js.yml` fails if the committed snapshot has fallen behind.
+
+After a **Python** release, refresh its snapshot:
 
 ```bash
-# capture fresh JSON (run from this directory)
-chisel    rules --json > scripts/data/py-rules.json
-chisel-js rules --json > scripts/data/js-rules.json
+chisel rules --json > scripts/data/py-rules.json
 bun run sync-rules          # regenerates the two rules pages
 bun run build               # verify the site builds cleanly
 ```
-
-`reference/constraints.md` refreshes automatically on every build from
-`../constraints.md`, so you only need to edit that file at the repo root.
 
 ## Deploy
 
 GitHub Actions workflow at `../.github/workflows/docs.yml` builds the site
 and pushes it to the `gh-pages` branch on every push to `master` that
-touches `docs/` or `constraints.md`. GitHub Pages serves the `gh-pages`
+touches `docs/` or `chisel_js/`. GitHub Pages serves the `gh-pages`
 branch. Pull requests also get a build-only check (no deploy).

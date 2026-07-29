@@ -2,7 +2,8 @@
 
 Deterministic architecture constraint checkers designed to work alongside agent skills. The skills teach an agent the right pattern — the checker enforces it. Run it as a pre-commit hook to block violations before they land. Run it interactively to steer an agent while it's working.
 
-Two checkers, one set of rules implemented from [`constraints.md`](constraints.md):
+Two checkers. Each CLI is the source of truth for its own rules — run `rules` or
+`explain` to see them:
 
 | Package | Language | Target | CLI |
 |---|---|---|---|
@@ -66,11 +67,12 @@ chisel-js check ./your-frontend
 ## Documentation
 
 The full docs live at **<https://chidirnweke.github.io/chisel>** — quick start,
-guide pages for both CLIs, the constraints spec, and a per-rule reference.
+guide pages for both CLIs, and a per-rule reference generated from the CLIs
+themselves.
 
 The site source is in [`docs/`](docs/) (Astro Starlight, built with bun).
 `docs.yml` builds and deploys it to the `gh-pages` branch on every push to
-`master` that touches `docs/` or `constraints.md`.
+`master` that touches `docs/` or `chisel_js/`.
 
 ## Agent-facing commands
 

@@ -1,4 +1,5 @@
 import { describe, test, expect } from "bun:test";
+import { parsedProject } from "../../fakes/parsed_file";
 import { ComponentEnforcementService } from "chisel/checker/services/svelte/component_enforcement";
 import { createFileInfo } from "chisel/checker/models/file_info";
 import { Layer } from "chisel/checker/models/layer";
@@ -6,8 +7,7 @@ import { createProjectInfo } from "chisel/checker/models/project_info";
 
 function checkSvelte(source: string, path = "src/routes/Page.svelte") {
   const svc = new ComponentEnforcementService();
-  const file = createFileInfo({ path, layer: Layer.ROUTES, language: "svelte", source });
-  const project = createProjectInfo({ rootPath: "/test", files: [file] });
+  const project = parsedProject({ path, source, layer: Layer.ROUTES, language: "svelte" });
   return svc.check(project);
 }
 

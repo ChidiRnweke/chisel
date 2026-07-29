@@ -26,14 +26,20 @@ describe("Layer", () => {
   test("Layer.ROUTES is routes", () => {
     expect(Layer.ROUTES).toBe("routes");
   });
-  test("Layer.DEPENDENCIES is dependencies", () => {
-    expect(Layer.DEPENDENCIES).toBe("dependencies");
+  test("Layer.REMOTE is remote", () => {
+    expect(Layer.REMOTE).toBe("remote");
   });
-  test("Layer.ERROR_HANDLERS is error_handlers", () => {
-    expect(Layer.ERROR_HANDLERS).toBe("error_handlers");
+  test("Layer.HOOKS is hooks", () => {
+    expect(Layer.HOOKS).toBe("hooks");
   });
-  test("Layer.APP_FILE is app_file", () => {
-    expect(Layer.APP_FILE).toBe("app_file");
+  test("Layer.STORES is stores", () => {
+    expect(Layer.STORES).toBe("stores");
+  });
+  test("Layer.CLIENT is client", () => {
+    expect(Layer.CLIENT).toBe("client");
+  });
+  test("Layer.COMPONENTS is components", () => {
+    expect(Layer.COMPONENTS).toBe("components");
   });
   test("Layer.UNKNOWN is unknown", () => {
     expect(Layer.UNKNOWN).toBe("unknown");

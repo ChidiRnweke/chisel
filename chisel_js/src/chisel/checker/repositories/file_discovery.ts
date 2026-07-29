@@ -1,3 +1,4 @@
+import type { CheckerMode } from "chisel/checker/models/mode";
 import type { FileInfo } from "chisel/checker/models/file_info";
 import type { Layer } from "chisel/checker/models/layer";
 import type { ProjectInfo } from "chisel/checker/models/project_info";
@@ -26,16 +27,95 @@ const IGNORED_DIRS = [
 
 const IGNORED_PREFIX_PARTS = new Set([".", "node_modules", "dist", "build", "coverage", ".svelte-kit"]);
 
-const FACTORY_FILENAME_RE = /(^|[\\/])(?:[A-Z]\w*)?Factory\.(?:ts|js)$/;
-const FACTORY_DIR_RE = /[\\/]factories[\\/]/;
+/** Static and generated files carry no architectural intent. */
+const SKIPPED_RE = [
+  /^src\/lib\/assets\//,
+  /\.d\.ts$/,
+];
+
+/**
+ * Ordered layer matchers — **first match wins, so order is the specification**.
+ *
+ * Two orderings are load-bearing and must not be reshuffled:
+ *  - `src/hooks.server.ts` is matched before any folder rule, so a
+ *    `src/lib/hooks/` folder of reusable Svelte hooks cannot be mistaken for
+ *    the framework `hooks` layer.
+ *  - `*.remote.ts` is matched before folder rules, because `remote` is defined
+ *    by a filename marker rather than by its directory.
+ *
+ * Substring matching is deliberately avoided throughout: the previous
+ * implementation scanned path segments for a `dirLayerMap` key, which made
+ * `lib/client/note-sync/indexeddb-note-sync-repository.ts` a `repositories`
+ * module and `src/lib/stores/**` part of `routes`.
+ */
+const LAYER_MATCHERS: ReadonlyArray<readonly [RegExp, Layer]> = [
+  [/^tests\//, LayerEnum.TESTS],
+  [/\.spec\.(ts|js)$/, LayerEnum.TESTS],
+  [/\.test\.(ts|js)$/, LayerEnum.TESTS],
+  [/^src\/evals\//, LayerEnum.TESTS],
+  // Fakes and fixtures shipped inside src/ so app code can import them in tests.
+  [/^src\/lib\/testing\//, LayerEnum.TESTS],
+
+  [/^src\/hooks\.(server\.)?(ts|js)$/, LayerEnum.HOOKS],
+  [/\.remote\.(ts|js)$/, LayerEnum.REMOTE],
+
+  [/^src\/routes\/.*\+.*\.server\.(ts|js)$/, LayerEnum.ROUTES],
+  [/^src\/routes\/.*\+server\.(ts|js)$/, LayerEnum.ROUTES],
+  [/^src\/routes\//, LayerEnum.COMPONENTS],
+
+  // `$lib/server/<name>/` IS layer `<name>`. Nothing here is server-only by
+  // convention — only by location, which SvelteKit itself enforces by refusing
+  // to bundle this subtree for the client.
+  //
+  // There is deliberately no catch-all for `src/lib/server/**`. A folder that
+  // is not a layer name gets no layer and is reported as
+  // `structure:unknown-server-folder`; the previous catch-all silently
+  // relabelled `server/domain/` (which holds services) as repositories.
+  [/^src\/lib\/server\/(repositories|db)\//, LayerEnum.REPOSITORIES],
+  [/^src\/lib\/server\/services\//, LayerEnum.SERVICES],
+  [/^src\/lib\/server\/controllers\//, LayerEnum.CONTROLLERS],
+  [/^src\/lib\/server\/config\.(ts|js)$/, LayerEnum.CONFIG],
+  // Composition roots directly under $lib/server, in either naming convention:
+  // app-factory.ts, production-factory.ts, factory.ts, ServerFactory.ts.
+  [/^src\/lib\/server\/[^/]*[Ff]actory\.(ts|js)$/, LayerEnum.FACTORY],
+  [/^src\/lib\/server\/application\.(ts|js)$/, LayerEnum.FACTORY],
+
+  // The same layers at a universal path. They still classify to their layer so
+  // the direction rules keep working, but `structure:layer-outside-server`
+  // reports the placement: at these paths SvelteKit cannot stop a component
+  // from importing them.
+  [/^src\/lib\/repositories\//, LayerEnum.REPOSITORIES],
+  [/^src\/lib\/services\//, LayerEnum.SERVICES],
+  [/^src\/lib\/controllers\//, LayerEnum.CONTROLLERS],
+  [/^src\/lib\/(factories|factory)\//, LayerEnum.FACTORY],
+  [/^src\/lib\/config\.(ts|js)$/, LayerEnum.CONFIG],
+  [/^src\/lib\/errors\.(ts|js)$/, LayerEnum.ERRORS],
+  [/^src\/lib\/models\//, LayerEnum.MODELS],
+  [/^src\/env\.(ts|js)$/, LayerEnum.CONFIG],
+  [/^src\/lib\/stores\//, LayerEnum.STORES],
+  [/^src\/lib\/components\//, LayerEnum.COMPONENTS],
+  [/^src\/lib\/(client|hooks|commands)\//, LayerEnum.CLIENT],
+  [/^src\/lib\/utils\.(ts|js)$/, LayerEnum.UTILS],
+  [/^src\/lib\/utils\//, LayerEnum.UTILS],
+  [/^src\/service-worker\.(ts|js)$/, LayerEnum.CLIENT],
+];
+
+/** BFF-only: the generated API client is configuration, not a service. */
+const BFF_LAYER_MATCHERS: ReadonlyArray<readonly [RegExp, Layer]> = [
+  [/^src\/lib\/api\//, LayerEnum.CONFIG],
+];
 
 export class FileDiscovery {
-  async discover(rootPath: string): Promise<ProjectInfo> {
+  async discover(
+    rootPath: string,
+    options: { mode?: CheckerMode; ignore?: readonly string[] } = {},
+  ): Promise<ProjectInfo> {
+    const mode = options.mode ?? "sveltekit-standalone";
     const files: FileInfo[] = [];
     const seen = new Set<string>();
     const entries = await fastGlob(PATTERNS, {
       cwd: rootPath,
-      ignore: IGNORED_DIRS,
+      ignore: [...IGNORED_DIRS, ...(options.ignore ?? [])],
       onlyFiles: true,
       dot: false,
     });
@@ -45,6 +125,7 @@ export class FileDiscovery {
       if (path === "") continue;
       if (seen.has(path)) continue;
       if (isIgnoredPath(path)) continue;
+      if (SKIPPED_RE.some(re => re.test(path))) continue;
 
       const lang = path.endsWith(".svelte")
         ? "svelte" as const
@@ -52,11 +133,8 @@ export class FileDiscovery {
           ? "ts" as const
           : "js" as const;
 
-      files.push(createFileInfo({
-        path,
-        layer: classifyFile(path),
-        language: lang,
-      }));
+      const { layer, classified } = classifyFile(path, mode);
+      files.push(createFileInfo({ path, layer, language: lang, classified }));
       seen.add(path);
     }
 
@@ -88,51 +166,45 @@ function isIgnoredPath(path: string): boolean {
   return false;
 }
 
-function classifyFile(path: string): Layer {
-  const parts = path.split("/").filter(p => p.length > 0);
-  const filename = parts[parts.length - 1] ?? "";
+/**
+ * Classify a repo-relative path into exactly one layer.
+ *
+ * `classified: false` marks a first-party `src/lib/**` module that matched no
+ * canonical location. Such a file is *not* left in an `unknown` bucket exempt
+ * from every boundary rule — it is classified conservatively (client-reachable
+ * unless it sits under `$lib/server`) and reported as
+ * `structure:unclassified-module`, so ad-hoc folders surface instead of
+ * silently opting out of enforcement.
+ */
+export function classifyFile(
+  path: string,
+  mode: CheckerMode = "sveltekit-standalone",
+): { layer: Layer; classified: boolean } {
+  if (path === "") return { layer: LayerEnum.UNKNOWN, classified: true };
 
-  if (filename === "") return LayerEnum.UNKNOWN;
+  const matchers = mode === "sveltekit-bff"
+    ? [...BFF_LAYER_MATCHERS, ...LAYER_MATCHERS]
+    : LAYER_MATCHERS;
 
-  if (parts[0] === "tests" || path.startsWith("tests/")) return LayerEnum.TESTS;
-
-  if (FACTORY_FILENAME_RE.test(path) || FACTORY_DIR_RE.test(path)) {
-    return LayerEnum.FACTORY;
+  for (const [pattern, layer] of matchers) {
+    if (pattern.test(path)) return { layer, classified: true };
   }
 
-  const filenameLayerMap: Record<string, Layer> = {
-    "errors.ts": LayerEnum.ERRORS,
-    "errors.js": LayerEnum.ERRORS,
-    "config.ts": LayerEnum.CONFIG,
-    "config.js": LayerEnum.CONFIG,
-    "factory.ts": LayerEnum.FACTORY,
-    "factory.js": LayerEnum.FACTORY,
-    "app.ts": LayerEnum.APP_FILE,
-    "app.js": LayerEnum.APP_FILE,
-  };
-  const byFilename = filenameLayerMap[filename];
-  if (byFilename !== undefined) return byFilename;
-
-  const dirLayerMap: Record<string, Layer> = {
-    models: LayerEnum.MODELS,
-    services: LayerEnum.SERVICES,
-    repositories: LayerEnum.REPOSITORIES,
-    controllers: LayerEnum.CONTROLLERS,
-    routes: LayerEnum.ROUTES,
-    stores: LayerEnum.ROUTES,
-    dependencies: LayerEnum.DEPENDENCIES,
-    error_handlers: LayerEnum.ERROR_HANDLERS,
-    utils: LayerEnum.UTILS,
-  };
-
-  for (const part of parts.slice(0, -1)) {
-    const layer = dirLayerMap[part];
-    if (layer !== undefined) return layer;
+  // An unrecognised folder under $lib/server gets *no* layer. Guessing one is
+  // what previously relabelled `server/domain/` (services) as repositories and
+  // turned 28 service-to-service findings into nonsense about repositories.
+  // `structure:unknown-server-folder` reports the placement instead; once the
+  // code moves to a real layer its direction violations surface on their own.
+  if (path.startsWith("src/lib/server/")) {
+    return { layer: LayerEnum.UNKNOWN, classified: false };
   }
 
-  if (filename.startsWith("hooks.server.")) return LayerEnum.DEPENDENCIES;
+  // Elsewhere under src/lib/ the conservative reading is client-reachable.
+  if (path.startsWith("src/lib/")) {
+    return { layer: LayerEnum.CLIENT, classified: false };
+  }
 
-  return LayerEnum.UNKNOWN;
+  return { layer: LayerEnum.UNKNOWN, classified: true };
 }
 
 function derivePackageName(rootPath: string): string {

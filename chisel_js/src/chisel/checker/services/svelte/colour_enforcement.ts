@@ -1,12 +1,24 @@
+import { Layer } from "chisel/checker/models/layer";
 import type { ProjectInfo } from "chisel/checker/models/project_info";
 import type { Violation } from "chisel/checker/models/violation";
 import { Severity } from "chisel/checker/models/severity";
 import { createViolation } from "chisel/checker/models/violation";
 
-const COLOUR_PREFIXES = new Set([
+/**
+ * Prefixes that take a colour. Used by the palette rule; the arbitrary-value
+ * rule decides by inspecting the value, not the prefix.
+ */
+const COLOURABLE_PREFIXES = new Set([
   "bg", "text", "border", "ring", "fill", "stroke",
   "shadow", "outline", "decoration", "accent", "caret",
-  "divide", "placeholder",
+  "divide", "placeholder", "from", "via", "to",
+]);
+
+/** Tailwind's built-in palette hues. */
+const PALETTE_HUES = new Set([
+  "slate", "gray", "grey", "zinc", "neutral", "stone",
+  "red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal",
+  "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose",
 ]);
 
 const TYPOGRAPHY_PREFIXES = new Set([
@@ -22,24 +34,31 @@ const SPACING_PREFIXES = new Set([
   "size",
 ]);
 
-const COLOUR_VALUE_PREFIXES = new Set([
-  "bg", "border", "ring", "fill", "stroke",
-  "shadow", "outline", "decoration", "accent", "caret",
-  "divide", "placeholder",
-]);
-
+/**
+ * Whether an arbitrary value is a *colour*, judged by the value itself.
+ *
+ * Previously any `ring-[…]`/`shadow-[…]`/`outline-[…]` was reported as a colour
+ * violation regardless of content, so `ring-[2px]` and
+ * `shadow-[0_1px_2px_rgba(0,0,0,.1)]` came back as colour errors. The prefix
+ * says where a value is used; only the value says what it is.
+ */
 function isColourArbitrary(token: string): boolean {
   const m = token.match(/^([a-z][a-z0-9-]*)-\[([^\]]+)\]$/);
   if (!m) return false;
-  const prefix = m[1];
-  if (COLOUR_VALUE_PREFIXES.has(prefix)) return true;
+  if (!COLOURABLE_PREFIXES.has(m[1]!)) return false;
+  return isColourValue(m[2]!);
+}
 
-  if (prefix === "text") {
-    const value = m[2];
-    if (isColourValue(value)) return true;
-    return false;
-  }
-  return false;
+/**
+ * A hardcoded Tailwind palette class: `text-red-500`, `bg-slate-800`,
+ * `from-blue-500`. Real Tailwind, but not a semantic theme token — it hardcodes
+ * one appearance and cannot follow a theme.
+ */
+function paletteClass(token: string): { prefix: string; hue: string } | undefined {
+  const m = token.match(/^([a-z][a-z0-9-]*)-([a-z]+)-(\d{2,3})$/);
+  if (!m) return undefined;
+  if (!COLOURABLE_PREFIXES.has(m[1]!) || !PALETTE_HUES.has(m[2]!)) return undefined;
+  return { prefix: m[1]!, hue: m[2]! };
 }
 
 function isColourValue(value: string): boolean {
@@ -74,15 +93,18 @@ function isSpacingArbitrary(token: string): boolean {
   return false;
 }
 
-function extractClassStrings(source: string): string[] {
-  const out: string[] = [];
-  const re = /class=(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`|([^>]+?)(?=\s|\/>))/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(source)) !== null) {
-    const v = m[1] ?? m[2] ?? m[3] ?? m[4];
-    if (typeof v === "string") out.push(v);
-  }
-  return out;
+/** The semantic token that usually replaces a hardcoded palette class. */
+function suggestToken(prefix: string): string {
+  const suggestions: Record<string, string> = {
+    bg: "bg-background, bg-muted, bg-card, bg-destructive",
+    text: "text-foreground, text-muted-foreground, text-destructive",
+    border: "border-border, border-input",
+    ring: "ring-ring",
+    fill: "fill-foreground, fill-muted-foreground",
+    stroke: "stroke-foreground, stroke-muted-foreground",
+    placeholder: "placeholder-muted-foreground",
+  };
+  return suggestions[prefix] ?? "one of the semantic tokens declared in app.css";
 }
 
 export class ColourEnforcementService {
@@ -92,10 +114,15 @@ export class ColourEnforcementService {
     const violations: Violation[] = [];
     for (const file of project.files) {
       if (!file.path.endsWith(".svelte")) continue;
+      // Tests are exempt: a mock response, a fixture with a hardcoded status,
+      // or a long arrange block is not an architectural problem. Tests keep
+      // their own test-structure rules. Note this is narrower than
+      // UNRESTRICTED_LAYERS, which the import rules use — an *unclassified*
+      // component still gets the hygiene and design-system rules.
+      if (file.layer === Layer.TESTS) continue;
       if (file.path.includes("components/ui/")) continue;
       if (!file.source) continue;
       violations.push(...this._checkArbitraryValues(file));
-      violations.push(...this._checkDynamicClass(file));
       violations.push(...this._checkModifierClasses(file));
     }
     return violations;
@@ -129,6 +156,19 @@ export class ColourEnforcementService {
         }
       }
 
+      for (const m of lines[i].matchAll(/\b([a-z][a-z0-9-]*-[a-z]+-\d{2,3})\b/g)) {
+        const token = m[1]!;
+        const palette = paletteClass(token);
+        if (palette === undefined) continue;
+        violations.push(createViolation({
+          file: file.path, line: i + 1, severity: Severity.ERROR,
+          ruleId: "colour:palette-class-banned",
+          message: `"${token}" hardcodes a Tailwind palette colour. Use a semantic `
+            + `token instead — ${suggestToken(palette.prefix)} — so the colour follows `
+            + `the theme instead of pinning one appearance in light and dark alike.`,
+        }));
+      }
+
       if (/class=\{`.*\$\{.*\}.*`\}/.test(lines[i]) || /class=\{[^}]*\$\{/.test(lines[i])) {
         violations.push(createViolation({
           file: file.path, line: i + 1, severity: Severity.ERROR,
@@ -140,9 +180,6 @@ export class ColourEnforcementService {
     return violations;
   }
 
-  private _checkDynamicClass(file: { path: string; source: string }) {
-    return [];
-  }
 
   private _checkModifierClasses(file: { path: string; source: string }) {
     const violations: Violation[] = [];
@@ -177,6 +214,11 @@ export class ColourEnforcementService {
       { id: "spacing:arbitrary-value-banned", category: "spacing",
         description: "Arbitrary Tailwind spacing/sizing value syntax (w-[400px], min-h-[80vh], gap-[14px])",
         fixGuidance: "Define the size as a CSS custom property in app.css (e.g. --space-4) and reference it as a Tailwind token." },
+      { id: "colour:palette-class-banned", category: "colour-enforcement",
+        description: "Hardcoded Tailwind palette colour (text-red-500, bg-slate-800, from-blue-500)",
+        fixGuidance: "Use a semantic token from app.css (bg-background, text-muted-foreground, "
+          + "text-destructive). A palette class pins one appearance and cannot follow the theme, "
+          + "so it looks wrong in whichever mode it was not written for." },
       { id: "colour:dynamic-class-banned", category: "colour-enforcement",
         description: "Dynamic class construction (class={`bg-${variable}`})",
         fixGuidance: "Use a lookup object of pre-approved token names instead: const colourMap = { primary: 'bg-primary' }." },
