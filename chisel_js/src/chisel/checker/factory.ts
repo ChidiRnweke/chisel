@@ -37,7 +37,7 @@ export class CheckerFactory {
    */
   static createController(options: CheckerFactoryOptions = {}): CheckController {
     const config = options.config ?? defaultConfig();
-    const importGraph = options.importGraph ?? new ImportGraph();
+    const importGraph = options.importGraph ?? new ImportGraph(config.tsconfig);
 
     const services: CheckerService[] = [
       new ImportBoundaryService(importGraph, config.mode),

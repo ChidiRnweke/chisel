@@ -5,7 +5,9 @@ import { ImportGraph } from "chisel/checker/repositories/import_graph";
 import { createFileInfo } from "chisel/checker/models/file_info";
 import { createProjectInfo } from "chisel/checker/models/project_info";
 import { Layer } from "chisel/checker/models/layer";
-import { readFileSync } from "node:fs";
+import { classifyFile } from "chisel/checker/repositories/file_discovery";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const FIXTURE = join(import.meta.dir, "../../fixtures/standalone-app");
@@ -188,6 +190,150 @@ describe("ImportGraph — statement forms", () => {
     const graph = new ImportGraph();
     graph.build(project);
     expect(graph.allImports[0]!.imported).toBe("src/lib/server/services/notes/management.ts");
+  });
+});
+
+/**
+ * Build a graph over a throwaway project on disk. Config files (any `*.json`)
+ * are written but not handed to the graph as source files, mirroring what
+ * discovery does; everything else becomes a discovered file.
+ */
+function graphOver(files: Record<string, string>, tsconfigName?: string): ImportGraph {
+  const root = mkdtempSync(join(tmpdir(), "chisel-aliases-"));
+  try {
+    const infos = [];
+    for (const [path, source] of Object.entries(files)) {
+      const full = join(root, path);
+      mkdirSync(join(full, ".."), { recursive: true });
+      writeFileSync(full, source);
+      if (path.endsWith(".json")) continue;
+      infos.push(createFileInfo({
+        path,
+        layer: classifyFile(path).layer,
+        language: path.endsWith(".svelte") ? "svelte" : "ts",
+        source,
+      }));
+    }
+    const graph = new ImportGraph(tsconfigName);
+    graph.build(createProjectInfo({ rootPath: root, files: infos }));
+    return graph;
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function resolutions(graph: ImportGraph): Record<string, string> {
+  return Object.fromEntries(
+    graph.allImports.map(e => [e.specifier, e.resolved ? e.imported : `UNRESOLVED(${e.imported})`]),
+  );
+}
+
+const LIB_FILES = {
+  "src/lib/models/index.ts": "export const model = 1;\n",
+  "src/lib/components/ui/button/index.ts": "export const Button = 1;\n",
+  "src/lib/state/session.svelte.ts": "export const session = 1;\n",
+  "src/lib/utils.ts": "export const helper = 1;\n",
+};
+
+const LIB_IMPORTER = {
+  "src/lib/client/consumer.ts": [
+    'import { model } from "$lib/models";',
+    'import { Button } from "$lib/components/ui/button";',
+    'import { session } from "$lib/state/session.svelte";',
+    'import { helper } from "$lib/utils.js";',
+    "export const all = [model, Button, session, helper];",
+  ].join("\n"),
+};
+
+const LIB_EXPECTED = {
+  "$lib/models": "src/lib/models/index.ts",
+  "$lib/components/ui/button": "src/lib/components/ui/button/index.ts",
+  "$lib/state/session.svelte": "src/lib/state/session.svelte.ts",
+  "$lib/utils.js": "src/lib/utils.ts",
+};
+
+describe("ImportGraph — tsconfig alias bases", () => {
+  test("resolves $lib declared in SvelteKit's generated .svelte-kit/tsconfig.json", () => {
+    // The regression: the app's tsconfig only *extends* the generated one, whose
+    // `$lib` target is `../src/lib` relative to `.svelte-kit/`. Rebasing that on
+    // the repo root instead of `pathsBasePath` points one directory above the
+    // project, and every $lib import is reported unresolved.
+    const graph = graphOver({
+      "tsconfig.json": '{"extends":"./.svelte-kit/tsconfig.json"}',
+      ".svelte-kit/tsconfig.json":
+        '{"compilerOptions":{"paths":{"$lib":["../src/lib"],"$lib/*":["../src/lib/*"]}}}',
+      ...LIB_FILES,
+      ...LIB_IMPORTER,
+    });
+
+    expect(resolutions(graph)).toEqual(LIB_EXPECTED);
+  });
+
+  test("resolves $lib declared directly with an explicit baseUrl", () => {
+    const graph = graphOver({
+      "tsconfig.json":
+        '{"compilerOptions":{"baseUrl":".","paths":{"$lib":["src/lib"],"$lib/*":["src/lib/*"]}}}',
+      ...LIB_FILES,
+      ...LIB_IMPORTER,
+    });
+
+    expect(resolutions(graph)).toEqual(LIB_EXPECTED);
+  });
+
+  test("reads the tsconfig named by chisel.config.json, not the default one", () => {
+    const graph = graphOver({
+      "tsconfig.json": '{"files":[],"references":[{"path":"./tsconfig.app.json"}]}',
+      "tsconfig.app.json":
+        '{"compilerOptions":{"baseUrl":".","paths":{"$lib":["src/lib"],"$lib/*":["src/lib/*"]}}}',
+      ...LIB_FILES,
+      ...LIB_IMPORTER,
+    }, "tsconfig.app.json");
+
+    expect(resolutions(graph)).toEqual(LIB_EXPECTED);
+  });
+
+  test("falls back to src/lib when the tsconfig declares no paths", () => {
+    // A SvelteKit checkout before `svelte-kit sync`: the config parses, the
+    // `extends` target is missing, and no aliases come out of it.
+    const graph = graphOver({
+      "tsconfig.json": '{"extends":"./.svelte-kit/tsconfig.json"}',
+      ...LIB_FILES,
+      ...LIB_IMPORTER,
+    });
+
+    expect(resolutions(graph)).toEqual(LIB_EXPECTED);
+  });
+
+  test("treats an alias pointing outside the project as external, without warning", () => {
+    // A monorepo aliasing a sibling package is configured correctly: nothing
+    // the checker discovered lives there, so the import is somebody else's
+    // package as far as the layer rules are concerned.
+    const graph = graphOver({
+      "tsconfig.json":
+        '{"compilerOptions":{"baseUrl":".","paths":{"@shared/*":["../shared/*"]}}}',
+      "src/lib/client/consumer.ts": 'import { x } from "@shared/x";\nexport const y = x;\n',
+    });
+
+    expect({
+      isInternal: graph.allImports[0]!.isInternal,
+      resolved: graph.allImports[0]!.resolved,
+      warnings: graph.warnings,
+    }).toEqual({ isInternal: false, resolved: true, warnings: [] });
+  });
+
+  test("warns and falls back when $lib itself points outside the project", () => {
+    const graph = graphOver({
+      "tsconfig.json":
+        '{"compilerOptions":{"baseUrl":".","paths":{"$lib":["../elsewhere"],"$lib/*":["../elsewhere/*"]}}}',
+      ...LIB_FILES,
+      ...LIB_IMPORTER,
+    });
+
+    expect({
+      resolutions: resolutions(graph),
+      warnings: graph.warnings.length,
+      mentionsTarget: graph.warnings[0]?.includes("$lib -> ../elsewhere") ?? false,
+    }).toEqual({ resolutions: LIB_EXPECTED, warnings: 1, mentionsTarget: true });
   });
 });
 

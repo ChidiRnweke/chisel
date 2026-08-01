@@ -4,7 +4,7 @@ import type { ProjectInfo } from "chisel/checker/models/project_info";
 import { createImportEdge } from "chisel/checker/models/import_edge";
 import { ImportGraphError } from "chisel/checker/errors";
 import { FileParser, scriptsOf } from "chisel/checker/repositories/file_parser";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import ts from "typescript";
 
@@ -62,6 +62,12 @@ export class ImportGraph {
   private _warnings: string[] = [];
 
   /**
+   * @param tsconfigName Repo-relative path to the tsconfig whose `paths` define
+   *   the project's aliases, as configured in `chisel.config.json`.
+   */
+  constructor(private readonly tsconfigName: string = "tsconfig.json") {}
+
+  /**
    * Parse every discovered file and resolve its imports.
    *
    * Deliberately does **not** create a `ts.Program`: we need no type
@@ -76,9 +82,12 @@ export class ImportGraph {
       // `$lib`, and warning on every such run is noise. A `$lib` import that
       // genuinely fails to resolve is reported precisely, per import, as
       // `import-boundary:unresolved-import` — which carries the same hint.
-      const aliases = loadAliases(project.rootPath);
+      // A tsconfig that *does* declare aliases pointing outside the project is
+      // a different matter: that is a misconfiguration, and it warns.
+      const aliases = loadAliases(project.rootPath, this.tsconfigName);
       const known = new Set(project.files.map(f => f.path));
       const edges: ImportEdge[] = [];
+      this._warnings = aliases.warnings;
 
       for (const file of project.files) {
         if (file.source === "") continue;
@@ -295,42 +304,86 @@ function sourceEquivalents(candidate: string): string[] {
   return [];
 }
 
-function loadAliases(rootPath: string): { paths: Record<string, string[]>; usedFallback: boolean } {
-  const configPath = ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json");
-  if (configPath === undefined) return { paths: FALLBACK_PATHS, usedFallback: true };
+interface LoadedAliases {
+  paths: Record<string, string[]>;
+  usedFallback: boolean;
+  warnings: string[];
+}
 
-  const read = ts.readConfigFile(configPath, p => {
-    try {
-      return readFileSync(p, "utf-8");
-    } catch {
-      return undefined;
-    }
-  });
-  if (read.error !== undefined || read.config === undefined) {
-    return { paths: FALLBACK_PATHS, usedFallback: true };
+const FALLBACK: LoadedAliases = { paths: FALLBACK_PATHS, usedFallback: true, warnings: [] };
+
+function loadAliases(rootPath: string, tsconfigName: string): LoadedAliases {
+  const configPath = findTsconfig(rootPath, tsconfigName);
+  if (configPath === undefined) return FALLBACK;
+
+  // `getParsedCommandLineOfConfigFile` follows `extends` and, unlike
+  // `parseJsonConfigFileContent` over a hand-read config, propagates
+  // `pathsBasePath`: the directory the *declaring* config's `paths` are
+  // relative to. A SvelteKit app's tsconfig extends the generated
+  // `.svelte-kit/tsconfig.json`, whose `$lib` target is `../src/lib` — so the
+  // base is `.svelte-kit/`, not the repo root. Resolving against the root
+  // instead lands one directory *above* the repo and every $lib import is
+  // reported unresolved.
+  const host: ts.ParseConfigFileHost = {
+    ...ts.sys,
+    onUnRecoverableConfigFileDiagnostic: () => {},
+  };
+  // A missing `extends` target (no `svelte-kit sync` yet) is a recoverable
+  // diagnostic, not a throw: parsing continues and simply yields no `paths`.
+  const parsed = ts.getParsedCommandLineOfConfigFile(configPath, {}, host);
+  const declared = parsed?.options.paths;
+  if (parsed === undefined || declared === undefined || Object.keys(declared).length === 0) {
+    return FALLBACK;
   }
 
-  const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, dirname(configPath));
-  const options = parsed.options;
-  const declared = options.paths;
-  if (declared === undefined || Object.keys(declared).length === 0) {
-    return { paths: FALLBACK_PATHS, usedFallback: true };
-  }
-
-  // `paths` are relative to `baseUrl`; re-express them relative to the project
+  // `paths` are relative to their base; re-express them relative to the project
   // root so candidates can be compared against discovered file paths directly.
-  const base = options.baseUrl ?? dirname(configPath);
+  // `pathsBasePath` is only reachable through `CompilerOptions`' index
+  // signature, hence the narrowing.
+  const pathsBasePath = parsed.options.pathsBasePath;
+  const base = (typeof pathsBasePath === "string" ? pathsBasePath : undefined)
+    ?? parsed.options.baseUrl
+    ?? dirname(configPath);
   const rebased: Record<string, string[]> = {};
+  const escaped: string[] = [];
   for (const [pattern, targets] of Object.entries(declared)) {
-    rebased[pattern] = targets.map(t => normalise(relative(rootPath, resolve(base, t))));
+    const inside = targets
+      .map(t => normalise(relative(rootPath, resolve(base, t))))
+      // A target outside the repo holds no file the checker discovered, so it
+      // can never resolve. Dropping it lets the $lib fallback below engage
+      // rather than every $lib import silently resolving to nothing. An alias
+      // with no targets left behaves like a bare package: external, and not the
+      // layer rules' business — which is the right answer for the monorepo
+      // `@shared/*` case that legitimately points outside the project.
+      .filter(t => (t.startsWith("../") ? (escaped.push(`${pattern} -> ${t}`), false) : true));
+    if (inside.length > 0) rebased[pattern] = inside;
   }
+
+  // Only $lib is worth warning about. A monorepo aliasing a sibling package
+  // outside the root is configured correctly and would warn on every run.
+  const brokenLib = escaped.filter(e => e.startsWith("$lib"));
+  const warnings = brokenLib.length === 0 ? [] : [
+    `Alias targets in '${relative(rootPath, configPath) || configPath}' resolve outside the `
+    + `project root and were ignored: ${brokenLib.join(", ")}. `
+    + `Falling back to 'src/lib'.`,
+  ];
 
   // SvelteKit projects that never ran `svelte-kit sync` parse fine but carry no
   // $lib mapping; fill it in rather than reporting every $lib import unresolved.
   const hasLib = Object.keys(rebased).some(p => p === "$lib" || p.startsWith("$lib/"));
-  if (!hasLib) return { paths: { ...FALLBACK_PATHS, ...rebased }, usedFallback: true };
+  if (!hasLib) return { paths: { ...FALLBACK_PATHS, ...rebased }, usedFallback: true, warnings };
 
-  return { paths: rebased, usedFallback: false };
+  return { paths: rebased, usedFallback: false, warnings };
+}
+
+/**
+ * The tsconfig named by `chisel.config.json`, or — when that file does not
+ * exist — whatever `tsconfig.json` the upward search finds.
+ */
+function findTsconfig(rootPath: string, tsconfigName: string): string | undefined {
+  const configured = resolve(rootPath, tsconfigName);
+  if (existsSync(configured)) return configured;
+  return ts.findConfigFile(rootPath, ts.sys.fileExists, "tsconfig.json");
 }
 
 function normalise(path: string): string {
