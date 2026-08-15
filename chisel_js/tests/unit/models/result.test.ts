@@ -11,10 +11,12 @@ describe("CheckResult", () => {
       createViolation({ file: "c.py", line: 1, severity: Severity.WARNING, ruleId: "r3", message: "w" }),
     ];
     const result = createCheckResult(violations, 10);
-    expect(result.errors).toBe(2);
-    expect(result.warnings).toBe(1);
-    expect(result.info).toBe(0);
-    expect(result.filesChecked).toBe(10);
+    expect({
+      errors: result.errors,
+      warnings: result.warnings,
+      info: result.info,
+      filesChecked: result.filesChecked,
+    }).toEqual({ errors: 2, warnings: 1, info: 0, filesChecked: 10 });
   });
 
   test("hasErrors returns true when errors present", () => {

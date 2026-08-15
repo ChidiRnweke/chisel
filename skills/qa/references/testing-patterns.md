@@ -121,6 +121,55 @@ export class FakeRecipeService implements IRecipeService {
 
 Same principles: implements the full interface, stores state in plain arrays, raises domain errors, configurable per-test by setting `.recipes` before the test runs.
 
+The `implements` clause is not decoration. It is the thing that tells you the fake has gone stale when the interface changes, and it is checked — a `Fake*`, `Stub*` or `InMemory*` class without one is reported as `test-structure:untyped-fake`.
+
+Never reach for a cast to make a partial fake fit:
+
+```typescript
+// Wrong — the cast silences the error saying the fake is incomplete.
+const controller = new RecipeController({} as unknown as RecipeDependencies);
+
+// Right — the fake satisfies the interface, or the interface is too wide.
+const controller = new RecipeController({
+	recipes: new FakeRecipeService(),
+	pantry: new FakePantryService()
+});
+```
+
+If completing the fake feels like too much work, that is the finding: the code under test depends on more than it needs. Narrow the interface.
+
+### Observing a function-typed dependency
+
+When a dependency is a function rather than an object, you still do not reach for a spy. A recording closure is a fake:
+
+```typescript
+const saved: Recipe[] = [];
+const save = async (recipe: Recipe) => {
+	saved.push(recipe);
+};
+
+const controller = new RecipeController({ save });
+await controller.create({ title: 'Pasta' });
+
+expect(saved).toEqual([{ title: 'Pasta' }]);
+```
+
+The assertion is on recorded state, not on the call. `expect(save).toHaveBeenCalledWith(...)` is the version that breaks under a behaviour-preserving refactor, and is reported as `test-structure:interaction-assertion`.
+
+### Skipping a test
+
+```typescript
+// Wrong — invisible debt.
+it.skip('returns ranked notes', async () => { ... });
+
+// Right — the reason and the condition for its return.
+// Blocked on the upstream search index rebuild, see issue 412.
+it.skip('returns ranked notes', async () => { ... });
+
+// Also right, where the runner takes a reason argument.
+it.skip(needsDatabase, 'the dev database must seed two notes first', async () => { ... });
+```
+
 ---
 
 ## Model tests
@@ -388,6 +437,10 @@ For frontend services that wrap `openapi-fetch`, the fake replaces the service �
 | `jest.spyOn(service, 'getByUserId')`                             | Spying on implementation              | Use a fake, assert on output               |
 | `test('create recipe', ...)` with 5 assertions                   | Testing too many things               | One test per behaviour/invariant           |
 | Test that constructs a complex mock chain                        | Architecture smell                    | Simplify dependencies or add a controller  |
+| `{} as unknown as RecipeDependencies`                            | Silences the incomplete-fake error    | Complete the fake, or narrow the interface |
+| `class FakeRecipeService {` with no `implements`                 | Fake drifts from the real contract    | Declare the interface it stands in for     |
+| `expect(save).toHaveBeenCalledWith(...)`                         | Asserting on wiring, not behaviour    | Record into a closure, assert on the state |
+| `it.skip('...')` with no reason                                  | Invisible debt                        | Say why, and when it comes back            |
 
 ---
 

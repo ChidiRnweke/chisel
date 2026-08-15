@@ -14,11 +14,9 @@ describe("FileDiscovery", () => {
     
     try {
       const project = await discovery.discover(dir);
-      expect(project.files.length).toBeGreaterThanOrEqual(2);
       const svelteFiles = project.files.filter(f => f.path.endsWith(".svelte"));
       const tsFiles = project.files.filter(f => f.path.endsWith(".ts"));
-      expect(svelteFiles.length).toBe(1);
-      expect(tsFiles.length).toBe(1);
+      expect({ svelte: svelteFiles.length, ts: tsFiles.length }).toEqual({ svelte: 1, ts: 1 });
     } finally {
       await fs.rm(dir, { recursive: true, force: true });
     }

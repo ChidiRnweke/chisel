@@ -9,10 +9,12 @@ describe("FileInfo", () => {
       layer: Layer.ROUTES,
       language: "ts",
     });
-    expect(f.path).toBe("src/routes/users.ts");
-    expect(f.layer).toBe(Layer.ROUTES);
-    expect(f.language).toBe("ts");
-    expect(f.source).toBe("");
+    expect({ path: f.path, layer: f.layer, language: f.language, source: f.source }).toEqual({
+      path: "src/routes/users.ts",
+      layer: Layer.ROUTES,
+      language: "ts",
+      source: "",
+    });
   });
 
   test("stores source when provided", () => {

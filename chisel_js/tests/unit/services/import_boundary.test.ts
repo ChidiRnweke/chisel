@@ -34,8 +34,10 @@ describe("import-boundary — layer matrix", () => {
       { "src/lib/components/a.svelte": Layer.COMPONENTS, "src/lib/services/n/m.ts": Layer.SERVICES },
       [edge({ importer: "src/lib/components/a.svelte", imported: "src/lib/services/n/m.ts" })],
     );
-    expect(ruleIds(v)).toEqual(["import-boundary:banned-layer-import"]);
-    expect(v[0]!.message).toContain("components must not import services");
+    expect({
+      ruleIds: ruleIds(v),
+      explainsDirection: v[0]!.message.includes("components must not import services"),
+    }).toEqual({ ruleIds: ["import-boundary:banned-layer-import"], explainsDirection: true });
   });
 
   test("a route importing the factory is allowed", () => {
@@ -232,9 +234,10 @@ describe("import-boundary — third-party packages", () => {
   test("the openapi-fetch rule applies in BFF mode only", () => {
     const files = { "src/lib/services/n/m.ts": Layer.SERVICES };
     const edges = [edge({ importer: "src/lib/services/n/m.ts", imported: "openapi-fetch", isInternal: false })];
-    expect(ruleIds(check(files, edges, CheckerMode.BFF)))
-      .toEqual(["import-boundary:api-client-location"]);
-    expect(check(files, edges, CheckerMode.STANDALONE)).toEqual([]);
+    expect({
+      bff: ruleIds(check(files, edges, CheckerMode.BFF)),
+      standalone: ruleIds(check(files, edges, CheckerMode.STANDALONE)),
+    }).toEqual({ bff: ["import-boundary:api-client-location"], standalone: [] });
   });
 });
 
@@ -284,8 +287,8 @@ describe("import-boundary — unresolved edges", () => {
         lineNumber: 12,
       })],
     );
-    expect(ruleIds(v)).toEqual(["import-boundary:unresolved-import"]);
-    expect(v[0]!.line).toBe(12);
+    expect({ ruleIds: ruleIds(v), line: v[0]!.line })
+      .toEqual({ ruleIds: ["import-boundary:unresolved-import"], line: 12 });
   });
 
   test("an unresolved edge is reported once, not also as a layer violation", () => {

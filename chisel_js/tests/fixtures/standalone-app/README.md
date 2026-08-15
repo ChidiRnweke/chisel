@@ -40,3 +40,6 @@ layers stay universal.
 `src/lib/components/app/note-title.svelte` is the control for type-only imports:
 it imports a type across a layer boundary, which is coupling but not a runtime
 leak, and must not be reported as one.
+
+ANTI-PATTERN: the reference below is stale — `src/lib/server/notifications.ts`
+no longer exists, and a reader (or an agent) following it is misled.

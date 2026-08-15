@@ -30,8 +30,10 @@ describe("server-layer-leak", () => {
       },
       [edge({ importer: "src/lib/components/a.svelte", imported: "src/lib/server/repositories/pg.ts" })],
     );
-    expect(v.map(x => x.ruleId)).toEqual(["server-layer-leak:client-reachable-import"]);
-    expect(v[0]!.message).toContain("reachable from the client bundle");
+    expect({
+      ruleIds: v.map(x => x.ruleId),
+      namesTheBundle: v[0]!.message.includes("reachable from the client bundle"),
+    }).toEqual({ ruleIds: ["server-layer-leak:client-reachable-import"], namesTheBundle: true });
   });
 
   test("a server module importing another server module is fine", () => {
@@ -134,7 +136,6 @@ describe("server-layer-leak", () => {
         lineNumber: 3,
       })],
     );
-    expect(v.length).toBe(1);
-    expect(v[0]!.line).toBe(3);
+    expect({ count: v.length, line: v[0]!.line }).toEqual({ count: 1, line: 3 });
   });
 });

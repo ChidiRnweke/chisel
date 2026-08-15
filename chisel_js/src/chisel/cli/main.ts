@@ -2,6 +2,8 @@
 import { program } from "commander";
 import { InitController } from "chisel/checker/controllers/init_controller";
 import { UpdateController } from "chisel/checker/controllers/update_controller";
+import { BundleController } from "chisel/checker/controllers/bundle_controller";
+import { BuildOutputMissingError } from "chisel/checker/services/build/bundle_budget";
 import { CheckerFactory } from "chisel/checker/factory";
 import { CheckerMode, isCheckerMode, CHECKER_MODES } from "chisel/checker/models/mode";
 import { SkillTarget } from "chisel/checker/models/agent_skill";
@@ -128,6 +130,37 @@ program
   });
 
 program
+  .command("bundle")
+  .description("Check emitted client chunks against the application bundle budget")
+  .argument("[path]", "Path to project root", ".")
+  .option("--json", "Output violations as JSON")
+  .action((path: string, options: { json?: boolean }) => {
+    try {
+      const { result, vendorChunksTolerated } = new BundleController().analyse(path);
+      const reporter = new Reporter();
+
+      if (options.json) {
+        console.log(reporter.reportJson(result));
+      } else {
+        reporter.report(result);
+        if (vendorChunksTolerated > 0) {
+          console.error(
+            `${vendorChunksTolerated} oversized vendor-only chunk(s) tolerated: they carry `
+            + "no application code, so no amount of application discipline shrinks them.",
+          );
+        }
+      }
+
+      if (result.hasErrors) process.exit(1);
+    } catch (err) {
+      // A missing build is a usage error, not a passing check: staying silent
+      // would report success for a budget nothing was measured against.
+      console.error(err instanceof BuildOutputMissingError ? `Error: ${err.message}` : `Error: ${err}`);
+      process.exit(1);
+    }
+  });
+
+program
   .command("init")
   .description(`Detect the project topology and write ${CONFIG_FILENAME}`)
   .argument("[path]", "Path to project root", ".")
@@ -169,13 +202,25 @@ program
     }
   });
 
+/**
+ * Every rule the tool can report, across both entry points. `bundle` runs from
+ * its own controller because it needs build output, but a rule a user cannot
+ * look up is a rule they meet for the first time as a failure.
+ */
+function allKnownRules() {
+  const controller = CheckerFactory.createController({ config: loadConfig(".").config });
+  return [
+    ...controller.describeAllRules(),
+    ...new BundleController().describeAllRules(),
+  ].map(withSkillName);
+}
+
 program
   .command("rules")
   .description("List all available rules")
   .option("--json", "Output as JSON")
   .action(async (options: { json?: boolean }) => {
-    const controller = CheckerFactory.createController({ config: loadConfig(".").config });
-    const allRules = controller.describeAllRules().map(withSkillName);
+    const allRules = allKnownRules();
 
     if (options.json) {
       console.log(JSON.stringify(allRules, null, 2));
@@ -201,8 +246,7 @@ program
   .argument("<rule-id>", "Rule ID or category prefix")
   .option("--json", "Output as JSON")
   .action(async (ruleId: string, options: { json?: boolean }) => {
-    const controller = CheckerFactory.createController({ config: loadConfig(".").config });
-    const allRules = controller.describeAllRules().map(withSkillName);
+    const allRules = allKnownRules();
 
     const matches = allRules.filter(r =>
       r.id === ruleId || r.id.startsWith(ruleId + ":") || r.category === ruleId

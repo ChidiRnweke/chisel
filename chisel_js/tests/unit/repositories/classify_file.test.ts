@@ -70,6 +70,21 @@ describe("classifyFile — canonical locations", () => {
     });
   });
 
+  test("wiring grouped under server/factories is the factory layer at any depth", () => {
+    // Without this the subtree falls through to UNKNOWN, which
+    // UNRESTRICTED_LAYERS exempts from every boundary rule — allowing the
+    // folder would then silently switch its contents off.
+    expect(layers([
+      "src/lib/server/factories/app-factory.ts",
+      "src/lib/server/factories/capabilities/notes-capability-factory.ts",
+      "src/lib/server/factories/agent/mcp-tool-factory.ts",
+    ])).toEqual({
+      "src/lib/server/factories/app-factory.ts": Layer.FACTORY,
+      "src/lib/server/factories/capabilities/notes-capability-factory.ts": Layer.FACTORY,
+      "src/lib/server/factories/agent/mcp-tool-factory.ts": Layer.FACTORY,
+    });
+  });
+
   test("universal lib folders map to their layer", () => {
     expect(layers([
       "src/lib/services/notes/management.ts",

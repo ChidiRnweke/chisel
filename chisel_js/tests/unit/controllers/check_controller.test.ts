@@ -52,8 +52,10 @@ describe("CheckController", () => {
     await withProject({ "src/lib/utils.ts": "export const a = 1;\n" }, async root => {
       const controller = new CheckController({ services: [new StubService(), new StubService("stub:other")] });
       const result = await controller.check(root);
-      expect(result.violations.map(v => v.ruleId).sort()).toEqual(["stub:always", "stub:other"]);
-      expect(result.filesChecked).toBe(1);
+      expect({
+        ruleIds: result.violations.map(v => v.ruleId).sort(),
+        filesChecked: result.filesChecked,
+      }).toEqual({ ruleIds: ["stub:always", "stub:other"], filesChecked: 1 });
     });
   });
 
@@ -138,9 +140,9 @@ describe("CheckController", () => {
         importGraph: exploding,
       }).check(root);
 
-      expect(result.violations.map(v => v.ruleId)).toContain("import-graph:build-failed");
-      // The other services still ran.
-      expect(result.violations.map(v => v.ruleId)).toContain("stub:always");
+      // The build failure is reported, and the other services still ran.
+      expect(result.violations.map(v => v.ruleId).sort())
+        .toEqual(["import-graph:build-failed", "stub:always"]);
     });
   });
 

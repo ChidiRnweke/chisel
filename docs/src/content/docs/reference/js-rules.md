@@ -13,7 +13,45 @@ tableOfContents:
 This page mirrors `scripts/data/js-rules.json` captured at release time. Run `chisel-js rules --json` to see the live list for your installed version.
 :::
 
-57 rules across 13 categories, enforced by `chisel-js`.
+70 rules across 16 categories, enforced by `chisel-js`.
+
+## Bundle
+
+`bundle` · 1 rule
+
+### `bundle:oversized-app-chunk`
+
+A client chunk containing application code exceeds the size budget
+
+**Fix.** Split the route or import the heavy part dynamically. Vendor-only chunks are tolerated as a known cost; a chunk mixing application code is a regression. Requires a production build — run `chisel-js bundle` after building.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+## Coherence
+
+`coherence` · 2 rules
+
+### `coherence:empty-test-glob`
+
+A test-runner include pattern matches no files
+
+**Fix.** Fix the pattern or delete it. A glob matching nothing means part of the suite stopped running and CI stayed green — the one failure mode the test suite cannot report itself.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `coherence:broken-doc-path`
+
+Maintained documentation cites a path that does not exist
+
+**Fix.** Update the reference or remove it. Checked in root and docs/ markdown; generated API references and build output are excluded.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ## Colour Enforcement
 
@@ -539,7 +577,7 @@ Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>`
 
 A folder under $lib/server/ does not name a layer.
 
-**Fix.** $lib/server/ holds db/, repositories/, services/, controllers/, config.ts and the factory. An adapter for an external capability is a service, not a repository — repositories are persistence. Reported once per folder.
+**Fix.** $lib/server/ holds db/, repositories/, services/, controllers/, factories/, config.ts and the factory. An adapter for an external capability is a service, not a repository — repositories are persistence. Wiring modules may stay at the root or be grouped under factories/. Reported once per folder.
 
 :::tip[Skill]
 Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
@@ -571,13 +609,13 @@ Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>`
 
 ## Test Structure
 
-`test-structure` · 5 rules
+`test-structure` · 8 rules
 
 ### `test-structure:test-file-location`
 
-Test file outside tests/unit/, tests/integration/, or tests/e2e/
+Test file neither colocated with its subject nor under a tests/ root
 
-**Fix.** Move into the correct directory.
+**Fix.** Put foo.spec.ts beside foo.ts, or move it under tests/unit/, tests/integration/ or tests/e2e/ so its kind is visible from its path.
 
 :::tip[Skill]
 Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
@@ -587,7 +625,7 @@ Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
 
 Test name does not describe an invariant
 
-**Fix.** Name the test after the invariant it proves: test_cannot_X, test_returns_Y_when_Z.
+**Fix.** Name the test after the invariant it proves: test_cannot_X, test_returns_Y_when_Z. When it fails, the name alone should say what broke.
 
 :::tip[Skill]
 Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
@@ -595,9 +633,9 @@ Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
 
 ### `test-structure:one-assert-per-test`
 
-More than one assert/expect in a test
+More than one assertion in a test
 
-**Fix.** Split into separate test functions, one per assertion. Name each after the invariant it proves.
+**Fix.** Split into separate tests, one per assertion, each named after its invariant. End-to-end specs are exempt.
 
 :::tip[Skill]
 Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
@@ -605,9 +643,9 @@ Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
 
 ### `test-structure:mocking-banned`
 
-Mocking library usage (jest.mock, vi.mock, spyOn)
+Mocking library usage (vi.mock, jest.fn, spyOn, sinon)
 
-**Fix.** Write a fake that implements the full Protocol/interface. Put it in tests/fakes/.
+**Fix.** Write a fake that implements the full interface. In a layered architecture with injected dependencies you can always construct the real object; needing a mock is a signal the wiring is wrong.
 
 :::tip[Skill]
 Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
@@ -615,12 +653,116 @@ Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
 
 ### `test-structure:skip-without-reason`
 
-test.skip without reason
+test.skip without an explanation
 
-**Fix.** Add a reason string explaining why this test is skipped and when it should be re-enabled.
+**Fix.** Pass a reason string, or put one in a comment above the skip: what blocks it and when it comes back. A bare skip is debt nobody can see.
 
 :::tip[Skill]
 Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `test-structure:untyped-fake`
+
+A Fake*/Stub*/InMemory* class declares no interface
+
+**Fix.** Add `implements <Interface>`. Without it the fake drifts from the real contract silently, and the first thing to notice is a production path.
+
+:::tip[Skill]
+Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `test-structure:unsafe-dependency-cast`
+
+`as unknown as T` in a test
+
+**Fix.** The cast is silencing the error that says the fake does not match the interface. Complete the fake, or narrow the interface the code under test depends on.
+
+:::tip[Skill]
+Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `test-structure:interaction-assertion`
+
+Assertion on calls (toHaveBeenCalled and friends)
+
+**Fix.** Assert on output or resulting state. Interaction assertions pin the internals, so a behaviour-preserving refactor breaks the test for no reason.
+
+:::tip[Skill]
+Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+## Topology
+
+`topology` · 7 rules
+
+### `topology:layer-barrel-import`
+
+Import from a layer-wide barrel rather than a domain
+
+**Fix.** Import the domain: $lib/models/notes, not $lib/models. A layer barrel makes every consumer depend on everything and collapses the graph into one hub. A domain's own index.ts remains the sanctioned entry point.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `topology:deep-feature-import`
+
+Cross-feature import reaching past a feature's entry point
+
+**Fix.** Import $lib/components/<feature> and export what callers need from its index.ts. Deep imports turn every internal rename into a breaking change. Within a feature, relative imports are fine.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `topology:generic-bucket-directory`
+
+A directory named misc/, common/, helpers/, pages/ or panels/
+
+**Fix.** Name the directory after what the code does, or move each file to the feature that owns it. A directory that describes nothing collects anything. Reported once per directory.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `topology:composition-root-concrete-import`
+
+The composition root imports a concrete service or repository
+
+**Fix.** Depend on the interface and let a factory supply the implementation. `import type` is fine — it is erased. Once the wiring can reach for concretes, every layering rule gets an exception here.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `topology:composition-root-construction`
+
+The composition root constructs something other than a factory
+
+**Fix.** Call a factory and let it decide what to build. Assembling objects in the wiring is how it becomes the one file that knows every concrete type.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `topology:composition-root-placeholder`
+
+Placeholder wiring (undefined as unknown as T, LateValue)
+
+**Fix.** A placeholder means two objects need each other. Restructure so one does not — extract the shared part, or pass a typed lazy accessor. The placeholder turns a build error into a runtime one.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `topology:factory-shape`
+
+A *-factory.ts does not export exactly one value
+
+**Fix.** One factory module builds one thing. Split it, or rename the file after what it actually holds. Exported types do not count — a factory may declare its own dependency shape.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
 :::
 
 ## Typography

@@ -9,8 +9,19 @@ import { createViolation } from "chisel/checker/models/violation";
  * Folder names that name a layer when they sit directly under `$lib/server/`.
  * `db` is part of the repository layer: the schema is the repositories' own
  * data definition, not a peer they would have to import across a boundary.
+ *
+ * `factories` is wiring, not a layer in the import-direction sense, but it
+ * earns a place here: once an app has more than a handful of factory modules,
+ * leaving them flat at the server root means the directory listing stops
+ * reading as architecture. Grouping them is allowed — not required.
  */
-const SERVER_LAYER_FOLDERS = new Set(["repositories", "db", "services", "controllers"]);
+const SERVER_LAYER_FOLDERS = new Set([
+  "repositories",
+  "db",
+  "services",
+  "controllers",
+  "factories",
+]);
 
 /** Files allowed directly under `$lib/server/`, rather than in a layer folder. */
 const SERVER_ROOT_FILE_RE = /^src\/lib\/server\/([^/]*[Ff]actory|application|config|index)\.(ts|js)$/;
@@ -141,9 +152,10 @@ export class LayoutService {
         category: this.ruleIdPrefix,
         description: "A folder under $lib/server/ does not name a layer.",
         fixGuidance:
-          "$lib/server/ holds db/, repositories/, services/, controllers/, config.ts and "
-          + "the factory. An adapter for an external capability is a service, not a "
-          + "repository — repositories are persistence. Reported once per folder.",
+          "$lib/server/ holds db/, repositories/, services/, controllers/, factories/, "
+          + "config.ts and the factory. An adapter for an external capability is a "
+          + "service, not a repository — repositories are persistence. Wiring modules "
+          + "may stay at the root or be grouped under factories/. Reported once per folder.",
       },
       {
         id: "structure:unclassified-module",

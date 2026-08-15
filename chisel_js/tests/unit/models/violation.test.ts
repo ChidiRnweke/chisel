@@ -11,11 +11,13 @@ describe("Violation", () => {
       ruleId: "structural:print-banned",
       message: "print() is banned",
     });
-    expect(v.file).toBe("src/foo.py");
-    expect(v.line).toBe(10);
-    expect(v.severity).toBe(Severity.ERROR);
-    expect(v.ruleId).toBe("structural:print-banned");
-    expect(v.message).toBe("print() is banned");
+    expect({ ...v }).toEqual({
+      file: "src/foo.py",
+      line: 10,
+      severity: Severity.ERROR,
+      ruleId: "structural:print-banned",
+      message: "print() is banned",
+    });
   });
 
   test("violations are immutable", () => {

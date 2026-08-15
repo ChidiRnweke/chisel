@@ -79,7 +79,7 @@ The site source is in [`docs/`](docs/) (Astro Starlight, built with bun).
 These are designed for LLM consumption — an agent queries them to understand what a rule means and how to fix it:
 
 ```bash
-chisel rules                              # all ~55 rules, grouped by category
+chisel rules                              # all ~58 rules, grouped by category
 chisel rules --json                       # machine-readable for agent consumption
 chisel explain structural:isinstance-banned  # rule description + fix guidance
 chisel explain structural                 # all rules in a category
@@ -93,7 +93,7 @@ chisel update skills --target codex       # overwrite installed skills with bund
 violations carry `message_ref` / `messageRef`, and the top-level `messages`
 array contains each full message once with its `skill_name` / `skillName`.
 
-`chisel-js` equivalents: `chisel-js rules`, `chisel-js explain`, `chisel-js check . --json`, `chisel-js update self`, and `chisel-js update skills`.
+`chisel-js` equivalents: `chisel-js rules`, `chisel-js explain`, `chisel-js check . --json`, `chisel-js update self`, and `chisel-js update skills`. It also has `chisel-js bundle`, which checks emitted client chunks against a size budget and so needs a production build to have run.
 
 ## Agent skills
 

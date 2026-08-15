@@ -75,6 +75,11 @@ const LAYER_MATCHERS: ReadonlyArray<readonly [RegExp, Layer]> = [
   [/^src\/lib\/server\/services\//, LayerEnum.SERVICES],
   [/^src\/lib\/server\/controllers\//, LayerEnum.CONTROLLERS],
   [/^src\/lib\/server\/config\.(ts|js)$/, LayerEnum.CONFIG],
+  // Wiring grouped into its own folder, at any depth beneath it. Without this
+  // entry the subtree falls through to UNKNOWN, and UNRESTRICTED_LAYERS would
+  // exempt every file in it from all boundary rules — silently the opposite of
+  // what allowing the folder is meant to achieve.
+  [/^src\/lib\/server\/factories\//, LayerEnum.FACTORY],
   // Composition roots directly under $lib/server, in either naming convention:
   // app-factory.ts, production-factory.ts, factory.ts, ServerFactory.ts.
   [/^src\/lib\/server\/[^/]*[Ff]actory\.(ts|js)$/, LayerEnum.FACTORY],

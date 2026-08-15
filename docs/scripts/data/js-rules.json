@@ -66,7 +66,7 @@
     "id": "structure:unknown-server-folder",
     "category": "structure",
     "description": "A folder under $lib/server/ does not name a layer.",
-    "fixGuidance": "$lib/server/ holds db/, repositories/, services/, controllers/, config.ts and the factory. An adapter for an external capability is a service, not a repository — repositories are persistence. Reported once per folder.",
+    "fixGuidance": "$lib/server/ holds db/, repositories/, services/, controllers/, factories/, config.ts and the factory. An adapter for an external capability is a service, not a repository — repositories are persistence. Wiring modules may stay at the root or be grouped under factories/. Reported once per folder.",
     "skillName": "building-sveltekit-frontend"
   },
   {
@@ -74,6 +74,55 @@
     "category": "structure",
     "description": "A src/lib/ module matches no canonical layer location.",
     "fixGuidance": "Give it a home. An ad-hoc folder gets no boundary rules of its own, so it silently opts out of the architecture it lives in.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "topology:layer-barrel-import",
+    "category": "topology",
+    "description": "Import from a layer-wide barrel rather than a domain",
+    "fixGuidance": "Import the domain: $lib/models/notes, not $lib/models. A layer barrel makes every consumer depend on everything and collapses the graph into one hub. A domain's own index.ts remains the sanctioned entry point.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "topology:deep-feature-import",
+    "category": "topology",
+    "description": "Cross-feature import reaching past a feature's entry point",
+    "fixGuidance": "Import $lib/components/<feature> and export what callers need from its index.ts. Deep imports turn every internal rename into a breaking change. Within a feature, relative imports are fine.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "topology:generic-bucket-directory",
+    "category": "topology",
+    "description": "A directory named misc/, common/, helpers/, pages/ or panels/",
+    "fixGuidance": "Name the directory after what the code does, or move each file to the feature that owns it. A directory that describes nothing collects anything. Reported once per directory.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "topology:composition-root-concrete-import",
+    "category": "topology",
+    "description": "The composition root imports a concrete service or repository",
+    "fixGuidance": "Depend on the interface and let a factory supply the implementation. `import type` is fine — it is erased. Once the wiring can reach for concretes, every layering rule gets an exception here.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "topology:composition-root-construction",
+    "category": "topology",
+    "description": "The composition root constructs something other than a factory",
+    "fixGuidance": "Call a factory and let it decide what to build. Assembling objects in the wiring is how it becomes the one file that knows every concrete type.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "topology:composition-root-placeholder",
+    "category": "topology",
+    "description": "Placeholder wiring (undefined as unknown as T, LateValue)",
+    "fixGuidance": "A placeholder means two objects need each other. Restructure so one does not — extract the shared part, or pass a typed lazy accessor. The placeholder turns a build error into a runtime one.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "topology:factory-shape",
+    "category": "topology",
+    "description": "A *-factory.ts does not export exactly one value",
+    "fixGuidance": "One factory module builds one thing. Split it, or rename the file after what it actually holds. Exported types do not count — a factory may declare its own dependency shape.",
     "skillName": "building-sveltekit-frontend"
   },
   {
@@ -331,36 +380,57 @@
   {
     "id": "test-structure:test-file-location",
     "category": "test-structure",
-    "description": "Test file outside tests/unit/, tests/integration/, or tests/e2e/",
-    "fixGuidance": "Move into the correct directory.",
+    "description": "Test file neither colocated with its subject nor under a tests/ root",
+    "fixGuidance": "Put foo.spec.ts beside foo.ts, or move it under tests/unit/, tests/integration/ or tests/e2e/ so its kind is visible from its path.",
     "skillName": "qa"
   },
   {
     "id": "test-structure:test-naming",
     "category": "test-structure",
     "description": "Test name does not describe an invariant",
-    "fixGuidance": "Name the test after the invariant it proves: test_cannot_X, test_returns_Y_when_Z.",
+    "fixGuidance": "Name the test after the invariant it proves: test_cannot_X, test_returns_Y_when_Z. When it fails, the name alone should say what broke.",
     "skillName": "qa"
   },
   {
     "id": "test-structure:one-assert-per-test",
     "category": "test-structure",
-    "description": "More than one assert/expect in a test",
-    "fixGuidance": "Split into separate test functions, one per assertion. Name each after the invariant it proves.",
+    "description": "More than one assertion in a test",
+    "fixGuidance": "Split into separate tests, one per assertion, each named after its invariant. End-to-end specs are exempt.",
     "skillName": "qa"
   },
   {
     "id": "test-structure:mocking-banned",
     "category": "test-structure",
-    "description": "Mocking library usage (jest.mock, vi.mock, spyOn)",
-    "fixGuidance": "Write a fake that implements the full Protocol/interface. Put it in tests/fakes/.",
+    "description": "Mocking library usage (vi.mock, jest.fn, spyOn, sinon)",
+    "fixGuidance": "Write a fake that implements the full interface. In a layered architecture with injected dependencies you can always construct the real object; needing a mock is a signal the wiring is wrong.",
     "skillName": "qa"
   },
   {
     "id": "test-structure:skip-without-reason",
     "category": "test-structure",
-    "description": "test.skip without reason",
-    "fixGuidance": "Add a reason string explaining why this test is skipped and when it should be re-enabled.",
+    "description": "test.skip without an explanation",
+    "fixGuidance": "Pass a reason string, or put one in a comment above the skip: what blocks it and when it comes back. A bare skip is debt nobody can see.",
+    "skillName": "qa"
+  },
+  {
+    "id": "test-structure:untyped-fake",
+    "category": "test-structure",
+    "description": "A Fake*/Stub*/InMemory* class declares no interface",
+    "fixGuidance": "Add `implements <Interface>`. Without it the fake drifts from the real contract silently, and the first thing to notice is a production path.",
+    "skillName": "qa"
+  },
+  {
+    "id": "test-structure:unsafe-dependency-cast",
+    "category": "test-structure",
+    "description": "`as unknown as T` in a test",
+    "fixGuidance": "The cast is silencing the error that says the fake does not match the interface. Complete the fake, or narrow the interface the code under test depends on.",
+    "skillName": "qa"
+  },
+  {
+    "id": "test-structure:interaction-assertion",
+    "category": "test-structure",
+    "description": "Assertion on calls (toHaveBeenCalled and friends)",
+    "fixGuidance": "Assert on output or resulting state. Interaction assertions pin the internals, so a behaviour-preserving refactor breaks the test for no reason.",
     "skillName": "qa"
   },
   {
@@ -385,6 +455,20 @@
     "skillName": "building-sveltekit-frontend"
   },
   {
+    "id": "coherence:empty-test-glob",
+    "category": "coherence",
+    "description": "A test-runner include pattern matches no files",
+    "fixGuidance": "Fix the pattern or delete it. A glob matching nothing means part of the suite stopped running and CI stayed green — the one failure mode the test suite cannot report itself.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "coherence:broken-doc-path",
+    "category": "coherence",
+    "description": "Maintained documentation cites a path that does not exist",
+    "fixGuidance": "Update the reference or remove it. Checked in root and docs/ markdown; generated API references and build output are excluded.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
     "id": "route-style:prefer-remote-function",
     "category": "route-style",
     "description": "An API route serves the app's own UI instead of a remote function.",
@@ -396,6 +480,13 @@
     "category": "suppression",
     "description": "A chisel-ignore comment gave no reason, so it suppressed nothing.",
     "fixGuidance": "Write `chisel-ignore <rule-id> -- <why this case is different>`. A suppression nobody has to justify is one nobody will revisit.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "bundle:oversized-app-chunk",
+    "category": "bundle",
+    "description": "A client chunk containing application code exceeds the size budget",
+    "fixGuidance": "Split the route or import the heavy part dynamically. Vendor-only chunks are tolerated as a known cost; a chunk mixing application code is a regression. Requires a production build — run `chisel-js bundle` after building.",
     "skillName": "building-sveltekit-frontend"
   }
 ]

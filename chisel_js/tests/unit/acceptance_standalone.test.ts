@@ -101,8 +101,47 @@ describe("acceptance: standalone SSR specimen", () => {
 
   test("ad-hoc folders and marker-less layer members are surfaced", () => {
     expect(findings("structure:unclassified-module")).toEqual([
+      // A generic bucket is reported twice, saying two different things: it
+      // matches no layer, and its name will let it collect anything.
+      "structure:unclassified-module @ src/lib/misc/scratch.ts:1",
       "structure:unclassified-module @ src/lib/navigation/safe-return-url.ts:1",
       "structure:unclassified-module @ src/lib/remote/resource-queries.ts:1",
+    ]);
+  });
+
+  test("wiring grouped under server/factories is a layer, not a stray folder", () => {
+    // The rule used to forbid this layout outright, so a repo that grouped its
+    // wiring needed a permanent exception. Only the shape of the module is
+    // reported now, never the folder.
+    expect(findings("structure:unknown-server-folder")).toEqual([
+      "structure:unknown-server-folder @ src/lib/server/domain/openai-client.ts:1",
+    ]);
+  });
+
+  test("topology: the tree's shape beyond who imports whom", () => {
+    expect(findings("topology:")).toEqual([
+      "topology:composition-root-concrete-import @ src/lib/server/application.ts:2",
+      "topology:composition-root-construction @ src/lib/server/application.ts:11",
+      "topology:composition-root-placeholder @ src/lib/server/application.ts:13",
+      "topology:deep-feature-import @ src/lib/components/app/note-list.svelte:5",
+      "topology:factory-shape @ src/lib/server/factories/broken-factory.ts:1",
+      "topology:generic-bucket-directory @ src/lib/misc/scratch.ts:1",
+      "topology:layer-barrel-import @ src/lib/components/app/note-list.svelte:3",
+    ]);
+  });
+
+  test("test quality beyond what the import graph can see", () => {
+    expect(findings("test-structure:")).toEqual([
+      "test-structure:interaction-assertion @ src/lib/server/services/notes/management.spec.ts:18",
+      "test-structure:unsafe-dependency-cast @ src/lib/server/services/notes/management.spec.ts:12",
+      "test-structure:untyped-fake @ src/lib/server/services/notes/management.spec.ts:4",
+    ]);
+  });
+
+  test("configuration and documentation that no longer describe the tree", () => {
+    expect(findings("coherence:")).toEqual([
+      "coherence:broken-doc-path @ README.md:44",
+      "coherence:empty-test-glob @ vitest.config.ts:4",
     ]);
   });
 
@@ -193,10 +232,17 @@ describe("acceptance: mode affects the active rule set", () => {
     });
     const rules = standalone.describeAllRules();
     const ids = rules.map(r => r.id);
-    expect(rules.filter(r => r.category === "api-endpoints")).toEqual([]);
-    expect(ids).toContain("import-boundary:banned-layer-import");
-    expect(ids).toContain("server-layer-leak:client-reachable-import");
-    expect(ids).toContain("suppression:missing-reason");
+    expect({
+      apiEndpointRules: rules.filter(r => r.category === "api-endpoints"),
+      hasBoundary: ids.includes("import-boundary:banned-layer-import"),
+      hasLeak: ids.includes("server-layer-leak:client-reachable-import"),
+      hasSuppression: ids.includes("suppression:missing-reason"),
+    }).toEqual({
+      apiEndpointRules: [],
+      hasBoundary: true,
+      hasLeak: true,
+      hasSuppression: true,
+    });
   });
 
   test("BFF mode adds the api-endpoints rules back", () => {
@@ -209,8 +255,10 @@ describe("acceptance: mode affects the active rule set", () => {
     for (const mode of [CheckerMode.STANDALONE, CheckerMode.BFF]) {
       const ids = CheckerFactory.createController({ config: defaultConfig(mode) })
         .describeAllRules().map(r => r.id);
-      expect(ids).toContain("component-enforcement:html-button-banned");
-      expect(ids.some(id => id.startsWith("colour:"))).toBe(true);
+      expect({
+        hasButtonRule: ids.includes("component-enforcement:html-button-banned"),
+        hasColourRules: ids.some(id => id.startsWith("colour:")),
+      }).toEqual({ hasButtonRule: true, hasColourRules: true });
     }
   });
 });

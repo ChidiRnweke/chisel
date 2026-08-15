@@ -28,19 +28,43 @@ If you need a test double, write a fake — a plain class that implements the sa
 
 Why: mocking libraries are a crutch for architectures that can't easily construct their own objects. Chisel's architecture is stateless with injected dependencies — you can always instantiate directly. If you can't, the architecture is broken, not the test.
 
+Checked by `test-structure:mocking-banned`.
+
 ### One assertion per test
 
 Every test function asserts exactly one thing. One behaviour. One invariant. One reason to fail.
 
 The test name describes the invariant: `test_cannot_create_recipe_with_empty_title`, not `test_create_recipe`. When a test fails, the name tells you what broke. You never read through a chain of assertions to find the red one.
 
-If you're tempted to add a second assertion, write a second test.
+If you're tempted to add a second assertion, write a second test. Where several values describe one outcome, assert them as one object rather than one line each: `expect({ id, title }).toEqual({ id: 1, title: 't' })`.
+
+Checked by `test-structure:one-assert-per-test`. End-to-end specs are exempt — asserting at every step of a flow is what they are for.
 
 ### Test behaviour, not implementation
 
 A test should answer: "given this input, does this output/state change match what the domain requires?"
 
 Never assert that a method was called with specific arguments. Never assert call counts. Never assert the internal sequence of operations. These test wiring, not business rules. If you refactor the internals and the behaviour is the same, zero tests break.
+
+Checked by `test-structure:interaction-assertion`.
+
+### A fake declares the interface it stands in for
+
+Every fake names its contract: `implements IRecipeService` in TypeScript, a Protocol subscription in Python. Without it the fake drifts from the real interface silently, and the first thing to notice is a production path — not the type checker, whose job this is.
+
+Checked by `test-structure:untyped-fake`.
+
+### Never cast a partial fake into place
+
+`{} as unknown as RecipeDependencies` exists precisely to silence the error telling you the fake does not match the interface. Complete the fake, or narrow the interface the code under test actually depends on. The cast defeats the rule above.
+
+Checked by `test-structure:unsafe-dependency-cast`.
+
+### A skipped test says why
+
+A bare `it.skip(...)` is invisible debt. Give the reason and the condition for its return — as a reason argument where the runner has one, otherwise a comment directly above: "blocked on the upstream search index rebuild, see issue 412".
+
+Checked by `test-structure:skip-without-reason`.
 
 ### Invariants are the test spec
 
@@ -107,27 +131,26 @@ This skill also validates the dependency graph:
 
 ## File structure
 
-```
-tests/
-├── conftest.py              # Shared fixtures: session, config, factory
-├── fakes/                   # All fakes live here, shared across tests
-│   ├── __init__.py
-│   ├── fake_recipe_repository.py
-│   ├── fake_recipe_service.py
-│   └── fake_pantry_service.py
-├── unit/
-│   ├── models/
-│   │   └── test_recipe.py
-│   ├── services/
-│   │   └── test_recipe_service.py
-│   └── controllers/
-│       └── test_recipe_controller.py
-└── integration/
-    └── repositories/
-        └── test_recipe_repository.py
-```
+A test lives in one of two places, and which one is a property of the language's
+conventions rather than of this philosophy:
 
-Frontend tests follow the same structure under `frontend/src/lib/__tests__/` or colocated as `*.test.ts`.
+- **Beside the file it covers** — `notes.spec.ts` next to `notes.ts`. The default
+  in TypeScript, where the runner discovers tests by suffix.
+- **Under a `tests/` root that names its kind** — `tests/unit/`,
+  `tests/integration/`, `tests/e2e/`. The default in Python, and the right home
+  in any language for tests that cover more than one module.
+
+Anywhere else and nobody can tell what kind of test it is or what it covers.
+Checked by `test-structure:test-file-location`.
+
+Fakes are shared, so they live together rather than beside any one test:
+`tests/fakes/` in Python, `src/lib/testing/<capability>/fakes/` or
+`tests/fakes/` in TypeScript.
+
+Per-language layouts, with examples:
+
+- Python → `references/testing-patterns.md`, "Python fakes" onward
+- TypeScript → `references/testing-patterns.md`, "TypeScript fakes" onward
 
 ---
 

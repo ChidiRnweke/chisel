@@ -4,9 +4,8 @@ import { createProjectInfo } from "chisel/checker/models/project_info";
 describe("ProjectInfo", () => {
   test("creates with empty files by default", () => {
     const p = createProjectInfo({ rootPath: "/project" });
-    expect(p.rootPath).toBe("/project");
-    expect(p.files).toHaveLength(0);
-    expect(p.packageName).toBe("");
+    expect({ rootPath: p.rootPath, fileCount: p.files.length, packageName: p.packageName })
+      .toEqual({ rootPath: "/project", fileCount: 0, packageName: "" });
   });
 
   test("stores files when provided", () => {

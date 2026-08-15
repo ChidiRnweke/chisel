@@ -1,0 +1,6 @@
+[test]
+# The specimen tree under tests/fixtures/ contains deliberately broken code,
+# including a *.spec.ts planted so the test-quality rules have something to
+# find. It is input to the checker, never a suite to run — without this root
+# the runner collects it and fails on code that is wrong on purpose.
+root = "tests/unit"

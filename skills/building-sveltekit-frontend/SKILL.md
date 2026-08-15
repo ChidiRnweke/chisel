@@ -265,8 +265,26 @@ These are checked against a real import graph: `$lib` and relative specifiers ar
 
 ### Structure
 - `structure:layer-outside-server` — a server-side layer at a universal path (`src/lib/services/`). Move it under `$lib/server/`. Reported once per directory.
-- `structure:unknown-server-folder` — a folder under `$lib/server/` that is not a layer name. An external-capability adapter is a service, not a repository. Reported once per folder.
+- `structure:unknown-server-folder` — a folder under `$lib/server/` that is not a layer name. `$lib/server/` holds `db/`, `repositories/`, `services/`, `controllers/`, `factories/`, `config.ts` and the factory. An external-capability adapter is a service, not a repository. Reported once per folder.
 - `structure:unclassified-module` — a `src/lib/` module that matches no canonical layer location (warning). Ad-hoc folders get no boundary rules of their own, so give it a home.
+
+Wiring may stay flat at the server root or be grouped under `factories/` with subfolders beneath it. Group it once a handful of factory modules have accumulated and the directory listing has stopped reading as architecture.
+
+### Topology
+- `topology:layer-barrel-import` — importing a layer root (`$lib/models`) instead of a domain (`$lib/models/notes`). A layer-wide barrel makes every consumer depend on everything. A *domain's* own `index.ts` remains the sanctioned entry point.
+- `topology:deep-feature-import` — a cross-feature import reaching past a component feature's `index.ts` into its internals. A feature is a folder under `$lib/components/` that publishes an entry point; that entry point is its contract. Within a feature, relative imports are fine.
+- `topology:generic-bucket-directory` — a directory named `misc/`, `common/`, `helpers/`, `pages/` or `panels/`. A name that describes nothing collects anything. Reported once per directory.
+- `topology:composition-root-concrete-import` — `$lib/server/application.ts` importing a concrete service or repository. `import type` is fine; it is erased.
+- `topology:composition-root-construction` — the composition root constructing something other than a factory.
+- `topology:composition-root-placeholder` — `undefined as unknown as T` or a `LateValue` in the composition root. A placeholder means two objects need each other; restructure rather than park one.
+- `topology:factory-shape` — a `*-factory.ts` under `factories/` that does not export exactly one value. Exported types do not count.
+
+### Coherence
+- `coherence:empty-test-glob` — an `include` pattern in the vitest/vite config that matches no files. This is the "ran zero tests and passed" failure: the suite silently shrinks while CI stays green.
+- `coherence:broken-doc-path` — a backtick-quoted `src/`, `tests/` or `scripts/` path in root or `docs/` markdown that does not exist. Generated reference output is excluded.
+
+### Bundle budget
+- `bundle:oversized-app-chunk` — an emitted client chunk over 500 kB that contains application code. Vendor-only chunks are tolerated. Not part of `check`: run `chisel-js bundle` after a production build, since it reads what the bundler emitted.
 
 ### Route style
 - `route-style:prefer-remote-function` — a `+server.ts` serving your own UI (warning). A remote function keeps types across the wire and needs no URL. Genuinely-HTTP routes (OAuth callbacks, webhooks, SSE, downloads, protocol endpoints) are detected and exempt.

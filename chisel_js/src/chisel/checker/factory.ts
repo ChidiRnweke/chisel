@@ -10,6 +10,7 @@ import { defaultConfig } from "chisel/checker/config";
 import { ImportBoundaryService } from "chisel/checker/services/architecture/import_boundary";
 import { LayoutService } from "chisel/checker/services/architecture/layout";
 import { ServerLayerLeakService } from "chisel/checker/services/architecture/server_layer_leak";
+import { TopologyService } from "chisel/checker/services/architecture/topology";
 
 import { StructuralSvelteService } from "chisel/checker/services/svelte/structural";
 import { ComponentEnforcementService } from "chisel/checker/services/svelte/component_enforcement";
@@ -19,6 +20,7 @@ import { ErrorFlowService } from "chisel/checker/services/svelte/error_flow";
 import { RouteStyleService } from "chisel/checker/services/svelte/route_style";
 import { TestStructureService } from "chisel/checker/services/shared/test_structure";
 import { ProjectStructureService } from "chisel/checker/services/shared/project_structure";
+import { CoherenceService } from "chisel/checker/services/shared/coherence";
 
 export interface CheckerFactoryOptions {
   readonly config?: CheckerConfig;
@@ -43,6 +45,7 @@ export class CheckerFactory {
       new ImportBoundaryService(importGraph, config.mode),
       new ServerLayerLeakService(importGraph),
       new LayoutService(),
+      new TopologyService(importGraph),
 
       new StructuralSvelteService(),
       new ComponentEnforcementService(config.designSystem.allowIn),
@@ -50,6 +53,7 @@ export class CheckerFactory {
       new ErrorFlowService(),
       new TestStructureService(),
       new ProjectStructureService(),
+      new CoherenceService(),
     ];
 
     if (config.mode === CheckerMode.BFF) {

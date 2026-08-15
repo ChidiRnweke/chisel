@@ -16,7 +16,7 @@ bun add -g @chidirnweke/chisel-js
 
 ```bash
 chisel-js check .                  # check the current project
-chisel-js rules                    # list all ~55 rules grouped by category
+chisel-js rules                    # list all ~70 rules grouped by category
 chisel-js explain structural:console-log-banned  # detailed fix guidance
 chisel-js check . --json           # violations with message refs + skill names
 chisel-js update self              # upgrade the installed CLI package
@@ -35,6 +35,7 @@ each full message once with its `skillName`.
 |---|---|
 | `chisel-js check [path]` | Scan a project for architectural violations |
 | `chisel-js check . --json` | Output violations as structured JSON with deduplicated messages |
+| `chisel-js bundle [path]` | Check emitted client chunks against the bundle budget (needs a production build) |
 | `chisel-js rules` | List all rules, grouped by category |
 | `chisel-js rules --json` | Machine-readable rule listing |
 | `chisel-js explain <rule-id>` | Detailed description + fix guidance for a rule |
@@ -68,7 +69,10 @@ This overwrites local modifications in the selected skill directories, so Chisel
 | **Error Flow** | 1 rule | Raw HTTP status codes must not leak past error handlers |
 | **Responsiveness** | 5 rules | No fixed pixel widths on page roots, no absolute positioning without breakpoints, `whitespace-nowrap` needs responsive variant, every page needs a layout wrapper |
 | **Project Structure** | 3 rules | pnpm only (no npm/yarn), no backend env vars in frontend `.env`, service files need corresponding tests |
-| **Test Structure** | 5 rules | Test files only under `tests/unit/`, `tests/integration/`, `tests/e2e/`; one `expect()` per test; no mocking libraries; test names describe invariants; `test.skip` needs a reason |
+| **Test Structure** | 8 rules | Tests colocated as `*.spec.ts` or under `tests/unit\|integration\|e2e/`; one `expect()` per test; no mocking libraries; test names describe invariants; `test.skip` needs a reason; fakes declare the interface they stand in for; no `as unknown as` casts; no `toHaveBeenCalled` assertions |
+| **Topology** | 7 rules | No layer-wide barrel imports; no reaching past a feature's `index.ts`; no `misc/`-style catch-all directories; the composition root imports no concretes, constructs only factories, and parks no placeholders; a `*-factory.ts` exports exactly one value |
+| **Coherence** | 2 rules | Every vitest `include` glob must match a file (the "ran zero tests and passed" bug); paths quoted in maintained markdown must exist |
+| **Bundle** | 1 rule | Client chunks over 500 kB containing application code. Run separately via `chisel-js bundle` after a production build |
 
 ## Severity tiers
 
@@ -85,8 +89,8 @@ models/         Pure data — Violation, Severity, FileInfo, ProjectInfo
 services/       One service per rule category, self-describing via describeRules()
 repositories/   File discovery via fast-glob
 controllers/    Orchestrates all services, aggregates violations
-factory.ts      Zero-logic DI — wires 11 services into the controller
-cli/main.ts     Commander-based CLI — check, rules, explain
+factory.ts      Zero-logic DI — wires the services into the controller
+cli/main.ts     Commander-based CLI — check, bundle, rules, explain
 reporter.ts     Coloured terminal output via chalk
 ```
 
