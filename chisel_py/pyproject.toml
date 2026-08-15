@@ -14,6 +14,10 @@ dependencies = [
     "rich>=13.0",
 ]
 
+[project.urls]
+Documentation = "https://chidirnweke.github.io/chisel"
+Repository = "https://github.com/ChidiRnweke/chisel"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",

@@ -16,6 +16,7 @@
     "prepack": "bun run scripts/copy_skills.ts",
     "test": "bun test"
   },
+  "homepage": "https://chidirnweke.github.io/chisel",
   "repository": {
     "type": "git",
     "url": "https://github.com/ChidiRnweke/chisel"

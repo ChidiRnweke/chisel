@@ -4,6 +4,8 @@ Opinionated architecture constraint checker for SvelteKit projects. Designed to 
 
 It pairs with [agent skills](https://github.com/ChidiRnweke/chisel/tree/master/skills): the skill teaches the agent the right pattern, the checker enforces it deterministically. Run `chisel-js explain <rule-id>` to get fix guidance the agent can consume directly.
 
+Full documentation: **<https://chidirnweke.github.io/chisel>** — quick start, guide pages, and a per-rule reference generated from the CLI itself.
+
 ## Installation
 
 ```bash
