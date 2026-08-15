@@ -57,22 +57,31 @@ This overwrites local modifications in the selected skill directories, so Chisel
 
 ## What gets checked
 
+70 rules across 16 categories. The counts below are checked against the real
+rule set in CI, so they cannot drift from what `chisel-js rules` prints.
+
 | Category | Count | What it enforces |
 |---|---|---|
-| **Structural** | 16 rules | No `console.log`, no `setTimeout`, no `inline style=`, no `<style>` blocks, no `$app/stores` (use `$app/state`), no `writable()` (use `$state`), `$effect` must have cleanup, `onMount` must reference a browser API |
-| **Component Enforcement** | 23 rules | Raw HTML elements (`<button>`, `<select>`, `<form>`, `<dialog>`, `<table>`…) banned outside `components/ui/` — must use shadcn replacements |
-| **Colour** | 3 rules | No arbitrary Tailwind values (`bg-[#123]`…), no dynamic class construction, no modifier classes on semantic elements |
-| **Import Boundaries** | 9 rules | Layer-based import restrictions — services can't import other services, controllers can't import `@sveltejs/kit`, pages can't import services directly |
-| **Complexity** | 4 rules | Page ≤100 LoC, controller method ≤40 LoC, loader/action ≤20 LoC |
-| **API Endpoints** | 2 rules | `RequestHandler` exports only in `src/routes/api/`; API route count must stay reasonable |
-| **Concurrency** | 1 rule | `Promise.all` in loaders flagged (should be in controllers) |
-| **Error Flow** | 1 rule | Raw HTTP status codes must not leak past error handlers |
-| **Responsiveness** | 5 rules | No fixed pixel widths on page roots, no absolute positioning without breakpoints, `whitespace-nowrap` needs responsive variant, every page needs a layout wrapper |
-| **Project Structure** | 3 rules | pnpm only (no npm/yarn), no backend env vars in frontend `.env`, service files need corresponding tests |
-| **Test Structure** | 8 rules | Tests colocated as `*.spec.ts` or under `tests/unit\|integration\|e2e/`; one `expect()` per test; no mocking libraries; test names describe invariants; `test.skip` needs a reason; fakes declare the interface they stand in for; no `as unknown as` casts; no `toHaveBeenCalled` assertions |
-| **Topology** | 7 rules | No layer-wide barrel imports; no reaching past a feature's `index.ts`; no `misc/`-style catch-all directories; the composition root imports no concretes, constructs only factories, and parks no placeholders; a `*-factory.ts` exports exactly one value |
-| **Coherence** | 2 rules | Every vitest `include` glob must match a file (the "ran zero tests and passed" bug); paths quoted in maintained markdown must exist |
-| **Bundle** | 1 rule | Client chunks over 500 kB containing application code. Run separately via `chisel-js bundle` after a production build |
+| `component-enforcement` | 24 rules | Raw HTML elements (`<button>`, `<select>`, `<form>`, `<dialog>`, `<table>`…) banned outside `components/ui/` and `components/primitives/` — use the design system's replacements |
+| `test-structure` | 8 rules | Tests colocated as `*.spec.ts` or under `tests/unit\|integration\|e2e/`; one `expect()` per test; no mocking libraries; test names describe invariants; `test.skip` needs a reason; fakes declare the interface they stand in for; no `as unknown as` casts; no `toHaveBeenCalled` assertions |
+| `import-boundary` | 7 rules | Layer-based import restrictions — a service never imports another service, the ORM stays in repositories, `@sveltejs/kit` stays out of controllers, private env stays server-side, and every import must resolve |
+| `topology` | 7 rules | No layer-wide barrel imports; no reaching past a feature's `index.ts`; no `misc/`-style catch-all directories; the composition root imports no concretes, constructs only factories, and parks no placeholders; a `*-factory.ts` exports exactly one value |
+| `structural` | 5 rules | No `inline style=`, no `<style>` blocks, services expose an interface, factories hold no logic, `hooks.server.ts` keeps `locals` small |
+| `colour-enforcement` | 4 rules | No arbitrary Tailwind values (`bg-[#123]`…), no palette classes (`text-red-500`), no dynamic class construction, no modifier classes on semantic elements |
+| `structure` | 3 rules | Server-side layers live under `$lib/server/`; every folder there names a layer; every module under `$lib/` classifies as something |
+| `project-structure` | 3 rules | pnpm only (no npm/yarn), no backend env vars in frontend `.env`, every service has a test |
+| `coherence` | 2 rules | Every vitest `include` glob must match a file (the "ran zero tests and passed" bug); paths quoted in maintained markdown must exist |
+| `server-layer-leak` | 1 rule | No server module reachable from a client bundle |
+| `route-style` | 1 rule | An API route serving your own UI should be a remote function (standalone mode only) |
+| `error-flow` | 1 rule | Raw HTTP status codes must not leak past error handlers |
+| `typography` | 1 rule | No arbitrary type sizes |
+| `spacing` | 1 rule | No arbitrary spacing values |
+| `suppression` | 1 rule | Every `chisel-ignore` states a reason |
+| `bundle` | 1 rule | Client chunks over 500 kB containing application code. Run separately via `chisel-js bundle` after a production build |
+
+One further category, `api-endpoints` (1 rule: `RequestHandler` exports only in
+`src/routes/api/`), is active only in `sveltekit-bff` mode and so does not
+appear in the standalone listing above.
 
 ## Severity tiers
 

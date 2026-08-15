@@ -2,7 +2,7 @@
   "mode": "sveltekit-standalone",
   "tsconfig": "tsconfig.json",
   "ignore": [
-    "tests/fixtures/**"
+    "fixtures/**"
   ],
   "designSystem": {
     "allowIn": [

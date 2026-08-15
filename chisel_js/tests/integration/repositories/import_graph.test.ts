@@ -10,7 +10,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const FIXTURE = join(import.meta.dir, "../../fixtures/standalone-app");
+const FIXTURE = join(import.meta.dir, "../../../fixtures/standalone-app");
 
 let edges: readonly ImportEdge[];
 

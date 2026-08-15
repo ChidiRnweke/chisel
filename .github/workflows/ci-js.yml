@@ -41,6 +41,8 @@ jobs:
           bun run src/chisel/cli/main.ts rules --json > /tmp/js-rules.json
           diff -u ../docs/scripts/data/js-rules.json /tmp/js-rules.json \
             || { echo "::error::docs/scripts/data/js-rules.json is stale. Regenerate it with: cd chisel_js && bun run src/chisel/cli/main.ts rules --json > ../docs/scripts/data/js-rules.json"; exit 1; }
+      - name: README rule table is current
+        run: bun run scripts/check_readme_rules.ts
       - name: Build
         run: bun build ./src/chisel/cli/main.ts --target=node --outdir=./dist --external typescript --external svelte
       - uses: actions/upload-artifact@v4

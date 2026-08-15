@@ -5,7 +5,7 @@ import { defaultConfig } from "chisel/checker/config";
 import { CheckerMode } from "chisel/checker/models/mode";
 import { join } from "node:path";
 
-const FIXTURE = join(import.meta.dir, "../fixtures/standalone-app");
+const FIXTURE = join(import.meta.dir, "../../fixtures/standalone-app");
 
 let result: CheckResult;
 

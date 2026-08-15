@@ -120,13 +120,14 @@ Skill updates overwrite local modifications in the selected skill directories, s
 
 - **Import boundaries** — layers only import what they're allowed to. Services don't import SQLAlchemy. Routes don't import services directly. ORM types stay in repositories.
 - **Structural invariants** — `getattr`/`setattr` banned. `isinstance` requires `match/case`. Logger is module-level. Dataclasses use `slots=True`. `try/except` banned in route handlers.
-- **Component enforcement** (JS) — raw HTML elements (`<button>`, `<select>`, `<form>`, `<dialog>`, etc.) must use shadcn replacements. 23 rules covering every banned HTML tag.
+- **Component enforcement** (JS) — raw HTML elements (`<button>`, `<select>`, `<form>`, `<dialog>`, etc.) must use shadcn replacements. 24 rules covering every banned HTML tag.
 - **Colour enforcement** (JS) — arbitrary Tailwind values banned. Dynamic class construction flagged. Modifier classes on semantic HTML blocked.
-- **$effect / onMount** (JS) — `$effect` without cleanup flagged. Writing `$state` from `data` recommends `$derived`. `onMount` must reference a browser API.
-- **Complexity** — controller method ≤30 LoC (Python) / ≤40 (JS). Route handler ≤20 LoC. Page ≤100 LoC.
-- **Testing** — one assert per test. Mocking libraries banned. Test names must describe invariants. Test files must live in `tests/unit/` or `tests/integration/`.
+- **Topology** (JS) — no layer-wide barrel imports, no reaching past a feature's `index.ts`, no catch-all directories. The composition root imports no concretes and parks no placeholders.
+- **Complexity** (Python) — controller method ≤30 LoC. Route handler ≤20 LoC. Page ≤100 LoC.
+- **Testing** — one assert per test. Mocking libraries banned. Test names must describe invariants. Fakes declare the interface they stand in for. Tests live in `tests/unit|integration|e2e/`, or colocated as `*.spec.ts` (JS).
 - **Project structure** — `pyproject.toml` only (no `setup.py`). `pnpm` only (no `npm`/`yarn`). Env files separate backend from frontend secrets.
-- **Concurrency** — `asyncio.gather` banned (Python). `Promise.all` in loaders warned (JS).
+- **Concurrency** (Python) — `asyncio.gather` banned.
+- **Coherence** (JS) — every vitest `include` glob must match a file. Paths quoted in maintained markdown must exist.
 - **Error flow** — raw HTTP status codes never leak past error handlers.
 
 Full rule listing:

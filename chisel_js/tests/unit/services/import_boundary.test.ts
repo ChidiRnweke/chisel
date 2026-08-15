@@ -239,6 +239,46 @@ describe("import-boundary — third-party packages", () => {
       standalone: ruleIds(check(files, edges, CheckerMode.STANDALONE)),
     }).toEqual({ bff: ["import-boundary:api-client-location"], standalone: [] });
   });
+
+  test("the API client is constructed in config and in the factory, and nowhere else", () => {
+    // The other half of the rule. Gating it by mode is only half the contract;
+    // the point is that exactly two layers may name the constructor, so the
+    // client is built once rather than per caller.
+    const from = (path: string, layer: Layer): string[] => ruleIds(check(
+      { [path]: layer },
+      [edge({ importer: path, imported: "openapi-fetch", isInternal: false })],
+      CheckerMode.BFF,
+    ));
+
+    expect({
+      config: from("src/lib/config.ts", Layer.CONFIG),
+      factory: from("src/lib/server/factories/api-factory.ts", Layer.FACTORY),
+      controller: from("src/lib/server/controllers/todos/controller.ts", Layer.CONTROLLERS),
+    }).toEqual({
+      config: [],
+      factory: [],
+      controller: ["import-boundary:api-client-location"],
+    });
+  });
+
+  test("the BFF rule is listed in both modes, because only its firing is gated", () => {
+    // A rule that vanishes from `chisel-js rules` in one mode is a rule nobody
+    // can look up the fix for. `describeRules()` is the catalogue, not the
+    // active set.
+    const idsIn = (mode: CheckerMode): string[] =>
+      new ImportBoundaryService(new FakeImportGraph(), mode)
+        .describeRules()
+        .map(r => r.id)
+        .filter(id => id === "import-boundary:api-client-location");
+
+    expect({
+      bff: idsIn(CheckerMode.BFF),
+      standalone: idsIn(CheckerMode.STANDALONE),
+    }).toEqual({
+      bff: ["import-boundary:api-client-location"],
+      standalone: ["import-boundary:api-client-location"],
+    });
+  });
 });
 
 describe("import-boundary — server-only specifiers", () => {
