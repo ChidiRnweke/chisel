@@ -2,7 +2,7 @@
   "name": "@chidirnweke/chisel-js",
   "module": "index.ts",
   "type": "module",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "bin": {
     "chisel-js": "./dist/main.js"
   },

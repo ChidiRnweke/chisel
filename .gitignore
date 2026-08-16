@@ -7,23 +7,40 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+#
+# Everything below is anchored, either to the repo root or to chisel_py/. These
+# are Python build artifacts, but their names are ordinary words that a
+# JavaScript tree uses for source: unanchored, `lib/` also matches src/lib/ in
+# any fixture or sample app, and `build/` matches any services/build/ directory.
+# Both have already bitten us — the first silently dropped most of
+# chisel_js/tests/fixtures/ from a commit, the second dropped
+# chisel_js/src/chisel/checker/services/build/bundle_budget.ts. git status stays
+# clean when this happens, so it only surfaces in a fresh clone or in CI.
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-# Anchored to the repo root: these are Python build artifacts. Unanchored,
-# `lib/` also matches src/lib/ in any JavaScript fixture or sample app, which
-# silently dropped most of chisel_js/tests/fixtures/ from a commit.
+/build/
+chisel_py/build/
+/develop-eggs/
+chisel_py/develop-eggs/
+/dist/
+chisel_py/dist/
+/downloads/
+chisel_py/downloads/
+/eggs/
+chisel_py/eggs/
+/.eggs/
+chisel_py/.eggs/
 /lib/
 /lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
+/parts/
+chisel_py/parts/
+/sdist/
+chisel_py/sdist/
+/var/
+chisel_py/var/
+/wheels/
+chisel_py/wheels/
+/share/python-wheels/
+chisel_py/share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -53,7 +70,8 @@ coverage.xml
 *.lcov
 .hypothesis/
 .pytest_cache/
-cover/
+/cover/
+chisel_py/cover/
 
 # Translations
 *.mo
@@ -77,7 +95,8 @@ docs/_build/
 
 # PyBuilder
 .pybuilder/
-target/
+/target/
+chisel_py/target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
