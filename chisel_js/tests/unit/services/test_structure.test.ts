@@ -15,6 +15,7 @@ describe("test-structure — scope", () => {
     expect(check("src/lib/server/services/notes.spec.ts", `
       test("returns the note it was given", () => {
         vi.mock("./db");
+        expect(1).toBe(1);
       });
     `)).toEqual(["test-structure:mocking-banned"]);
   });
@@ -25,6 +26,22 @@ describe("test-structure — scope", () => {
         expect(1).toBe(1);
       });
     `)).toEqual([]);
+  });
+
+  test("a spec beside a same-named script is colocated", () => {
+    const project = parsedProject({
+      path: "scripts/deploy.spec.ts",
+      source: `test("deploys the build", () => { expect(1).toBe(1); });`,
+      layer: Layer.TESTS,
+    });
+    const withSubject = { ...project, files: [...project.files, { ...project.files[0]!, path: "scripts/deploy.ts", layer: Layer.UNKNOWN }] };
+    expect(new TestStructureService().check(withSubject).map(v => v.ruleId)).toEqual([]);
+  });
+
+  test("a spec in a script folder with no subject beside it is reported", () => {
+    expect(check("scripts/deploy.spec.ts", `
+      test("deploys the build", () => { expect(1).toBe(1); });
+    `)).toEqual(["test-structure:test-file-location"]);
   });
 
   test("a spec under a tests root is a valid location", () => {
@@ -65,33 +82,38 @@ describe("test-structure — naming", () => {
   });
 });
 
-describe("test-structure — assertion counting", () => {
-  test("a test whose body contains a block is counted correctly", () => {
-    // The regex this replaced ended the body at the first `}`, so the object
-    // literal hid the second assertion.
+describe("test-structure — assertions", () => {
+  test("a test that asserts nothing is reported", () => {
+    expect(check("src/lib/notes.spec.ts", `
+      test("returns the note it was given", () => {
+        const note = { id: 1, title: "t" };
+        render(note);
+      });
+    `)).toEqual(["test-structure:no-assertion"]);
+  });
+
+  test("one behaviour may assert each of its outcomes", () => {
     expect(check("src/lib/notes.spec.ts", `
       test("returns both fields it was given", () => {
         const note = { id: 1, title: "t" };
         expect(note.id).toBe(1);
         expect(note.title).toBe("t");
       });
-    `)).toEqual(["test-structure:one-assert-per-test"]);
+    `)).toEqual([]);
   });
 
-  test("one assertion collapsing several values passes", () => {
+  test("a polled assertion counts", () => {
     expect(check("src/lib/notes.spec.ts", `
-      test("returns both fields it was given", () => {
-        const note = { id: 1, title: "t" };
-        expect(note).toEqual({ id: 1, title: "t" });
+      test("shows the note once it loads", async () => {
+        await expect.poll(() => loaded()).toBe(true);
       });
     `)).toEqual([]);
   });
 
-  test("an end-to-end spec may assert at every step", () => {
+  test("an end-to-end spec may assert through its page helpers", () => {
     expect(check("tests/e2e/notes.e2e.ts", `
-      test("a note survives a reload", () => {
-        expect(1).toBe(1);
-        expect(2).toBe(2);
+      test("a note survives a reload", async () => {
+        await notesPage.reloadAndFind("t");
       });
     `)).toEqual([]);
   });
@@ -117,6 +139,16 @@ describe("test-structure — test doubles", () => {
         expect(deps).toBeDefined();
       });
     `)).toEqual(["test-structure:unsafe-dependency-cast"]);
+  });
+
+  test("casting one value through unknown is not reported", () => {
+    // A branded id, or a corrupt input fed to a parser on purpose: the reader
+    // sees the whole value being cast.
+    expect(check("src/lib/notes.spec.ts", `
+      test("rejects a corrupt payload", () => {
+        expect(() => parse("not a payload" as unknown as Payload)).toThrow();
+      });
+    `)).toEqual([]);
   });
 
   test("an assertion about calls is reported", () => {

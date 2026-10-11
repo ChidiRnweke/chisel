@@ -5,9 +5,10 @@ import type { ProjectInfo } from "chisel/checker/models/project_info";
 import type { RuleInfo } from "chisel/checker/rule_metadata";
 import type { Violation } from "chisel/checker/models/violation";
 import { CheckerMode as Mode } from "chisel/checker/models/mode";
-import { Layer, isServerContext } from "chisel/checker/models/layer";
+import { Layer, isServerContext, isServerOnlyModule } from "chisel/checker/models/layer";
 import { Severity } from "chisel/checker/models/severity";
 import { createViolation } from "chisel/checker/models/violation";
+import { ContractImports } from "chisel/checker/services/architecture/contract_imports";
 
 /**
  * Which internal layers each layer may not import.
@@ -47,9 +48,12 @@ const BANNED_INTERNAL: ReadonlyMap<Layer, ReadonlySet<Layer> | null> = new Map([
     Layer.HOOKS, Layer.CONFIG, Layer.STORES, Layer.CLIENT, Layer.COMPONENTS,
   ])],
 
+  // `STORES` is absent: a browser controller sequences local work and records
+  // its outcome in the store that owns that state. The store only applies
+  // controlled updates; the controller decides.
   [Layer.CONTROLLERS, new Set([
     Layer.CONTROLLERS, Layer.REPOSITORIES, Layer.FACTORY, Layer.ROUTES, Layer.REMOTE,
-    Layer.HOOKS, Layer.CONFIG, Layer.STORES, Layer.CLIENT, Layer.COMPONENTS,
+    Layer.HOOKS, Layer.CONFIG, Layer.CLIENT, Layer.COMPONENTS,
   ])],
 
   // The composition root is the one place allowed to know every concrete type.
@@ -74,6 +78,8 @@ const BANNED_INTERNAL: ReadonlyMap<Layer, ReadonlySet<Layer> | null> = new Map([
     Layer.CONFIG, Layer.ROUTES, Layer.HOOKS,
   ])],
 
+  // Components may still call *browser* controllers and take them from browser
+  // factories; `_checkInternal` admits those before this row is consulted.
   [Layer.COMPONENTS, new Set([
     Layer.SERVICES, Layer.REPOSITORIES, Layer.CONTROLLERS, Layer.FACTORY,
     Layer.CONFIG, Layer.ROUTES, Layer.HOOKS,
@@ -132,22 +138,30 @@ export class ImportBoundaryService {
 
   check(project: ProjectInfo): Violation[] {
     const layers = new Map(project.files.map(f => [f.path, f.layer]));
+    const contracts = new ContractImports(
+      new Map(project.files.map(f => [f.path, f])),
+      this.graph.allImports,
+    );
     const violations: Violation[] = [];
 
     for (const edge of this.graph.allImports) {
-      violations.push(...this._checkEdge(edge, layers));
+      violations.push(...this._checkEdge(edge, layers, contracts));
     }
     return violations;
   }
 
-  private _checkEdge(edge: ImportEdge, layers: ReadonlyMap<string, Layer>): Violation[] {
+  private _checkEdge(
+    edge: ImportEdge,
+    layers: ReadonlyMap<string, Layer>,
+    contracts: ContractImports,
+  ): Violation[] {
     const importerLayer = layers.get(edge.importer);
     if (importerLayer === undefined) return [];
 
     if (!edge.resolved) return [this._unresolved(edge)];
 
     return edge.isInternal
-      ? this._checkInternal(edge, importerLayer, layers)
+      ? this._checkInternal(edge, importerLayer, layers, contracts)
       : this._checkExternal(edge, importerLayer);
   }
 
@@ -155,9 +169,35 @@ export class ImportBoundaryService {
     edge: ImportEdge,
     importerLayer: Layer,
     layers: ReadonlyMap<string, Layer>,
+    contracts: ContractImports,
   ): Violation[] {
     const importedLayer = layers.get(edge.imported);
     if (importedLayer === undefined) return [];
+
+    // A browser coordinator receives controller operations from its factory, by
+    // interface. The interface is declared beside the controller that owns it;
+    // importing only that contract couples to no implementation.
+    if (edge.isTypeOnly && importedLayer === Layer.CONTROLLERS
+      && (importerLayer === Layer.CLIENT || importerLayer === Layer.STORES)
+      && contracts.importsOnlyContracts(edge)) {
+      return [];
+    }
+
+    // A component is the browser's entry point. It calls browser controllers for
+    // local operations and takes them from the browser's factories, as a remote
+    // function does on the server. Server controllers and factories stay banned.
+    if (importerLayer === Layer.COMPONENTS
+      && (importedLayer === Layer.CONTROLLERS || importedLayer === Layer.FACTORY)
+      && !isServerOnlyModule(edge.imported)) {
+      return [];
+    }
+
+    // A browser service owns its conversation with the server, as a server
+    // service owns its provider: it calls the remote function directly.
+    if (importerLayer === Layer.SERVICES && importedLayer === Layer.REMOTE
+      && isBrowserService(edge.importer)) {
+      return [];
+    }
 
     const banned = BANNED_INTERNAL.get(importerLayer);
     if (banned === undefined) return [];
@@ -315,6 +355,12 @@ function isBarrel(path: string): boolean {
   return /(^|\/)index\.(ts|js)$/.test(path);
 }
 
+/** A service that runs only in the browser, as opposed to a shared one. */
+function isBrowserService(path: string): boolean {
+  return path.startsWith("src/lib/client/services/");
+}
+
+
 function fixFor(importer: Layer, imported: Layer): string {
   // Same-layer cases first: they are the specific advice, and would otherwise be
   // swallowed by the generic "go through the factory" guidance below.
@@ -325,17 +371,19 @@ function fixFor(importer: Layer, imported: Layer): string {
       + "services from a controller.";
   }
   if (importer === Layer.CONTROLLERS && imported === Layer.CONTROLLERS) {
-    return "Controllers do not chain. Compose the services they need instead, and put "
-      + "any shared type in $lib/models.";
+    return "Controllers do not chain, including through type-only operation interfaces. "
+      + "Compose services in the owning controller and move shared data contracts to models.";
   }
   if (imported === Layer.REPOSITORIES) {
     return "Depend on the repository interface and let the factory inject the implementation.";
   }
   if (imported === Layer.SERVICES || imported === Layer.CONTROLLERS) {
-    return "Go through the factory: routes and remote functions are the only entry points.";
+    return "Entry points and components invoke controller operations. Stores retain state; "
+      + "move domain decisions and workflow coordination to services and controllers.";
   }
   if (imported === Layer.FACTORY) {
-    return "Only routes and remote functions build from the factory.";
+    return "Keep dependency construction in factories and the composition root. "
+      + "Do not construct application capabilities inside stores, services or controllers.";
   }
   return "Move the dependency to a layer that is allowed to hold it.";
 }

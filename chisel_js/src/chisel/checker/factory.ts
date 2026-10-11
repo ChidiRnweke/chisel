@@ -45,7 +45,7 @@ export class CheckerFactory {
       new ImportBoundaryService(importGraph, config.mode),
       new ServerLayerLeakService(importGraph),
       new LayoutService(),
-      new TopologyService(importGraph),
+      new TopologyService(importGraph, config.designSystem.allowIn),
 
       new StructuralSvelteService(),
       new ComponentEnforcementService(config.designSystem.allowIn),

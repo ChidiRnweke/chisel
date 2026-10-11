@@ -24,11 +24,11 @@ catch.
   foreign branded identifiers locally and unexported, exporting only the id it
   owns. Importing the projects model to borrow `ProjectId` would make one model
   depend on another, which is what keeps the layer pure data.
-- **The service satisfies its role interfaces structurally.**
-  `src/lib/server/services/todos/catalog.ts` carries no `implements` clause and
-  never imports `src/lib/server/services/todos/contracts.ts` — that edge would
-  be services-to-services. The roles exist for the consumer, so the controller
-  imports them and the compiler checks the fit at the wiring point.
+- **The service implements its role interfaces explicitly.**
+  `src/lib/server/services/todos/catalog.ts` declares `TodoReader`,
+  `TodoLister` and `TodoCreator` beside the class and names them in its
+  `implements` clause. A sibling contracts file would be a services-to-services
+  edge. The controller and the factory import the roles from the service file.
 - **Config imports nothing internal.** `src/lib/server/config.ts` reads the
   environment and stops. The database handle it used to build now comes from
   `src/lib/server/db/index.ts`, because config sits at the bottom of the graph
@@ -37,15 +37,11 @@ catch.
   concrete service or repository, constructs nothing but factories, and parks no
   `undefined as unknown as` placeholder. It is the negative control for all
   three `topology:composition-root-*` rules at once.
-- **Factory modules export exactly one value.** The `ControllerFactory`
-  interface lives in `src/lib/server/factories/contracts.ts` rather than a
-  `controller-factory.ts`: that suffix promises a module exporting one creator,
-  and a module of pure interfaces exports no value at all.
 - **Raw `<button>` appears once.** In `src/lib/components/ui/button.svelte`, the
   design system's own floor, and nowhere else.
-- **Specs obey the rules the tool enforces on itself.** One assertion per test,
+- **Specs obey the rules the tool enforces on itself.** Every test asserts,
   hand-written typed fakes from `src/lib/testing/todos/fakes/in-memory-todos.ts`
-  with no `as unknown as`, no `toHaveBeenCalled`, and `describe` naming an
+  with no literal cast through `unknown`, no `toHaveBeenCalled`, and `describe` naming an
   invariant rather than a class.
 
 ## What is deliberately absent

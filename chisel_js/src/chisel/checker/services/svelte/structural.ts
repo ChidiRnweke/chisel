@@ -53,11 +53,11 @@ export class StructuralSvelteService {
       {
         id: "structural:missing-service-interface",
         category: "structural",
-        description: "Concrete service without a matching I<ServiceName> interface",
-        fixGuidance: "Declare an I<ServiceName> interface in the same file. Controllers "
-          + "depend on the interface and the factory supplies the implementation. It has to "
-          + "be the same file — a sibling contracts.ts is a same-layer import, which the "
-          + "boundary rules ban.",
+        description: "Public service class without an explicitly implemented capability interface",
+        fixGuidance: "Declare a narrow capability interface beside the service and write "
+          + "`implements` on the class. Controllers depend on that interface and the factory "
+          + "supplies the implementation. It has to be the same file — a sibling "
+          + "contracts.ts is a same-layer import, which the boundary rules ban.",
       },
       {
         id: "structural:factory-contains-logic",
@@ -121,7 +121,16 @@ export class StructuralSvelteService {
     })];
   }
 
-  /** A concrete `*Service` class needs an interface for the factory to inject. */
+  /**
+   * A public service class explicitly implements the capability interfaces it
+   * offers, declared beside it.
+   *
+   * Callers depend on the interface; the factory supplies the class. The class
+   * name does not matter: any exported class in the services layer is a public
+   * capability, so a naming convention cannot opt it out. Every interface it
+   * implements must be declared in the same file — a sibling `contracts.ts` is
+   * a same-layer import, which the boundary rules ban.
+   */
   private _checkServiceInterface(file: FileInfo): Violation[] {
     const violations: Violation[] = [];
     if (file.layer !== Layer.SERVICES) return violations;
@@ -133,17 +142,21 @@ export class StructuralSvelteService {
 
       for (const statement of sf.statements) {
         if (!ts.isClassDeclaration(statement) || statement.name === undefined) continue;
-        const name = statement.name.text;
-        if (!name.endsWith("Service")) continue;
-        if (interfaces.has(`I${name}`)) continue;
+        if (!isExported(statement)) continue;
+        const implemented = (statement.heritageClauses ?? [])
+          .filter(clause => clause.token === ts.SyntaxKind.ImplementsKeyword)
+          .flatMap(clause => [...clause.types]);
+        if (implemented.length > 0 && implemented.every(type =>
+          ts.isIdentifier(type.expression) && interfaces.has(type.expression.text))) continue;
 
         violations.push(createViolation({
           file: file.path,
           line: lineOf(file.source, offset + statement.getStart(sf)),
           severity: Severity.ERROR,
           ruleId: "structural:missing-service-interface",
-          message: `Service "${name}" has no I${name} interface in this file. Controllers `
-            + `depend on the interface; the factory supplies the implementation.`,
+          message: `Service "${statement.name.text}" must explicitly implement capability `
+            + `interfaces declared in this file. Controllers depend on those interfaces; `
+            + `factories supply the implementation.`,
         }));
       }
     }
@@ -240,4 +253,8 @@ function describeNode(node: ts.Node): string {
 
 function lineOf(source: string, offset: number): number {
   return source.slice(0, offset).split("\n").length;
+}
+
+function isExported(node: ts.ClassDeclaration): boolean {
+  return node.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword) ?? false;
 }
