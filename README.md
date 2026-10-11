@@ -64,6 +64,20 @@ npm install -g chisel-js
 chisel-js check ./your-frontend
 ```
 
+## Releasing
+
+Releases are cut by [release-please](https://github.com/googleapis/release-please).
+Conventional commits that touch `chisel_js/` or `chisel_py/` (`feat`, `fix`, or a
+`!` for a breaking change) open one release pull request that bumps the versions
+and changelogs. Merging it tags `js-v<version>` / `py-v<version>` and publishes
+the package to npm and PyPI through trusted publishing; nothing is released by
+hand.
+
+The `skills/` folder belongs to neither package path, so a skills-only change does
+not trigger a release on its own. Land it with a commit scoped to the package that
+bundles it. A GitHub release created by hand with a `js-v` or `py-v` tag still
+publishes, as a fallback.
+
 ## Documentation
 
 The full docs live at **<https://chidirnweke.github.io/chisel>** — quick start,

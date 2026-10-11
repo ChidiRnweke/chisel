@@ -15,6 +15,9 @@ on:
       - ".github/workflows/ci-python.yml"
   release:
     types: [published]
+  # Dispatched at a release tag by release-please.yml, which cannot rely on the
+  # release event: a release made with the default token starts no workflow.
+  workflow_dispatch:
 
 jobs:
   python:
@@ -42,7 +45,9 @@ jobs:
           path: chisel_py/dist/
 
   publish-py:
-    if: github.event_name == 'release' && github.event.action == 'published' && startsWith(github.event.release.tag_name, 'py-v')
+    if: >-
+      (github.event_name == 'release' && github.event.action == 'published' && startsWith(github.event.release.tag_name, 'py-v'))
+      || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/py-v'))
     needs: [python]
     runs-on: ubuntu-latest
     environment: release

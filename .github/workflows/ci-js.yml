@@ -15,6 +15,9 @@ on:
       - ".github/workflows/ci-js.yml"
   release:
     types: [published]
+  # Dispatched at a release tag by release-please.yml, which cannot rely on the
+  # release event: a release made with the default token starts no workflow.
+  workflow_dispatch:
 
 jobs:
   javascript:
@@ -51,7 +54,9 @@ jobs:
           path: chisel_js/dist/
 
   publish-js:
-    if: github.event_name == 'release' && github.event.action == 'published' && startsWith(github.event.release.tag_name, 'js-v')
+    if: >-
+      (github.event_name == 'release' && github.event.action == 'published' && startsWith(github.event.release.tag_name, 'js-v'))
+      || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/js-v'))
     needs: [javascript]
     runs-on: ubuntu-latest
     environment: release

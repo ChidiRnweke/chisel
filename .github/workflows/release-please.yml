@@ -1,0 +1,49 @@
+name: Release please
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      js_released: ${{ steps.release.outputs['chisel_js--release_created'] }}
+      js_tag: ${{ steps.release.outputs['chisel_js--tag_name'] }}
+      py_released: ${{ steps.release.outputs['chisel_py--release_created'] }}
+      py_tag: ${{ steps.release.outputs['chisel_py--tag_name'] }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # A release that release-please creates with the default GITHUB_TOKEN starts
+  # no workflow run, so the `release: published` trigger in ci-js.yml and
+  # ci-python.yml would never fire. A workflow_dispatch is the exception, and
+  # it keeps the publish a top-level run of those same files: npm and PyPI
+  # trusted publishing is bound to the workflow file, so calling them as
+  # reusable workflows from here would not match.
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.js_released == 'true' || needs.release-please.outputs.py_released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Publish chisel-js to npm
+        if: needs.release-please.outputs.js_released == 'true'
+        run: gh workflow run ci-js.yml --ref "${{ needs.release-please.outputs.js_tag }}"
+      - name: Publish chisel_checker to PyPI
+        if: needs.release-please.outputs.py_released == 'true'
+        run: gh workflow run ci-python.yml --ref "${{ needs.release-please.outputs.py_tag }}"
