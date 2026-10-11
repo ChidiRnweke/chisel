@@ -106,6 +106,15 @@ Other forms `chisel-js` accepts:
 - **A whole category** — `// chisel-ignore structural -- reviewed`
 - **A whole file** — `// chisel-ignore-file <rule-id> -- <reason>`, in the
   first five lines.
+- **Several directives stacked** above one line, each excusing its own rule —
+  a line that breaks two rules needs two reasons.
+- **A stylesheet** — `/* chisel-ignore design-system:no-hex-rgb-color -- <reason> */`.
+
+Every directive must keep earning its place. One that suppresses nothing
+(`suppression:unused`) or names a rule chisel does not have
+(`suppression:unknown-rule`) fails the check, so a stale comment cannot sit
+in the code waiting to hide the next violation written on that line. Only a
+comment is a directive; a string that mentions `chisel-ignore` is not.
 
 <Aside title="Syntax differs between the checkers">
 `chisel` (Python) uses `# noqa:`; `chisel-js` uses `// chisel-ignore`. Each

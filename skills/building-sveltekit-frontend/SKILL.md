@@ -42,10 +42,16 @@ IMPORTANT: ask the user if they want you to start coding or explicitly invoke th
 ## Architecture Overview — standalone SSR
 
 ```
-Browser
-  └── +page.svelte          # UI only. No service calls. Reads $props, writes to stores.
-        ├── stores/          # Client-side singletons. $state fields. Populated from loader data.
-        └── client/          # Browser-only adapters: IndexedDB, transports, Svelte hooks
+Browser                      # The same layers as the server, fewer of them in use
+  └── +page.svelte          # Entry point. Calls browser controllers and remote functions.
+        ├── stores/          # Reactive $state and controlled updates. No fetches, no decisions.
+        ├── controllers/     # Browser sequencing only: offline replica, outbox, uploads, exports
+        ├── factories/       # Builds browser controllers; exposes their interfaces
+        ├── services/        # Shared domain rules, pure, applied by browser and server alike
+        └── client/
+              ├── services/      # Browser services: own browser storage and the server conversation
+              ├── repositories/  # IndexedDB persistence; domain types in and out
+              └── <area>/        # Other browser-only helpers: event readers, drag payloads
 
 SvelteKit Server
   ├── hooks.server.ts        # Auth only — attach locals.user. No business logic.
@@ -63,16 +69,33 @@ SvelteKit Server
         ├── utils.ts         # Universal pure functions
         ├── components/      # Client
         ├── stores/          # Client-side $state singletons
-        ├── client/          # Browser-only adapters
+        ├── services/        # Shared, pure domain rules (universal)
+        ├── controllers/     # Browser controllers (universal)
+        ├── factories/       # Browser composition (universal)
+        ├── client/          # Browser services, repositories and helpers
         ├── remote/          # *.remote.ts — server body, client-callable stub
-        └── server/          # EVERY server-side layer lives here
+        └── server/          # Every server-only layer lives here
               ├── db/              # Drizzle schema and connection (part of repositories)
               ├── repositories/    # Persistence. The only place Drizzle is importable.
-              ├── services/        # One concern each. Wraps a capability, returns models.
-              ├── controllers/     # Orchestrates services. DI via interface-typed deps.
+              ├── services/        # One capability each, including the provider it owns.
+              ├── controllers/     # Complete operations: sequencing and transactions.
+              ├── factories/       # Capability factories; agent tool factories
+              ├── infrastructure/  # Provider clients and runtime plumbing (utils layer)
               ├── config.ts
-              └── app-factory.ts   # Concrete assembly, no logic
+              └── application.ts   # Composition root: constructs and connects, runs nothing
 ```
+
+The layer list is closed. Code belongs to models, services, repositories,
+controllers, factories, stores or components, or it is an entry point (a route,
+remote function, hook, worker or agent tool). Do not invent a layer to satisfy
+the checker.
+
+**Shared layers are universal on purpose.** A rule the browser and the server
+both apply — where a restored note goes, what a valid title is — is implemented
+once, in a shared service under `$lib/services/`. It stays pure: no storage, no
+transport, no server-only import (`server-layer-leak` still guards that). The
+browser's own services live under `$lib/client/services/`; they own IndexedDB
+through `$lib/client/repositories/` and call remote functions directly.
 
 **`$lib/server/<name>/` *is* layer `<name>`.** Nothing is server-only by
 convention, only by location — and SvelteKit refuses to bundle that subtree for
@@ -113,23 +136,48 @@ client instead of calling a repository.
 
 | Layer             | Can do                                                                             | Cannot do                                   |
 | ----------------- | ---------------------------------------------------------------------------------- | ------------------------------------------- |
-| `+page.svelte`    | Render, read `$props`, write to stores, call `enhance`                             | Import services, controllers, repositories, the factory, or anything server-only |
+| `+page.svelte` / component | Render, read `$props`, call browser controllers (from browser factories) and remote functions, observe readonly state | Import services, repositories or anything server-only; wrap a remote function in a controller of its own |
 | `+page.ts` (universal) | Client-safe transforms of loader data                                         | Import anything server-only — it runs in the browser too |
-| `+page.server.ts` | Load data, handle form actions, build from the factory, `error()`, `redirect()`    | Business logic, importing services or repositories directly |
-| `*.remote.ts`     | Same as a server loader; the other entry point                                     | Business logic, importing services or repositories directly |
+| `+page.server.ts` | Parse input, call controller operations, `error()`, `redirect()`                   | Business logic, importing services, repositories or stores |
+| `*.remote.ts`     | Parse input into a model, call controller operations                               | Business logic, importing services, repositories or stores |
 | `hooks.server.ts` | Set `locals.user`, validate session token                                          | Business logic, data fetching               |
-| Controller        | Orchestrate multiple services, map to loader-friendly shape                        | Call another controller, touch repositories, know about SvelteKit |
-| Service           | One concern. Call repository interfaces, map to models, throw domain errors        | Call another service, import Drizzle, import `@sveltejs/kit` |
-| Repository        | Drizzle queries, map rows to domain models                                         | Import services/controllers/factory; let an ORM type escape |
-| Factory           | Instantiate concrete classes, wire dependencies                                    | Logic of any kind — no `if`/`for`/`try`     |
-| Store             | Hold reactive client state, expose methods to mutate                               | Server calls, business logic, importing controllers |
-| `client/`         | Browser-only adapters (IndexedDB, transports, hooks)                               | Import any server layer                     |
+| Agent tool        | Turn one public controller operation into a tool: parse arguments, call, convert the result | Sequence operations, call services, repositories or stores |
+| Controller        | Own a complete operation: sequence services, own the transaction; in the browser, write the store that owns the state | Call another controller (even through an interface or callback), touch repositories, return services or writable stores |
+| Service           | One cohesive capability as a stateless class that `implements` interfaces declared beside it | Call another service, keep state between calls, expose public helpers, import Drizzle or `@sveltejs/kit` |
+| Browser service   | Own browser storage and the server conversation; call remote functions and parse their answers | Call another service; decide what a shared service decides |
+| Repository        | Drizzle (server) or IndexedDB (browser) access, domain types in and out           | Import services/controllers/factory; let an ORM type escape |
+| Factory           | Construct implementations and connect them; expose interface-typed results         | Execute a workflow, call a service or repository operation, expose mutable internals |
+| Store             | Hold reactive client state, expose controlled updates                              | Fetch, retry, call providers or controllers, make business decisions |
+| `client/`         | Browser-only helpers (event readers, drag payloads); controller contracts by `import type` | Import any server layer, or a controller implementation |
 
 Dependency direction, one way only:
 
 ```
-components / stores / client  →  routes + remote  →  factory  →  controllers  →  services  →  repositories  →  Drizzle
+components / entry points  →  controllers  →  services  →  repositories  →  Drizzle / IndexedDB
+                     factories construct every arrow; stores hold what controllers record
 ```
+
+The import rules see files. The `architecture:*` rules see symbols, through the
+type checker: a call that reaches a service through an alias, a barrel or an
+injected function port is still a call to that service; `Pick<ConcreteService,
+…>` is still the concrete class; a callback a factory returns still runs the
+factory's workflow.
+
+## Types and failures
+
+- **Parse at the boundary.** Remote functions, routes, repositories (rows), the
+  service that owns a provider, and browser services (server answers) parse
+  external data into models. Inward of them — models, services, controllers —
+  types are total: no `unknown`, no `Record<string, unknown>`, no `{ … } as T`,
+  no `JSON.parse(…) as T` (`narrowing:*`).
+- **Fail loudly.** A `catch` rethrows or returns an explicit failure result
+  (`kind: 'error' | 'failure' | 'corrupt'`) the caller must read. A log or a toast
+  is added on top, never instead (`fail-loudly:silent-catch`).
+- **Models are data.** Values, types, Zod schemas and branded-scalar
+  constructors; no procedures, classes or mutable state (`models:*`).
+- **A suppression is a reviewed exception.** `chisel-ignore <rule> -- <reason>`
+  above the line; the reason names why this case is different. An unused or
+  misspelt directive fails the check.
 
 ### Never import on the same level
 
@@ -183,18 +231,20 @@ src/lib/
 │   ├── Recipe.ts
 │   └── index.ts            # barrel export
 ├── services/
-│   ├── IRecipeService.ts   # interface
-│   ├── RecipeService.ts    # implementation
-│   └── index.ts
-├── controllers/
-│   ├── RecipeController.ts
-│   └── index.ts
+│   └── recipes/
+│       └── scaling.ts      # shared, pure rule: interface + class side by side
 ├── server/                 # server-only; unreachable from the client bundle
-│   ├── AppFactory.ts       # one file, static methods
+│   ├── application.ts      # composition root: calls capability factories
+│   ├── factories/
+│   │   └── recipes-capability-factory.ts
+│   ├── controllers/
+│   │   └── recipes/controller.ts
+│   ├── services/
+│   │   └── recipes/catalog.ts   # RecipeReader interface + RecipeCatalog implements it
 │   ├── db/
 │   │   └── schema.ts       # Drizzle schema
 │   └── repositories/
-│       └── PostgresRecipes.ts
+│       └── recipes/postgres.ts
 ├── remote/
 │   └── recipes.remote.ts   # the .remote.ts suffix is what defines this layer
 └── stores/
@@ -242,11 +292,35 @@ Before concluding any implementation task, copy this checklist into your respons
 
 Deliberately small. The `$effect`/`onMount`/`writable`/timers rules were removed: they encoded a position on Svelte reactivity rather than on layering or the design system, and argued with working code. Svelte idiom is the compiler's business.
 
-- `structural:inline-style-banned` — inline `style=` outside `components/ui/`.
+- `structural:inline-style-banned` — a `style` attribute or `style:` directive outside `components/ui/`, reported at the element.
 - `structural:style-block-banned` — `<style>` blocks banned outside `app.css` and `components/ui/`.
-- `structural:missing-service-interface` — Concrete service without `I<ServiceName>` interface.
-- `structural:factory-contains-logic` — a factory contains an if/for/while/switch/try/ternary. Instance methods are fine; deciding things is not.
+- `structural:missing-service-interface` — an exported service class that does not `implements` interfaces declared in its own file.
 - `structural:hooks-locals-limited` — `hooks.server.ts` may set only `locals.user`.
+
+### Architecture (type checker)
+Follows symbols rather than import edges, so aliases, barrels, wrappers and injected function ports do not hide a dependency.
+
+- `architecture:indirect-dependency` — prohibited behaviour reached indirectly; an entry point calling a service, repository or store.
+- `architecture:public-service-helper` — an exported service function, or a public member outside the implemented contract.
+- `architecture:service-interface` — a public service class without explicit interface contracts, including alias and default exports.
+- `architecture:concrete-dependency` — a concrete class used as a dependency type, including through `Pick<…>` and inferred factory results.
+- `architecture:controller-orchestration` — a controller invoking another controller, through any interface, getter or callback.
+- `architecture:controller-repository` — a controller calling a repository.
+- `architecture:controller-collaborator` — a controller result exposing a service, transport, repository or writable store.
+- `architecture:retained-service-state` — mutable state on a service, or module state, that outlives an operation.
+- `architecture:store-workflow` — a store invoking a capability or the network.
+- `architecture:factory-workflow` — a factory executing work, including in a callback it returns. Branching while wiring is fine.
+- `architecture:tool-operation` — an agent tool (`agent.tools`) calling anything but a controller operation.
+- `architecture:unresolved-source` — source the analyzer cannot inspect.
+
+### Types and failures
+- `fail-loudly:silent-catch` — a catch or rejection handler that neither rethrows nor returns a failure result.
+- `narrowing:shape-cast`, `narrowing:no-cast-probe` — a cast onto an object literal or an inline shape.
+- `narrowing:no-json-parse-cast`, `narrowing:no-response-json-cast` — unparsed JSON given a type.
+- `narrowing:no-record-unknown`, `narrowing:no-weak-record-guard`, `narrowing:no-zod-unknown` — open records and schemas that narrow nothing.
+- `narrowing:no-unknown-type` — `unknown` on the types of models, services or controllers.
+- `models:procedure`, `models:state`, `models:instanceof` — behaviour or state in a model.
+- `agent:tool-boundary` — an agent tool or protocol server built outside `agent.toolAdapters`.
 
 ### Import boundaries
 
@@ -264,24 +338,23 @@ These are checked against a real import graph: `$lib` and relative specifiers ar
 - `server-layer-leak:client-reachable-import` — a client-reachable module imported something under `$lib/server` or a `*.server.ts` / `*.remote.ts` file. Move the work server-side, or use `import type` if you only need the shape.
 
 ### Structure
-- `structure:layer-outside-server` — a server-side layer at a universal path (`src/lib/services/`). Move it under `$lib/server/`. Reported once per directory.
-- `structure:unknown-server-folder` — a folder under `$lib/server/` that is not a layer name. `$lib/server/` holds `db/`, `repositories/`, `services/`, `controllers/`, `factories/`, `config.ts` and the factory. An external-capability adapter is a service, not a repository. Reported once per folder.
+- `structure:layer-outside-server` — a repository at a universal path. Database repositories go under `$lib/server/repositories/`, browser ones under `$lib/client/repositories/`. Reported once per directory.
+- `structure:unknown-server-folder` — a folder under `$lib/server/` that is not a layer name. `$lib/server/` holds `db/`, `repositories/`, `services/`, `controllers/`, `factories/`, `infrastructure/`, `config.ts` and the factory. An external-capability adapter is a service, not a repository. Reported once per folder.
 - `structure:unclassified-module` — a `src/lib/` module that matches no canonical layer location (warning). Ad-hoc folders get no boundary rules of their own, so give it a home.
 
 Wiring may stay flat at the server root or be grouped under `factories/` with subfolders beneath it. Group it once a handful of factory modules have accumulated and the directory listing has stopped reading as architecture.
 
 ### Topology
 - `topology:layer-barrel-import` — importing a layer root (`$lib/models`) instead of a domain (`$lib/models/notes`). A layer-wide barrel makes every consumer depend on everything. A *domain's* own `index.ts` remains the sanctioned entry point.
-- `topology:deep-feature-import` — a cross-feature import reaching past a component feature's `index.ts` into its internals. A feature is a folder under `$lib/components/` that publishes an entry point; that entry point is its contract. Within a feature, relative imports are fine.
+- `topology:deep-feature-import` — a cross-feature import reaching past a component feature's `index.ts` into its internals. A feature is a folder under `$lib/components/` that publishes an entry point; that entry point is its contract. Within a feature, relative imports are fine; a nested folder with its own `index.ts` is an entry point too; vendored trees and tests are exempt.
 - `topology:generic-bucket-directory` — a directory named `misc/`, `common/`, `helpers/`, `pages/` or `panels/`. A name that describes nothing collects anything. Reported once per directory.
 - `topology:composition-root-concrete-import` — `$lib/server/application.ts` importing a concrete service or repository. `import type` is fine; it is erased.
 - `topology:composition-root-construction` — the composition root constructing something other than a factory.
 - `topology:composition-root-placeholder` — `undefined as unknown as T` or a `LateValue` in the composition root. A placeholder means two objects need each other; restructure rather than park one.
-- `topology:factory-shape` — a `*-factory.ts` under `factories/` that does not export exactly one value. Exported types do not count.
 
 ### Coherence
 - `coherence:empty-test-glob` — an `include` pattern in the vitest/vite config that matches no files. This is the "ran zero tests and passed" failure: the suite silently shrinks while CI stays green.
-- `coherence:broken-doc-path` — a backtick-quoted `src/`, `tests/` or `scripts/` path in root or `docs/` markdown that does not exist. Generated reference output is excluded.
+- `coherence:broken-doc-path` — a backtick-quoted `src/`, `tests/` or `scripts/` path in root or `docs/` markdown that does not exist. Generated reference output and gitignored run-time files are excluded.
 
 ### Bundle budget
 - `bundle:oversized-app-chunk` — an emitted client chunk over 500 kB that contains application code. Vendor-only chunks are tolerated. Not part of `check`: run `chisel-js bundle` after a production build, since it reads what the bundler emitted.
@@ -302,13 +375,14 @@ These do not run in `sveltekit-standalone` mode, where `+server.ts` endpoints an
 - `project-structure:*` — `pnpm`-only, `frontend/.env` / `backend/.env` separation, etc. (see `constraints.md` §5).
 
 ### Tests (paired with `qa` skill)
-- `test-structure:test-file-location` — Tests must live under `tests/unit/`, `tests/integration/`, or `tests/e2e/`.
+- `test-structure:test-file-location` — Tests live beside their subject or under `tests/unit/`, `tests/integration/`, or `tests/e2e/`.
 - `test-structure:test-naming` — Names must describe the invariant (`test_cannot_X`, `test_returns_Y_when_Z`).
-- `test-structure:one-assert-per-test` — Exactly one `expect` per test.
+- `test-structure:no-assertion` — A test that asserts nothing. One behaviour may assert all of its outcomes.
 - `test-structure:mocking-banned` — `jest.mock`, `vi.mock`, `spyOn` banned — write a fake.
 - `test-structure:skip-without-reason` — `test.skip` requires a `reason`.
+- `test-structure:unsafe-dependency-cast` — an object or array literal cast through `unknown`.
 
 ### Suppression
 Inline `// chisel-ignore rule-id -- <reason>` (TypeScript) or `<!-- chisel-ignore rule-id -- <reason> -->` (Svelte), on the offending line or the line above it. `// chisel-ignore-file rule-id -- <reason>` in the first five lines covers a whole file.
 
-A suppression without a reason suppresses nothing: the original violation stands and `suppression:missing-reason` is added on top of it.
+A suppression without a reason suppresses nothing: the original violation stands and `suppression:missing-reason` is added on top of it. Directives stack — several above one line each excuse their own rule — and work in CSS comments. A directive that suppresses nothing (`suppression:unused`) or names no rule (`suppression:unknown-rule`) fails the check.

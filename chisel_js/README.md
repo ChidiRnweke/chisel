@@ -59,18 +59,21 @@ This overwrites local modifications in the selected skill directories, so Chisel
 
 ## What gets checked
 
-70 rules across 16 categories. The counts below are checked against the real
+112 rules across 23 categories. The counts below are checked against the real
 rule set in CI, so they cannot drift from what `chisel-js rules` prints.
 
 | Category | Count | What it enforces |
 |---|---|---|
 | `component-enforcement` | 24 rules | Raw HTML elements (`<button>`, `<select>`, `<form>`, `<dialog>`, `<table>`…) banned outside `components/ui/` and `components/primitives/` — use the design system's replacements |
-| `test-structure` | 8 rules | Tests colocated as `*.spec.ts` or under `tests/unit\|integration\|e2e/`; one `expect()` per test; no mocking libraries; test names describe invariants; `test.skip` needs a reason; fakes declare the interface they stand in for; no `as unknown as` casts; no `toHaveBeenCalled` assertions |
+| `design-system` | 16 rules | Bounded design choices: AA contrast between token pairs, colour only from tokens (no hex, rgb, pure black or run-time derivation), fixed alpha steps, weights 400–800, sized headings, tracking rules, flat surfaces, no accent bars, icons from one set |
+| `architecture` | 12 rules | Type-checked layering: no service reached indirectly, no public service helpers, no concrete dependency types, no controller chains or controller-to-repository calls, no collaborators in controller results, no state kept by services, no workflows in stores, factories or agent tools |
+| `narrowing` | 8 rules | Parse at the boundary: no casts onto object literals or inline shapes, no unchecked `JSON.parse` or `response.json()`, no open records of `unknown`, no `z.unknown()`, no `unknown` on the types of models, services and controllers |
+| `test-structure` | 8 rules | Tests colocated beside their subject or under `tests/unit\|integration\|e2e/`; every test asserts something (no ceiling: one behaviour may assert all its outcomes); no mocking libraries; test names describe invariants; `test.skip` needs a reason; fakes declare the interface they stand in for; no literal shapes cast through `unknown`; no `toHaveBeenCalled` assertions |
 | `import-boundary` | 7 rules | Layer-based import restrictions — a service never imports another service, the ORM stays in repositories, `@sveltejs/kit` stays out of controllers, private env stays server-side, and every import must resolve |
-| `topology` | 7 rules | No layer-wide barrel imports; no reaching past a feature's `index.ts`; no `misc/`-style catch-all directories; the composition root imports no concretes, constructs only factories, and parks no placeholders; a `*-factory.ts` exports exactly one value |
-| `structural` | 5 rules | No `inline style=`, no `<style>` blocks, services expose an interface, factories hold no logic, `hooks.server.ts` keeps `locals` small |
+| `topology` | 6 rules | No layer-wide barrel imports; no reaching past a feature's `index.ts`; no `misc/`-style catch-all directories; the composition root imports no concretes, constructs only factories, and parks no placeholders |
+| `structural` | 4 rules | No inline styles (attributes or `style:` directives), no `<style>` blocks, public services `implements` interfaces declared beside them, `hooks.server.ts` keeps `locals` small |
 | `colour-enforcement` | 4 rules | No arbitrary Tailwind values (`bg-[#123]`…), no palette classes (`text-red-500`), no dynamic class construction, no modifier classes on semantic elements |
-| `structure` | 3 rules | Server-side layers live under `$lib/server/`; every folder there names a layer; every module under `$lib/` classifies as something |
+| `structure` | 3 rules | Every folder under `$lib/server/` names a layer; repositories never sit at a universal path; every module under `$lib/` classifies as something |
 | `project-structure` | 3 rules | pnpm only (no npm/yarn), no backend env vars in frontend `.env`, every service has a test |
 | `coherence` | 2 rules | Every vitest `include` glob must match a file (the "ran zero tests and passed" bug); paths quoted in maintained markdown must exist |
 | `server-layer-leak` | 1 rule | No server module reachable from a client bundle |
@@ -78,7 +81,11 @@ rule set in CI, so they cannot drift from what `chisel-js rules` prints.
 | `error-flow` | 1 rule | Raw HTTP status codes must not leak past error handlers |
 | `typography` | 1 rule | No arbitrary type sizes |
 | `spacing` | 1 rule | No arbitrary spacing values |
-| `suppression` | 1 rule | Every `chisel-ignore` states a reason |
+| `suppression` | 3 rules | Every `chisel-ignore` states a reason, suppresses something, and names a real rule |
+| `models` | 3 rules | Models hold data: no procedures, classes, mutable state or `instanceof` |
+| `fail-loudly` | 1 rule | A `catch` rethrows or returns a failure result the caller must read |
+| `agent` | 1 rule | Agent tools and protocol servers are built only in the declared adapters |
+| `checker` | 1 rule | A file that does not parse is reported, not silently skipped |
 | `bundle` | 1 rule | Client chunks over 500 kB containing application code. Run separately via `chisel-js bundle` after a production build |
 
 One further category, `api-endpoints` (1 rule: `RequestHandler` exports only in

@@ -140,11 +140,11 @@ export const actions: Actions = {
 
 **Job:** One concern. Wraps the API client. Returns domain models.
 
-### Interface first
+### Interface beside the implementation
 
 ```typescript
-// IRecipeService.ts — always define the interface
-export interface IRecipeService {
+// recipes/catalog.ts — the capability callers need, declared beside the class
+export interface RecipeCatalog {
   getByUserId(userId: string): Promise<Recipe[]>;
   getById(id: string): Promise<Recipe>;
   create(input: CreateRecipeInput): Promise<Recipe>;
@@ -152,13 +152,15 @@ export interface IRecipeService {
 }
 ```
 
-Every service has a corresponding interface. This makes the controller testable — inject a mock `IRecipeService` in tests.
+Every public service class `implements` the interfaces its callers depend on,
+declared in the same file — a sibling `contracts.ts` would be a service-to-service
+import. A controller depends on the interface; a test hands it a typed fake.
 
 ### Implementation
 
 ```typescript
-// RecipeService.ts
-export class RecipeService implements IRecipeService {
+// recipes/catalog.ts, continued
+export class ApiRecipeCatalog implements RecipeCatalog {
   constructor(private readonly client: ApiClient) {}
 
   async getByUserId(userId: string): Promise<Recipe[]> {
@@ -197,8 +199,8 @@ function mapToRecipe(raw: components['schemas']['Recipe']): Recipe {
 ```typescript
 export class RecipeController {
   constructor(
-    private readonly recipeService: IRecipeService,   // interface
-    private readonly pantryService: IPantryService,   // interface
+    private readonly recipeService: RecipeCatalog,   // interface
+    private readonly pantryService: PantryStock,   // interface
     private readonly tasteService: ITasteProfileService, // interface
   ) {}
 

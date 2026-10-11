@@ -1,5 +1,12 @@
 [
   {
+    "id": "checker:unparseable-file",
+    "category": "checker",
+    "description": "A file that does not parse, so rules reading its syntax skipped it",
+    "fixGuidance": "Fix the syntax error the message names. Until then the file is checked by import and path rules only, and a violation inside it cannot be reported.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
     "id": "import-boundary:layer-no-internal-imports",
     "category": "import-boundary",
     "description": "A pure layer (models, errors, config) imported another internal layer — including another file of its own layer.",
@@ -58,15 +65,15 @@
   {
     "id": "structure:layer-outside-server",
     "category": "structure",
-    "description": "A server-side layer sits at a universal path instead of under $lib/server/.",
-    "fixGuidance": "Move services, controllers, repositories and the factory under $lib/server/. SvelteKit then makes a client import of them a build error, which is stronger than anything a linter can offer. Reported once per directory.",
+    "description": "A repository sits at a universal path instead of under $lib/server/.",
+    "fixGuidance": "Move database repositories under $lib/server/repositories/ and browser repositories under $lib/client/repositories/. SvelteKit then makes a client import of a server repository a build error. Reported once per directory.",
     "skillName": "building-sveltekit-frontend"
   },
   {
     "id": "structure:unknown-server-folder",
     "category": "structure",
     "description": "A folder under $lib/server/ does not name a layer.",
-    "fixGuidance": "$lib/server/ holds db/, repositories/, services/, controllers/, factories/, config.ts and the factory. An adapter for an external capability is a service, not a repository — repositories are persistence. Wiring modules may stay at the root or be grouped under factories/. Reported once per folder.",
+    "fixGuidance": "$lib/server/ holds db/, repositories/, services/, controllers/, factories/, infrastructure/, config.ts and the factory. An adapter for an external capability is a service, not a repository — repositories are persistence. Wiring modules may stay at the root or be grouped under factories/. Reported once per folder.",
     "skillName": "building-sveltekit-frontend"
   },
   {
@@ -119,16 +126,93 @@
     "skillName": "building-sveltekit-frontend"
   },
   {
-    "id": "topology:factory-shape",
-    "category": "topology",
-    "description": "A *-factory.ts does not export exactly one value",
-    "fixGuidance": "One factory module builds one thing. Split it, or rename the file after what it actually holds. Exported types do not count — a factory may declare its own dependency shape.",
+    "id": "architecture:indirect-dependency",
+    "category": "architecture",
+    "description": "Prohibited behaviour reached through an alias, barrel, namespace import, wrapper or injected function port; or an entry point calling a service, repository or store",
+    "fixGuidance": "Put the application operation in a controller and inject the narrow capability there. An entry point parses its input and calls controller operations.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "architecture:public-service-helper",
+    "category": "architecture",
+    "description": "An exported service function or callable, or a public service member outside its implemented contract",
+    "fixGuidance": "Expose one cohesive class capability through its interface; keep helpers private. A test does not justify a public helper.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "architecture:service-interface",
+    "category": "architecture",
+    "description": "A public service class without explicit interface contracts, including alias and default exports",
+    "fixGuidance": "Declare the capability callers need and `implements` it.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "architecture:concrete-dependency",
+    "category": "architecture",
+    "description": "A concrete implementation used as a dependency type, including through aliases, utility types and inferred factory results",
+    "fixGuidance": "Depend on the declared contract. `Pick<ConcreteService, …>` is still the concrete class, and a factory's public results need interface annotations; `satisfies` keeps the inferred concrete type.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "architecture:controller-orchestration",
+    "category": "architecture",
+    "description": "A controller invoking another controller, through an interface, alias, getter or callback",
+    "fixGuidance": "Coordinate the underlying services in the owning controller. Shared data types belong in models.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "architecture:controller-repository",
+    "category": "architecture",
+    "description": "A controller calling a repository, directly or through an injected port typed as one",
+    "fixGuidance": "Put a service between them. The service owns the reads and writes and the rules around them.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "architecture:controller-collaborator",
+    "category": "architecture",
+    "description": "A controller result exposing a service, transport, repository or writable store",
+    "fixGuidance": "Return operation results or readonly state views, never the collaborators that produced them.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "architecture:retained-service-state",
+    "category": "architecture",
+    "description": "Mutable service fields, module state or captured state that survive an operation",
+    "fixGuidance": "Keep values local to the operation. State that must outlive it is a database record on the server and a store in the browser.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "architecture:store-workflow",
+    "category": "architecture",
+    "description": "A store invoking a capability or network transport, directly or through a traced callback",
+    "fixGuidance": "A store applies controlled updates. Let a controller do the work and write the result.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "architecture:factory-workflow",
+    "category": "architecture",
+    "description": "A factory executing a capability, including inside a callback it returns",
+    "fixGuidance": "Construct and connect dependencies only. Execution belongs to a controller, called by an entry point.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "architecture:tool-operation",
+    "category": "architecture",
+    "description": "An agent tool calling a service, repository or store instead of a controller operation",
+    "fixGuidance": "Wrap the one public controller operation the tool stands for. When none exists, give the controller an ordinary operation any entry point could call.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "architecture:unresolved-source",
+    "category": "architecture",
+    "description": "Source or a local module the analyzer cannot inspect",
+    "fixGuidance": "Repair the syntax or the module path. An incomplete scan is not a passing one.",
     "skillName": "building-sveltekit-frontend"
   },
   {
     "id": "structural:inline-style-banned",
     "category": "structural",
-    "description": "inline style= attribute in .svelte",
+    "description": "An inline style attribute or style: directive in .svelte",
     "fixGuidance": "Use Tailwind utility classes defined in app.css. Styling comes from the design system, not from the element.",
     "skillName": "building-sveltekit-frontend"
   },
@@ -142,15 +226,8 @@
   {
     "id": "structural:missing-service-interface",
     "category": "structural",
-    "description": "Concrete service without a matching I<ServiceName> interface",
-    "fixGuidance": "Declare an I<ServiceName> interface in the same file. Controllers depend on the interface and the factory supplies the implementation. It has to be the same file — a sibling contracts.ts is a same-layer import, which the boundary rules ban.",
-    "skillName": "building-sveltekit-frontend"
-  },
-  {
-    "id": "structural:factory-contains-logic",
-    "category": "structural",
-    "description": "A factory contains branching or looping",
-    "fixGuidance": "A factory wires concrete implementations together and decides nothing — no if, for, while, switch, try or ternary. Instance methods are fine: holding injected collaborators is what a factory is for.",
+    "description": "Public service class without an explicitly implemented capability interface",
+    "fixGuidance": "Declare a narrow capability interface beside the service and write `implements` on the class. Controllers depend on that interface and the factory supplies the implementation. It has to be the same file — a sibling contracts.ts is a same-layer import, which the boundary rules ban.",
     "skillName": "building-sveltekit-frontend"
   },
   {
@@ -371,6 +448,111 @@
     "skillName": "designing-svelte-ui"
   },
   {
+    "id": "design-system:no-raw-font-family",
+    "category": "design-system",
+    "description": "A raw font-family utility (font-sans, font-serif, font-mono)",
+    "fixGuidance": "Use the type utility that carries the family, so faces stay where the design system puts them.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:font-weight-bounds",
+    "category": "design-system",
+    "description": "A font weight outside 400–800",
+    "fixGuidance": "Use font-normal through font-extrabold. Thin and black weights fall apart at UI sizes.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:no-em-font-size",
+    "category": "design-system",
+    "description": "A font-size in em",
+    "fixGuidance": "Use rem or a type-scale utility; em compounds through nesting.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:uppercase-needs-tracking",
+    "category": "design-system",
+    "description": "Uppercase text without positive letter-spacing",
+    "fixGuidance": "Add a tracking-wide class. Capitals set solid read as shouting and crowd each other.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:no-wide-tracking-on-display",
+    "category": "design-system",
+    "description": "Wide tracking on display-size text",
+    "fixGuidance": "Display sizes already space themselves; keep tracking normal or tight.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:no-hex-rgb-color",
+    "category": "design-system",
+    "description": "A hex or rgb() colour literal",
+    "fixGuidance": "Use a token, or oklch() in the token stylesheet. Vendored theme stylesheets are exempt.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:no-runtime-color-derivation",
+    "category": "design-system",
+    "description": "A colour derived at run time (lighten, color-mix, relative colours)",
+    "fixGuidance": "Define the colour as a token. A token wash toward transparent is the one allowed color-mix.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:no-pure-black",
+    "category": "design-system",
+    "description": "Pure black as a colour",
+    "fixGuidance": "Use the foreground token; pure black is harsher than any surface it sits on.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:token-contrast-aa",
+    "category": "design-system",
+    "description": "A text token pair below WCAG AA 4.5:1, or a missing pair",
+    "fixGuidance": "Adjust the token's lightness in the token stylesheet until the pair passes in both modes.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:heading-needs-utility",
+    "category": "design-system",
+    "description": "A heading element without a type-scale utility",
+    "fixGuidance": "Add a text size or a configured heading utility; otherwise it inherits browser sizes.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:justify-needs-hyphens",
+    "category": "design-system",
+    "description": "Justified text without automatic hyphenation",
+    "fixGuidance": "Add hyphens-auto, or align left. Justified text without hyphens opens rivers.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:text-shadow-glow-only",
+    "category": "design-system",
+    "description": "A text shadow with an offset or a small blur",
+    "fixGuidance": "Only soft glows (no offset, blur of 8px or more) are allowed.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:no-accent-bars",
+    "category": "design-system",
+    "description": "A thick coloured edge bar on a container",
+    "fixGuidance": "Mark state with a wash or a hairline ring instead of a coloured side border.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:no-ad-hoc-shadow",
+    "category": "design-system",
+    "description": "A shadow outside the vendored primitives",
+    "fixGuidance": "The surfaces are flat; use ring-1 ring-inset for a hairline edge.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
+    "id": "design-system:alpha-fixed-steps",
+    "category": "design-system",
+    "description": "A colour opacity step outside the sanctioned steps",
+    "fixGuidance": "Use /5, /10, /15, /20, /25, /30, /35, /40, /50, /60, /70, /75, /80 or /90.",
+    "skillName": "designing-svelte-ui"
+  },
+  {
     "id": "error-flow:raw-http-status",
     "category": "error-flow",
     "description": "Raw HTTP status code outside error handler / api route",
@@ -392,10 +574,10 @@
     "skillName": "qa"
   },
   {
-    "id": "test-structure:one-assert-per-test",
+    "id": "test-structure:no-assertion",
     "category": "test-structure",
-    "description": "More than one assertion in a test",
-    "fixGuidance": "Split into separate tests, one per assertion, each named after its invariant. End-to-end specs are exempt.",
+    "description": "A test that asserts nothing",
+    "fixGuidance": "Assert the outcome of the behaviour the test names, in the test body. One test covers one behaviour and may assert all of its outcomes; do not split outcomes just to count assertions, and do not hide them in helpers. End-to-end specs are exempt.",
     "skillName": "qa"
   },
   {
@@ -422,8 +604,8 @@
   {
     "id": "test-structure:unsafe-dependency-cast",
     "category": "test-structure",
-    "description": "`as unknown as T` in a test",
-    "fixGuidance": "The cast is silencing the error that says the fake does not match the interface. Complete the fake, or narrow the interface the code under test depends on.",
+    "description": "An object or array literal cast through `unknown` in a test",
+    "fixGuidance": "The cast silences the error that says the fixture is incomplete, so the test runs on a state production cannot produce. Build a complete value, or narrow the type the code under test depends on. Casting one value (a branded id, a corrupt input for a parser) is not reported.",
     "skillName": "qa"
   },
   {
@@ -465,8 +647,106 @@
     "id": "coherence:broken-doc-path",
     "category": "coherence",
     "description": "Maintained documentation cites a path that does not exist",
-    "fixGuidance": "Update the reference or remove it. Checked in root and docs/ markdown; generated API references and build output are excluded.",
+    "fixGuidance": "Update the reference or remove it. Checked in root and docs/ markdown; generated API references and build output are excluded. A path the repository gitignores is a file the project creates at run time, such as a cached login, so it is allowed to be absent.",
     "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "fail-loudly:silent-catch",
+    "category": "fail-loudly",
+    "description": "A catch or rejection handler that neither rethrows nor returns a failure result",
+    "fixGuidance": "Rethrow, or return an object whose `kind` is 'error', 'failure' or 'corrupt' (or `ok: false`) so the caller decides. Add a log or toast as well where someone needs to know; it never counts as the recovery. Suppress only where the recovery reports itself somewhere the type cannot show, and name where.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "narrowing:shape-cast",
+    "category": "narrowing",
+    "description": "A type assertion onto an object literal",
+    "fixGuidance": "Construct the value with its real type, or parse it. `value as never` on one branded value is fine; `{ … } as T` hides every missing field.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "narrowing:no-cast-probe",
+    "category": "narrowing",
+    "description": "A cast onto an inline object type (`x as { a?: unknown }`)",
+    "fixGuidance": "Parse the value into a named type at the boundary instead of probing its fields.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "narrowing:no-json-parse-cast",
+    "category": "narrowing",
+    "description": "A JSON.parse result given a type nothing checked",
+    "fixGuidance": "Annotate it `unknown` and parse it with a schema that produces the type.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "narrowing:no-response-json-cast",
+    "category": "narrowing",
+    "description": "A response JSON result cast without parsing",
+    "fixGuidance": "Parse `await response.json()` with the schema of the type it should be.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "narrowing:no-record-unknown",
+    "category": "narrowing",
+    "description": "`Record<string, unknown>` or an `unknown` index signature used as a struct",
+    "fixGuidance": "Name the fields the code reads, or parse into a type that does.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "narrowing:no-weak-record-guard",
+    "category": "narrowing",
+    "description": "A type predicate that narrows to an open-keyed record",
+    "fixGuidance": "Parse into the concrete type. A guard to `Record<string, unknown>` leaves every caller probing.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "narrowing:no-zod-unknown",
+    "category": "narrowing",
+    "description": "A z.unknown() or z.any() schema",
+    "fixGuidance": "Describe the shape. A schema that accepts anything narrows nothing.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "narrowing:no-unknown-type",
+    "category": "narrowing",
+    "description": "`unknown` on a parameter, return, field or alias in a model, service or controller",
+    "fixGuidance": "Parse at the boundary — remote functions, routes, repositories, the service that owns a provider, browser services — so the layers inward receive narrow types.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "models:procedure",
+    "category": "models",
+    "description": "A model function that computes instead of constructing data or a schema",
+    "fixGuidance": "Move the calculation to a service. Models hold values, types, schemas and constructors; a branded-scalar constructor may validate its input.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "models:state",
+    "category": "models",
+    "description": "A class or mutable module state in a model",
+    "fixGuidance": "Models are data. Runtime state belongs in a store, behaviour in a service.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "models:instanceof",
+    "category": "models",
+    "description": "instanceof in a model",
+    "fixGuidance": "Discriminate with a tagged union; models carry no classes to test against.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "agent:tool-boundary",
+    "category": "agent",
+    "description": "An agent tool or protocol server constructed outside the declared tool adapters",
+    "fixGuidance": "Build tools through the adapter listed in `agent.toolAdapters`, which applies the shared approval and feedback policy.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "design-system:icon-library",
+    "category": "design-system",
+    "description": "An icon library imported instead of the project's own icon set",
+    "fixGuidance": "Import the icon from the module named in `designSystem.icons`. Component generators write library imports into what they add; replace them.",
+    "skillName": "designing-svelte-ui"
   },
   {
     "id": "route-style:prefer-remote-function",
@@ -480,6 +760,20 @@
     "category": "suppression",
     "description": "A chisel-ignore comment gave no reason, so it suppressed nothing.",
     "fixGuidance": "Write `chisel-ignore <rule-id> -- <why this case is different>`. A suppression nobody has to justify is one nobody will revisit.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "suppression:unused",
+    "category": "suppression",
+    "description": "A chisel-ignore comment that suppresses no violation.",
+    "fixGuidance": "Delete it. The code it excused has changed; left in place, it hides the next violation written on that line.",
+    "skillName": "building-sveltekit-frontend"
+  },
+  {
+    "id": "suppression:unknown-rule",
+    "category": "suppression",
+    "description": "A chisel-ignore comment naming a rule chisel does not have.",
+    "fixGuidance": "Correct the id — `chisel-js rules` lists them — or delete the comment.",
     "skillName": "building-sveltekit-frontend"
   },
   {
