@@ -57,8 +57,8 @@ do not weaken checks or claim untested results passed.
   its outcomes; there is no ceiling on assertions.
 - `test-structure:mocking-banned` and `test-structure:interaction-assertion` — mocking libraries
   and assertions on calls. Use typed fakes and recorders.
-- `test-structure:untyped-fake` — a `Fake*`, `Stub*` or `InMemory*` class with no declared
-  interface.
+- `test-structure:untyped-fake` — a `Fake*`, `Stub*` or `InMemory*` class declared in a spec
+  with no interface.
 - `test-structure:unsafe-dependency-cast` — an object or array literal cast through `unknown`,
   which builds a state production cannot produce.
 - `test-structure:skip-without-reason` and `test-structure:test-file-location`.
