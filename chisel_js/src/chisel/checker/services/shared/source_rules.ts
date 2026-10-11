@@ -86,7 +86,12 @@ const dataExpression = (expression: ts.Expression): boolean => {
       && dataExpression(property.initializer)));
 };
 
-const SCALAR_KINDS = [ts.SyntaxKind.StringKeyword, ts.SyntaxKind.NumberKeyword, ts.SyntaxKind.BigIntKeyword];
+// A function, not a constant: modules are loaded by `chisel-js rules`, which must
+// not need the compiler to be importable.
+const scalarKind = (kind: ts.SyntaxKind): boolean =>
+  kind === ts.SyntaxKind.StringKeyword
+  || kind === ts.SyntaxKind.NumberKeyword
+  || kind === ts.SyntaxKind.BigIntKeyword;
 
 /** Scalar constructors may validate and spell a branded value, but cannot consult collaborators. */
 const valueConstructor = (
@@ -99,7 +104,7 @@ const valueConstructor = (
       ts.isTypeAliasDeclaration(statement) && statement.name.text === name,
   );
   if (!declaration || !ts.isIntersectionTypeNode(declaration.type)) return false;
-  const scalar = declaration.type.types.find(type => SCALAR_KINDS.includes(type.kind));
+  const scalar = declaration.type.types.find(type => scalarKind(type.kind));
   const brand = declaration.type.types.find(type =>
     ts.isTypeLiteralNode(type)
     && type.members.length === 1
@@ -114,7 +119,7 @@ const valueConstructor = (
 
   const locals = new Set<string>();
   for (const parameter of callable.parameters) {
-    if (!ts.isIdentifier(parameter.name) || !parameter.type || !SCALAR_KINDS.includes(parameter.type.kind)) {
+    if (!ts.isIdentifier(parameter.name) || !parameter.type || !scalarKind(parameter.type.kind)) {
       return false;
     }
     locals.add(parameter.name.text);
