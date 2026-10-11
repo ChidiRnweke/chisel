@@ -366,6 +366,25 @@ Copy this checklist into your initial response scratchpad to track your progress
 - `colour:palette-class-banned` — a hardcoded Tailwind palette class (`text-red-500`, `bg-slate-800`, `from-blue-500`). Use a semantic token (`bg-background`, `text-muted-foreground`, `text-destructive`): a palette class pins one appearance and cannot follow the theme, so it looks wrong in whichever mode it was not written for.
 - `colour:arbitrary-value-banned` — an arbitrary colour value (`bg-[#123]`). Judged by the value, so `ring-[2px]` and `shadow-[0_1px_2px]` are geometry, not colour.
 
+### Design system (bounded choices)
+The design system is a set of bounded choices. Each rule reports a value chosen outside it, in
+markup, class strings in TypeScript, `@apply` lists and stylesheets.
+
+- `design-system:token-contrast-aa` — a text token pair below WCAG AA 4.5:1 in either palette of
+  the token stylesheet (`designSystem.tokens`), or a missing shadcn pair.
+- `design-system:no-hex-rgb-color`, `design-system:no-pure-black`,
+  `design-system:no-runtime-color-derivation` — colour comes from tokens; a token wash toward
+  transparent is the one allowed `color-mix`.
+- `design-system:alpha-fixed-steps` — opacity steps outside /5–/90 in the sanctioned increments.
+- `design-system:no-raw-font-family`, `design-system:font-weight-bounds` (400–800),
+  `design-system:no-em-font-size`, `design-system:heading-needs-utility` (a size or a
+  `designSystem.headingUtilities` class on every heading).
+- `design-system:uppercase-needs-tracking`, `design-system:no-wide-tracking-on-display`,
+  `design-system:justify-needs-hyphens`, `design-system:text-shadow-glow-only`.
+- `design-system:no-ad-hoc-shadow`, `design-system:no-accent-bars` — surfaces are flat; mark
+  state with a wash or a hairline ring.
+- `design-system:icon-library` — icons come from the module in `designSystem.icons`.
+
 ### Responsiveness
 No longer machine-checked. The old `responsiveness:*` rules demanded specific
 wrapper components (`<PageShell>`, `<Container>`) and blanket breakpoint

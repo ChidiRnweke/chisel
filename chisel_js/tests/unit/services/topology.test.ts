@@ -70,6 +70,43 @@ describe("topology — feature entry points", () => {
     })])).toEqual([]);
   });
 
+  test("a nested folder publishing its own index.ts is an entry point too", () => {
+    expect(check(
+      [{ path: "src/lib/components/notes/scenes/index.ts" }, ...featureFiles],
+      [edge({
+        importer: "src/lib/components/chat/panel.svelte",
+        imported: "src/lib/components/notes/scenes/index.ts",
+        specifier: "$lib/components/notes/scenes",
+      })],
+    )).toEqual([]);
+  });
+
+  test("a test may reach into a feature's internals", () => {
+    expect(check(
+      [{ path: "tests/fixtures/panel.svelte", layer: Layer.TESTS }, ...featureFiles],
+      [edge({
+        importer: "tests/fixtures/panel.svelte",
+        imported: "src/lib/components/notes/internal/editor.svelte",
+        specifier: "$lib/components/notes/internal/editor",
+      })],
+    )).toEqual([]);
+  });
+
+  test("a vendored component tree is a library, not a feature", () => {
+    const graph = new FakeImportGraph();
+    graph.setEdges([edge({
+      importer: "src/lib/components/chat/panel.svelte",
+      imported: "src/lib/components/editor/commands/core.ts",
+      specifier: "$lib/components/editor/commands/core",
+    })]);
+    const project = createProjectInfo({
+      rootPath: "/test",
+      files: ["src/lib/components/editor/index.ts", "src/lib/components/chat/panel.svelte"]
+        .map(path => parsedFile({ path, source: "export const a = 1;\n", layer: Layer.UNKNOWN })),
+    });
+    expect(new TopologyService(graph, ["src/lib/components/editor/"]).check(project)).toEqual([]);
+  });
+
   test("a folder that publishes no entry point declares no contract to bypass", () => {
     // `shared/` and `layout/` are presentation roles, not features. Without an
     // index.ts there is nothing to call a public surface.
@@ -149,35 +186,5 @@ describe("topology — composition root", () => {
       layer: Layer.FACTORY,
       source: "export const app = () => ({ runner: undefined as unknown as Runner });\n",
     }])).toEqual(["topology:composition-root-placeholder"]);
-  });
-});
-
-describe("topology — factory shape", () => {
-  const path = "src/lib/server/factories/capabilities/notes-capability-factory.ts";
-
-  test("a factory module exporting one creator passes", () => {
-    expect(check([{
-      path,
-      layer: Layer.FACTORY,
-      source: "export interface NotesCapability { id: string }\n"
-        + "export const createNotesCapability = () => ({ id: 'n' });\n",
-    }])).toEqual([]);
-  });
-
-  test("a factory module exporting two values is reported", () => {
-    expect(check([{
-      path,
-      layer: Layer.FACTORY,
-      source: "export const createNotesCapability = () => ({});\n"
-        + "export const notesCatalog = { entries: [] };\n",
-    }])).toEqual(["topology:factory-shape"]);
-  });
-
-  test("a factory module exporting only a type is reported", () => {
-    expect(check([{
-      path,
-      layer: Layer.FACTORY,
-      source: "export interface ControllerFactory { notes(): unknown }\n",
-    }])).toEqual(["topology:factory-shape"]);
   });
 });

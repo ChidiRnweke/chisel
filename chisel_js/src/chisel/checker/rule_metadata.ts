@@ -15,7 +15,7 @@ export function skillNameForCategory(category: string): string {
   if (category === "structural" || category === "import-boundary" || category === "complexity" || category === "concurrency" || category === "error-flow" || category === "api-endpoints" || category === "project-structure") {
     return SVELTEKIT_FRONTEND_SKILL;
   }
-  if (["component-enforcement", "colour", "colour-enforcement", "typography", "spacing", "responsiveness", "modifier"].includes(category)) {
+  if (["component-enforcement", "colour", "colour-enforcement", "typography", "spacing", "responsiveness", "modifier", "design-system"].includes(category)) {
     return SVELTE_UI_SKILL;
   }
   return SVELTEKIT_FRONTEND_SKILL;

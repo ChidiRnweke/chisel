@@ -1,5 +1,6 @@
 import type { ProjectInfo } from "chisel/checker/models/project_info";
 import type { Violation } from "chisel/checker/models/violation";
+import { walkMarkup } from "chisel/checker/repositories/file_parser";
 import { Severity } from "chisel/checker/models/severity";
 import { createViolation } from "chisel/checker/models/violation";
 import { DEFAULT_ALLOW_IN } from "chisel/checker/config";
@@ -35,38 +36,6 @@ const INPUT_TYPE_REPLACEMENT: Record<string, string> = {
 
 const AVATAR_PATTERNS = ["avatar"];
 const MENU_PATTERNS = ["menu", "nav", "dropdown", "context", "listbox", "menubar"];
-
-/**
- * Visit every node in a Svelte template.
- *
- * Walks the object graph generically rather than following named child
- * properties. The modern AST reaches children through a different key for
- * almost every construct — `fragment.nodes` on an element, `body` on an each
- * block, `consequent`/`alternate` on an if block — and enumerating them means
- * silently missing elements nested inside whichever construct was overlooked.
- */
-function walkAst(root: any, fn: (node: any) => void): void {
-  const seen = new Set<any>();
-
-  const visit = (value: any): void => {
-    if (value === null || typeof value !== "object") return;
-    if (seen.has(value)) return;
-    seen.add(value);
-
-    if (Array.isArray(value)) {
-      for (const item of value) visit(item);
-      return;
-    }
-
-    if (typeof value.type === "string") fn(value);
-    for (const key of Object.keys(value)) {
-      if (key === "parent") continue;
-      visit(value[key]);
-    }
-  };
-
-  visit(root);
-}
 
 function getAttributeValue(node: any, attrName: string): string | null {
   if (!node.attributes) return null;
@@ -190,7 +159,7 @@ export class ComponentEnforcementService {
       const fragment = file.ast?.fragment;
       if (fragment === undefined) continue;
 
-      walkAst(fragment, (node: any) => {
+      walkMarkup(fragment, (node: any) => {
         if (node.type !== "RegularElement") return;
 
         const name: string = node.name;

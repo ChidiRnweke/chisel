@@ -5,6 +5,7 @@ import type { ImportEdge } from "chisel/checker/models/import_edge";
 import type { ProjectInfo } from "chisel/checker/models/project_info";
 import type { RuleInfo } from "chisel/checker/rule_metadata";
 import type { Violation } from "chisel/checker/models/violation";
+import { Layer } from "chisel/checker/models/layer";
 import { Severity } from "chisel/checker/models/severity";
 import { createViolation } from "chisel/checker/models/violation";
 import { scriptsOf } from "chisel/checker/repositories/file_parser";
@@ -49,13 +50,16 @@ const COMPONENT_ROOT = "src/lib/components/";
 const COMPOSITION_ROOT_RE = /^src\/lib\/server\/application\.(?:ts|js)$/;
 
 /** Wiring modules, wherever a project groups them. */
-const FACTORY_MODULE_RE = /^src\/lib\/server\/factories\/.*-factory\.(?:ts|js)$/;
 
 /** Placeholders used to break a cycle in the wiring rather than restructure it. */
 const PLACEHOLDER_IDENTIFIER_RE = /^LateValue$/;
 
 function lineOf(source: string, offset: number): number {
   return source.slice(0, offset).split("\n").length;
+}
+
+function isIndex(path: string): boolean {
+  return /(^|\/)index\.(ts|js)$/.test(path);
 }
 
 /** The feature a path under `src/lib/components/` belongs to, if any. */
@@ -78,17 +82,25 @@ function componentFeatureOf(path: string): string | undefined {
 export class TopologyService {
   readonly ruleIdPrefix = "topology";
 
-  constructor(private readonly importGraph: IImportGraph) {}
+  /**
+   * @param vendored Folders holding third-party or generated components
+   *   (`designSystem.allowIn`). A vendored tree is a library, not a feature: it
+   *   has no contract of ours to reach past.
+   */
+  constructor(
+    private readonly importGraph: IImportGraph,
+    private readonly vendored: readonly string[] = [],
+  ) {}
 
   check(project: ProjectInfo): Violation[] {
     const features = this._componentFeatures(project);
+    const layers = new Map(project.files.map(file => [file.path, file.layer]));
 
     return [
       ...this._genericBuckets(project),
       ...this._barrelImports(),
-      ...this._deepFeatureImports(features),
+      ...this._deepFeatureImports(features, layers),
       ...this._compositionRoot(project),
-      ...this._factoryShapes(project),
     ];
   }
 
@@ -98,6 +110,7 @@ export class TopologyService {
     for (const file of project.files) {
       const feature = componentFeatureOf(file.path);
       if (feature === undefined) continue;
+      if (this.vendored.some(folder => file.path.startsWith(folder))) continue;
       if (file.path === `${COMPONENT_ROOT}${feature}/index.ts`) features.add(feature);
     }
     return features;
@@ -146,10 +159,18 @@ export class TopologyService {
     return violations;
   }
 
-  private _deepFeatureImports(features: ReadonlySet<string>): Violation[] {
+  private _deepFeatureImports(
+    features: ReadonlySet<string>,
+    layers: ReadonlyMap<string, Layer>,
+  ): Violation[] {
     const violations: Violation[] = [];
 
     for (const edge of this.importGraph.allImports) {
+      // A test or fixture exercises internals on purpose.
+      if (layers.get(edge.importer) === Layer.TESTS) continue;
+      // A nested folder that publishes its own index.ts is an entry point too,
+      // like a sub-package: `$lib/components/icons/scenes`.
+      if (isIndex(edge.imported)) continue;
       const match = edge.specifier.match(/^\$lib\/components\/([^/]+)\/(.+)$/);
       if (match === null) continue;
 
@@ -259,65 +280,6 @@ export class TopologyService {
     return violations;
   }
 
-  /**
-   * A convention only pays off when it is total: a `*-factory.ts` names one
-   * thing to build, so it exports one thing. Types are not counted — a factory
-   * naming its own dependency shape is exporting a contract, not a second
-   * creator.
-   */
-  private _factoryShapes(project: ProjectInfo): Violation[] {
-    const violations: Violation[] = [];
-
-    for (const file of project.files) {
-      if (!FACTORY_MODULE_RE.test(file.path)) continue;
-      if (/\.(?:spec|test)\.(?:ts|js)$/.test(file.path)) continue;
-
-      const exported = this._exportedValueNames(file);
-      if (exported.length === 1) continue;
-
-      violations.push(createViolation({
-        file: file.path,
-        line: 1,
-        severity: Severity.ERROR,
-        ruleId: `${this.ruleIdPrefix}:factory-shape`,
-        message: exported.length === 0
-          ? `A *-factory.ts exports no creator. The name promises one thing to build; `
-            + `either export it or rename the file after what it actually holds.`
-          : `A *-factory.ts exports ${exported.length} values (${exported.join(", ")}). `
-            + `One factory module builds one thing — split it, so the filename keeps `
-            + `telling the truth about what is inside.`,
-      }));
-    }
-
-    return violations;
-  }
-
-  /** Exported values — functions, classes, consts. Types are erased and excluded. */
-  private _exportedValueNames(file: FileInfo): string[] {
-    const names: string[] = [];
-
-    for (const { sf } of scriptsOf(file.ast)) {
-      for (const statement of sf.statements) {
-        const modifiers = ts.canHaveModifiers(statement) ? ts.getModifiers(statement) : undefined;
-        const isExported = (modifiers ?? [])
-          .some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword);
-        if (!isExported) continue;
-
-        if (ts.isVariableStatement(statement)) {
-          for (const declaration of statement.declarationList.declarations) {
-            if (ts.isIdentifier(declaration.name)) names.push(declaration.name.text);
-          }
-          continue;
-        }
-        if (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) {
-          if (statement.name !== undefined) names.push(statement.name.text);
-        }
-      }
-    }
-
-    return names;
-  }
-
   private _edgeViolation(edge: ImportEdge, rule: string, message: string): Violation {
     return createViolation({
       file: edge.importer,
@@ -382,15 +344,6 @@ export class TopologyService {
           "A placeholder means two objects need each other. Restructure so one does not — "
           + "extract the shared part, or pass a typed lazy accessor. The placeholder turns "
           + "a build error into a runtime one.",
-      },
-      {
-        id: "topology:factory-shape",
-        category: this.ruleIdPrefix,
-        description: "A *-factory.ts does not export exactly one value",
-        fixGuidance:
-          "One factory module builds one thing. Split it, or rename the file after what it "
-          + "actually holds. Exported types do not count — a factory may declare its own "
-          + "dependency shape.",
       },
     ];
   }

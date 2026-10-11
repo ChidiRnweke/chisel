@@ -58,6 +58,9 @@ const LAYER_MATCHERS: ReadonlyArray<readonly [RegExp, Layer]> = [
 
   [/^src\/hooks\.(server\.)?(ts|js)$/, LayerEnum.HOOKS],
   [/\.remote\.(ts|js)$/, LayerEnum.REMOTE],
+  // Server-only helpers beside the remote functions they serve, such as a
+  // manifest reader. They parse requests like the remote functions do.
+  [/^src\/lib\/remote\/.*\.server\.(ts|js)$/, LayerEnum.REMOTE],
 
   [/^src\/routes\/.*\+.*\.server\.(ts|js)$/, LayerEnum.ROUTES],
   [/^src\/routes\/.*\+server\.(ts|js)$/, LayerEnum.ROUTES],
@@ -84,11 +87,22 @@ const LAYER_MATCHERS: ReadonlyArray<readonly [RegExp, Layer]> = [
   // app-factory.ts, production-factory.ts, factory.ts, ServerFactory.ts.
   [/^src\/lib\/server\/[^/]*[Ff]actory\.(ts|js)$/, LayerEnum.FACTORY],
   [/^src\/lib\/server\/application\.(ts|js)$/, LayerEnum.FACTORY],
+  // Provider clients and runtime plumbing (telemetry, schedulers, tokenizers).
+  // They know no layer above them, which is exactly the utils contract.
+  [/^src\/lib\/server\/infrastructure\//, LayerEnum.UTILS],
 
-  // The same layers at a universal path. They still classify to their layer so
-  // the direction rules keep working, but `structure:layer-outside-server`
-  // reports the placement: at these paths SvelteKit cannot stop a component
-  // from importing them.
+  // The browser has the same layers as the server. Its services own the
+  // browser's storage and its conversation with the server; its repositories
+  // persist to IndexedDB. Matched before the generic `client/` folder.
+  [/^src\/lib\/client\/repositories\//, LayerEnum.REPOSITORIES],
+  [/^src\/lib\/client\/services\//, LayerEnum.SERVICES],
+
+  // Universal layers. Shared services hold domain rules that the browser and
+  // the server both apply, so they cannot live under $lib/server; they stay
+  // pure, and `server-layer-leak` still rejects any server-only dependency.
+  // Universal controllers and factories are the browser's own composition.
+  // A universal *repository* is still misplaced: see
+  // `structure:layer-outside-server`.
   [/^src\/lib\/repositories\//, LayerEnum.REPOSITORIES],
   [/^src\/lib\/services\//, LayerEnum.SERVICES],
   [/^src\/lib\/controllers\//, LayerEnum.CONTROLLERS],
@@ -102,6 +116,9 @@ const LAYER_MATCHERS: ReadonlyArray<readonly [RegExp, Layer]> = [
   [/^src\/lib\/(client|hooks|commands)\//, LayerEnum.CLIENT],
   [/^src\/lib\/utils\.(ts|js)$/, LayerEnum.UTILS],
   [/^src\/lib\/utils\//, LayerEnum.UTILS],
+  // Vendored format libraries shared by browser and server, such as an editor
+  // document schema.
+  [/^src\/lib\/infrastructure\//, LayerEnum.UTILS],
   [/^src\/service-worker\.(ts|js)$/, LayerEnum.CLIENT],
 ];
 
@@ -145,9 +162,16 @@ export class FileDiscovery {
 
     files.sort(comparePaths);
 
+    const stylesheets = (await fastGlob(["src/**/*.css"], {
+      cwd: rootPath,
+      ignore: [...IGNORED_DIRS, ...(options.ignore ?? [])],
+      onlyFiles: true,
+    })).map(normalisePath).sort();
+
     return createProjectInfo({
       rootPath,
       files,
+      stylesheets: stylesheets.map(path => ({ path, source: "" })),
       packageName: derivePackageName(rootPath),
     });
   }

@@ -71,7 +71,7 @@ import type { components } from '$lib/api/schema';
 // Raw API type — only used inside this service file
 type RawRecipe = components['schemas']['Recipe'];
 
-export class RecipeService implements IRecipeService {
+export class ApiRecipeCatalog implements RecipeCatalog {
   constructor(private readonly client: ApiClient) {}
 
   async getByUserId(userId: string): Promise<Recipe[]> {

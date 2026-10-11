@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import ts from "typescript";
 import fastGlob from "fast-glob";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -59,13 +60,7 @@ export class CoherenceService {
       const path = join(project.rootPath, name);
       if (!existsSync(path)) continue;
 
-      let source: string;
-      try {
-        source = readFileSync(path, "utf-8");
-      } catch {
-        continue;
-      }
-
+      const source = readFileSync(path, "utf-8");
       const sf = ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true);
       for (const { pattern, line } of this._includePatterns(sf)) {
         // A glob naming a literal path is checked as one; both forms appear in
@@ -132,34 +127,35 @@ export class CoherenceService {
    * agent reading the docs has no way to tell.
    */
   private _checkDocPaths(project: ProjectInfo): Violation[] {
-    const violations: Violation[] = [];
+    const missing: { document: string; line: number; referenced: string }[] = [];
 
     for (const document of this._maintainedDocuments(project.rootPath)) {
-      let source: string;
-      try {
-        source = readFileSync(join(project.rootPath, document), "utf-8");
-      } catch {
-        continue;
-      }
+      const source = readFileSync(join(project.rootPath, document), "utf-8");
 
       for (const match of source.matchAll(DOC_PATH_RE)) {
         const referenced = match[1]!;
         if (existsSync(join(project.rootPath, referenced))) continue;
-
-        violations.push(createViolation({
-          file: document,
+        missing.push({
+          document,
           line: source.slice(0, match.index).split("\n").length,
-          severity: Severity.ERROR,
-          ruleId: `${this.ruleIdPrefix}:broken-doc-path`,
-          message:
-            `${document} points at ${referenced}, which does not exist. Update the `
-            + `reference or drop it — a wrong path in architecture documentation is worse `
-            + `than no path, because the reader follows it.`,
-        }));
+          referenced,
+        });
       }
     }
 
-    return violations;
+    const ignored = gitIgnored(project.rootPath, missing.map(item => item.referenced));
+    return missing
+      .filter(item => !ignored.has(item.referenced))
+      .map(({ document, line, referenced }) => createViolation({
+        file: document,
+        line,
+        severity: Severity.ERROR,
+        ruleId: `${this.ruleIdPrefix}:broken-doc-path`,
+        message:
+          `${document} points at ${referenced}, which does not exist. Update the `
+          + `reference or drop it — a wrong path in architecture documentation is worse `
+          + `than no path, because the reader follows it.`,
+      }));
   }
 
   /**
@@ -175,12 +171,7 @@ export class CoherenceService {
       if (!existsSync(absolute)) return;
       if (UNMAINTAINED_DIR_RE.test(relativeDir)) return;
 
-      let entries;
-      try {
-        entries = readdirSync(absolute, { withFileTypes: true });
-      } catch {
-        return;
-      }
+      const entries = readdirSync(absolute, { withFileTypes: true });
 
       for (const entry of entries) {
         if (!entry.isFile()) continue;
@@ -211,8 +202,28 @@ export class CoherenceService {
         description: "Maintained documentation cites a path that does not exist",
         fixGuidance:
           "Update the reference or remove it. Checked in root and docs/ markdown; "
-          + "generated API references and build output are excluded.",
+          + "generated API references and build output are excluded. A path the repository "
+          + "gitignores is a file the project creates at run time, such as a cached login, "
+          + "so it is allowed to be absent.",
       },
     ];
   }
+}
+
+/**
+ * The subset of `paths` that git ignores in this repository.
+ *
+ * A document may name a file the project writes at run time — a cached session,
+ * a local database — which is absent from every fresh clone by design. Without
+ * git, or outside a repository, nothing is exempt.
+ */
+function gitIgnored(rootPath: string, paths: readonly string[]): ReadonlySet<string> {
+  if (paths.length === 0) return new Set();
+  const result = spawnSync("git", ["check-ignore", "--no-index", "--stdin"], {
+    cwd: rootPath,
+    input: paths.join("\n"),
+    encoding: "utf-8",
+  });
+  if (result.error !== undefined || (result.status !== 0 && result.status !== 1)) return new Set();
+  return new Set(result.stdout.split("\n").map(line => line.trim()).filter(line => line !== ""));
 }

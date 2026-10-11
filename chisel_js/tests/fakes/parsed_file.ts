@@ -2,7 +2,7 @@ import type { FileInfo } from "chisel/checker/models/file_info";
 import type { Layer } from "chisel/checker/models/layer";
 import { createFileInfo } from "chisel/checker/models/file_info";
 import { createProjectInfo } from "chisel/checker/models/project_info";
-import { FileParser } from "chisel/checker/repositories/file_parser";
+import { FileParser, astOf } from "chisel/checker/repositories/file_parser";
 import { Layer as LayerEnum } from "chisel/checker/models/layer";
 
 const parser = new FileParser();
@@ -26,7 +26,7 @@ export function parsedFile(params: {
     language,
     source: params.source,
   });
-  return createFileInfo({ ...base, ast: parser.parse(base) });
+  return createFileInfo({ ...base, ast: astOf(parser.parse(base)) });
 }
 
 /** A single-file project, parsed. */

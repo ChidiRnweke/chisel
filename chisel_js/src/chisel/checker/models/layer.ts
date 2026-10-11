@@ -67,6 +67,18 @@ export function isServerContext(path: string): boolean {
   return /\.remote\.(ts|js)$/.test(filename);
 }
 
+/**
+ * A service that runs only in the browser, as opposed to a shared one.
+ *
+ * Both classify as services. A browser service owns the browser's storage and
+ * its conversation with the server, so it may call remote functions and parse
+ * the server's answers; a shared service under `$lib/services/` holds pure
+ * domain rules both sides apply, and may do neither.
+ */
+export function isBrowserService(path: string): boolean {
+  return path.replace(/\\/g, "/").startsWith("src/lib/client/services/");
+}
+
 export function isPageSveltePath(path: string): boolean {
   return path.endsWith("+page.svelte");
 }

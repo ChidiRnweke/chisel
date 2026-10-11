@@ -72,6 +72,14 @@ describe("CheckController", () => {
     });
   });
 
+  test("a file that does not parse is reported, not silently skipped", async () => {
+    await withProject({ "src/lib/broken.svelte": "<script>\nconst a = 1;\n</script>\n<div {#if}></div>\n" }, async root => {
+      const result = await new CheckController({ services: [] }).check(root);
+      expect(result.violations.map(v => `${v.ruleId} @ ${v.file}`))
+        .toEqual(["checker:unparseable-file @ src/lib/broken.svelte"]);
+    });
+  });
+
   test("applies the exceptions registry", async () => {
     await withProject({
       "src/lib/utils.ts": "export const a = 1;\n",
@@ -178,7 +186,13 @@ describe("CheckController", () => {
       suppression: new SuppressionService(),
     });
     expect(controller.describeAllRules().map(r => r.id).sort())
-      .toEqual(["stub:always", "suppression:missing-reason"]);
+      .toEqual([
+        "checker:unparseable-file",
+        "stub:always",
+        "suppression:missing-reason",
+        "suppression:unknown-rule",
+        "suppression:unused",
+      ]);
   });
 
   test("real graph and real services compose end to end", async () => {

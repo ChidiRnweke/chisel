@@ -23,7 +23,7 @@ layers stay universal.
 |---|---|
 | `src/lib/models/domain.ts` | A model importing another model — models are pure data |
 | `src/lib/server/domain/openai-client.ts` | A folder under `$lib/server/` that is not a layer; its contents are services |
-| `src/lib/services/`, `src/lib/factories/` | Server-side layers at a universal path |
+| `src/lib/repositories/local-notes.ts` | A repository at a universal path |
 | `src/routes/api/notes/+server.ts` | A JSON API route that should be a remote function |
 | `src/lib/components/app/note-badge.svelte` | Hardcoded palette colour instead of a semantic token |
 | `src/lib/factories/production-controller-factory.ts` | Composition root at a universal path, importing concrete server impls |

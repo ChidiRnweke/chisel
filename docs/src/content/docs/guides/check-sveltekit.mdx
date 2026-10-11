@@ -43,6 +43,37 @@ because someone edited a dependency. Override with
 `check` still works without a config; it detects a mode, says so, and
 suggests running `init`.
 
+The config holds facts about the project that the tree cannot reveal. It
+never switches a rule off.
+
+```json
+{
+  "mode": "sveltekit-standalone",
+  "designSystem": {
+    "allowIn": ["src/lib/components/ui/", "src/lib/components/vendor-editor/"],
+    "icons": "$lib/components/icons",
+    "tokens": "src/routes/layout.css",
+    "headingUtilities": ["page-title", "section-title"],
+    "displayUtilities": ["page-title"]
+  },
+  "entryPoints": ["src/worker.ts"],
+  "agent": {
+    "tools": "src/lib/server/factories/agent/tools/",
+    "toolAdapters": ["src/lib/server/infrastructure/agents/sdk-tool.ts"]
+  }
+}
+```
+
+| Key | Fact |
+| --- | --- |
+| `designSystem.allowIn` | Vendored and generated component folders: exempt from the raw-HTML ban; their stylesheets keep their own colour format |
+| `designSystem.icons` | The module every icon comes from; icon libraries are banned elsewhere |
+| `designSystem.tokens` | The stylesheet defining the colour tokens; contrast is checked there |
+| `designSystem.headingUtilities` / `displayUtilities` | Type-scale utilities a heading may use, and those that render display-size text |
+| `entryPoints` | Process entry points beyond hooks, routes and remote functions, such as a worker |
+| `agent.tools` | The folder whose modules turn controller operations into agent tools |
+| `agent.toolAdapters` | The only files that may construct tools from an agent SDK |
+
 ## Run a check
 
 Point `chisel-js check` at your project root. Default path is `.`.

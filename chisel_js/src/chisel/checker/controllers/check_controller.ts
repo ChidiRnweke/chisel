@@ -6,6 +6,7 @@ import type { RuleInfo } from "chisel/checker/rule_metadata";
 import type { SuppressionService } from "chisel/checker/services/shared/suppression";
 import type { Violation } from "chisel/checker/models/violation";
 import { ImportGraphError } from "chisel/checker/errors";
+import { Layer } from "chisel/checker/models/layer";
 import { Severity } from "chisel/checker/models/severity";
 import { createCheckResult } from "chisel/checker/models/result";
 import { createFileInfo } from "chisel/checker/models/file_info";
@@ -14,9 +15,17 @@ import { createViolation } from "chisel/checker/models/violation";
 import { defaultConfig } from "chisel/checker/config";
 import { ExceptionRegistry } from "chisel/checker/repositories/exception_registry";
 import { FileDiscovery } from "chisel/checker/repositories/file_discovery";
-import { FileParser } from "chisel/checker/repositories/file_parser";
+import { FileParser, astOf } from "chisel/checker/repositories/file_parser";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
+const UNPARSEABLE_RULE: RuleInfo = {
+  id: "checker:unparseable-file",
+  category: "checker",
+  description: "A file that does not parse, so rules reading its syntax skipped it",
+  fixGuidance: "Fix the syntax error the message names. Until then the file is checked by "
+    + "import and path rules only, and a violation inside it cannot be reported.",
+};
 
 export interface CheckerService {
   readonly ruleIdPrefix: string;
@@ -69,7 +78,7 @@ export class CheckController {
    * a rule users can trip over but cannot look up.
    */
   describeAllRules(): RuleInfo[] {
-    const rules = this.services.flatMap(service => service.describeRules());
+    const rules = [UNPARSEABLE_RULE, ...this.services.flatMap(service => service.describeRules())];
     if (this.suppression !== undefined) rules.push(...this.suppression.describeRules());
     return rules;
   }
@@ -83,21 +92,33 @@ export class CheckController {
     // Read and parse each file exactly once, then hand the parsed tree to every
     // rule — the shape `chisel_py`'s controller uses to populate
     // `FileInfo.ast_tree`. Rules that match nodes need no parse of their own.
+    const unparseable: Violation[] = [];
     const files = discovered.files.map(file => {
-      let withSource = file;
-      try {
-        withSource = createFileInfo({
-          ...file,
-          source: readFileSync(join(projectPath, file.path), "utf-8"),
-        });
-      } catch {
-        return file;
+      const withSource = createFileInfo({
+        ...file,
+        source: readFileSync(join(projectPath, file.path), "utf-8"),
+      });
+      const outcome = this.parser.parse(withSource);
+      if (outcome.kind !== "parsed") {
+        unparseable.push(createViolation({
+          file: file.path,
+          line: 1,
+          severity: Severity.WARNING,
+          ruleId: "checker:unparseable-file",
+          message: outcome.kind === "partial"
+            ? `The markup does not compile, so rules that read markup skipped this file: ${outcome.reason}`
+            : `The file does not parse, so every rule that reads its syntax skipped it: ${outcome.reason}`,
+        }));
       }
-      return createFileInfo({ ...withSource, ast: this.parser.parse(withSource) });
+      return createFileInfo({ ...withSource, ast: astOf(outcome) });
     });
-    const project = createProjectInfo({ ...discovered, files });
+    const stylesheets = discovered.stylesheets.map(sheet => ({
+      path: sheet.path,
+      source: readFileSync(join(projectPath, sheet.path), "utf-8"),
+    }));
+    const project = createProjectInfo({ ...discovered, files, stylesheets });
 
-    const violations: Violation[] = [...this._buildGraph(project)];
+    const violations: Violation[] = [...unparseable, ...this._buildGraph(project)];
     for (const service of this.services) {
       violations.push(...service.check(project));
     }
@@ -114,6 +135,7 @@ export class CheckController {
     if (this.importGraph === undefined) return [];
     try {
       this.importGraph.build(project);
+      // chisel-ignore fail-loudly:silent-catch -- The failure is returned as an import-graph:build-failed warning in the run's own output.
     } catch (exc) {
       const message = exc instanceof ImportGraphError ? exc.message : String(exc);
       return [createViolation({
@@ -141,7 +163,12 @@ export class CheckController {
 
   private _applySuppressions(violations: Violation[], project: ProjectInfo): Violation[] {
     if (this.suppression === undefined) return violations;
-    const sources = new Map(project.files.map(file => [file.path, file.source]));
-    return this.suppression.check(violations, sources);
+    const sources = new Map([
+      ...project.files.map(file => [file.path, file.source] as const),
+      ...project.stylesheets.map(sheet => [sheet.path, sheet.source] as const),
+    ]);
+    const known = this.describeAllRules().map(rule => rule.id);
+    const tests = new Set(project.files.filter(file => file.layer === Layer.TESTS).map(file => file.path));
+    return this.suppression.check(violations, sources, known, tests);
   }
 }

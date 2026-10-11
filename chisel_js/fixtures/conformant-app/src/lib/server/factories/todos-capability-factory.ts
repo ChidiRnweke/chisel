@@ -1,5 +1,5 @@
 import type { Database } from "$lib/server/db/schema";
-import type { TodoCreator, TodoLister, TodoReader } from "$lib/server/services/todos/contracts";
+import type { TodoCreator, TodoLister, TodoReader } from "$lib/server/services/todos/catalog";
 import { TodoCatalog } from "$lib/server/services/todos/catalog";
 import { TodoRecords } from "$lib/server/repositories/todos/postgres/todos";
 

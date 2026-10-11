@@ -1,6 +1,6 @@
 import type { ActorContext } from "$lib/models/projects";
 import type { CreateTodoInput, Todo, TodoListFilter } from "$lib/models/todos";
-import type { TodoCreator, TodoLister } from "$lib/server/services/todos/contracts";
+import type { TodoCreator, TodoLister } from "$lib/server/services/todos/catalog";
 
 /**
  * The transport-shaped surface a route or remote function calls.

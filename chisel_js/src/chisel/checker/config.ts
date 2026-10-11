@@ -1,7 +1,9 @@
 import type { CheckerMode } from "chisel/checker/models/mode";
 import { CheckerMode as Mode, CHECKER_MODES, isCheckerMode } from "chisel/checker/models/mode";
 import { ConfigError } from "chisel/checker/errors";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
+import type { Json, JsonObject } from "chisel/checker/repositories/json_file";
+import { asObject, asStrings, readJsonFile } from "chisel/checker/repositories/json_file";
 import { join } from "node:path";
 
 export const CONFIG_FILENAME = "chisel.config.json";
@@ -35,18 +37,54 @@ export interface CheckerConfig {
   readonly designSystem: {
     /** Folders exempt from the native-HTML ban: vendored and generated trees. */
     readonly allowIn: readonly string[];
+    /**
+     * The module every icon comes from, such as `$lib/components/icons`. When
+     * set, icon libraries may not be imported anywhere else.
+     */
+    readonly icons?: string;
+    /**
+     * The stylesheet that defines the design tokens, such as
+     * `src/routes/layout.css`. Token rules (contrast, colour steps) read it.
+     */
+    readonly tokens?: string;
+    /** Utilities that set a heading's type scale, beyond `text-*` and `sr-only`. */
+    readonly headingUtilities: readonly string[];
+    /** Utilities that render display-size text, beyond `text-xl` and up. */
+    readonly displayUtilities: readonly string[];
+  };
+  /**
+   * Process entry points beyond the ones SvelteKit names (hooks, routes,
+   * remote functions): a background worker, a seed script. Like a route, they
+   * may call controller operations and nothing below them.
+   */
+  readonly entryPoints: readonly string[];
+  readonly agent: {
+    /**
+     * Folder whose modules turn controller operations into agent tools. A tool
+     * is an entry point: it calls one operation and converts its result.
+     */
+    readonly tools?: string;
+    /** The only files that may construct tools from an agent SDK. */
+    readonly toolAdapters: readonly string[];
   };
 }
 
-const TOP_LEVEL_KEYS = new Set(["mode", "tsconfig", "ignore", "designSystem"]);
-const DESIGN_SYSTEM_KEYS = new Set(["allowIn"]);
+const TOP_LEVEL_KEYS = new Set(["mode", "tsconfig", "ignore", "designSystem", "entryPoints", "agent"]);
+const DESIGN_SYSTEM_KEYS = new Set(["allowIn", "icons", "tokens", "headingUtilities", "displayUtilities"]);
+const AGENT_KEYS = new Set(["tools", "toolAdapters"]);
 
 export function defaultConfig(mode: CheckerMode = Mode.STANDALONE): CheckerConfig {
   return Object.freeze({
     mode,
     tsconfig: "tsconfig.json",
     ignore: Object.freeze([]),
-    designSystem: Object.freeze({ allowIn: Object.freeze([...DEFAULT_ALLOW_IN]) }),
+    designSystem: Object.freeze({
+      allowIn: Object.freeze([...DEFAULT_ALLOW_IN]),
+      headingUtilities: Object.freeze([]),
+      displayUtilities: Object.freeze([]),
+    }),
+    entryPoints: Object.freeze([]),
+    agent: Object.freeze({ toolAdapters: Object.freeze([]) }),
   });
 }
 
@@ -70,21 +108,19 @@ export function loadConfig(rootPath: string): LoadedConfig {
     return { config: defaultConfig(detectMode(rootPath).mode), detected: true };
   }
 
-  let raw: unknown;
-  try {
-    raw = JSON.parse(readFileSync(path, "utf-8"));
-  } catch (exc) {
-    throw new ConfigError(`${CONFIG_FILENAME} is not valid JSON: ${String(exc)}`);
+  const read = readJsonFile(path);
+  if (read.kind === "failure") {
+    throw new ConfigError(`${CONFIG_FILENAME} is not valid JSON: ${read.reason}`);
   }
 
-  return { config: parseConfig(raw), detected: false };
+  return { config: parseConfig(read.value), detected: false };
 }
 
-export function parseConfig(raw: unknown): CheckerConfig {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+export function parseConfig(raw: Json): CheckerConfig {
+  const obj = asObject(raw);
+  if (obj === undefined) {
     throw new ConfigError(`${CONFIG_FILENAME} must contain a JSON object.`);
   }
-  const obj = raw as Record<string, unknown>;
 
   // An unknown key is almost always a typo or a setting from a different tool.
   // Ignoring it silently means the user believes something is configured that
@@ -106,24 +142,63 @@ export function parseConfig(raw: unknown): CheckerConfig {
   const ignore = readStringArray(obj.ignore, "ignore");
 
   let allowIn = [...DEFAULT_ALLOW_IN];
+  let icons: string | undefined;
+  let tokens: string | undefined;
+  let headingUtilities: string[] = [];
+  let displayUtilities: string[] = [];
   if (obj.designSystem !== undefined) {
-    if (typeof obj.designSystem !== "object" || obj.designSystem === null || Array.isArray(obj.designSystem)) {
-      throw new ConfigError(`"designSystem" must be an object.`);
-    }
-    const ds = obj.designSystem as Record<string, unknown>;
+    const ds = readObject(obj.designSystem, "designSystem");
     rejectUnknownKeys(ds, DESIGN_SYSTEM_KEYS, `${CONFIG_FILENAME} "designSystem"`);
     if (ds.allowIn !== undefined) allowIn = readStringArray(ds.allowIn, "designSystem.allowIn");
+    icons = readOptionalString(ds.icons, "designSystem.icons");
+    tokens = readOptionalString(ds.tokens, "designSystem.tokens");
+    headingUtilities = readStringArray(ds.headingUtilities, "designSystem.headingUtilities");
+    displayUtilities = readStringArray(ds.displayUtilities, "designSystem.displayUtilities");
+  }
+
+  const entryPoints = readStringArray(obj.entryPoints, "entryPoints");
+
+  let tools: string | undefined;
+  let toolAdapters: string[] = [];
+  if (obj.agent !== undefined) {
+    const agent = readObject(obj.agent, "agent");
+    rejectUnknownKeys(agent, AGENT_KEYS, `${CONFIG_FILENAME} "agent"`);
+    tools = readOptionalString(agent.tools, "agent.tools");
+    toolAdapters = readStringArray(agent.toolAdapters, "agent.toolAdapters");
   }
 
   return Object.freeze({
     mode,
     tsconfig,
     ignore: Object.freeze(ignore),
-    designSystem: Object.freeze({ allowIn: Object.freeze(allowIn) }),
+    designSystem: Object.freeze({
+      allowIn: Object.freeze(allowIn),
+      ...(icons === undefined ? {} : { icons }),
+      ...(tokens === undefined ? {} : { tokens }),
+      headingUtilities: Object.freeze(headingUtilities),
+      displayUtilities: Object.freeze(displayUtilities),
+    }),
+    entryPoints: Object.freeze(entryPoints),
+    agent: Object.freeze({
+      ...(tools === undefined ? {} : { tools }),
+      toolAdapters: Object.freeze(toolAdapters),
+    }),
   });
 }
 
-function rejectUnknownKeys(obj: Record<string, unknown>, allowed: ReadonlySet<string>, where: string): void {
+function readObject(value: Json, key: string): JsonObject {
+  const obj = asObject(value);
+  if (obj === undefined) throw new ConfigError(`"${key}" must be an object.`);
+  return obj;
+}
+
+function readOptionalString(value: Json | undefined, key: string): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") throw new ConfigError(`"${key}" must be a string.`);
+  return value;
+}
+
+function rejectUnknownKeys(obj: JsonObject, allowed: ReadonlySet<string>, where: string): void {
   const unknown = Object.keys(obj).filter(k => !allowed.has(k));
   if (unknown.length > 0) {
     throw new ConfigError(
@@ -134,12 +209,13 @@ function rejectUnknownKeys(obj: Record<string, unknown>, allowed: ReadonlySet<st
   }
 }
 
-function readStringArray(value: unknown, key: string): string[] {
+function readStringArray(value: Json | undefined, key: string): string[] {
   if (value === undefined) return [];
-  if (!Array.isArray(value) || value.some(v => typeof v !== "string")) {
+  const strings = asStrings(value);
+  if (strings === undefined || !Array.isArray(value) || strings.length !== value.length) {
     throw new ConfigError(`"${key}" must be an array of strings.`);
   }
-  return [...(value as string[])];
+  return strings;
 }
 
 export interface DetectionResult {
@@ -162,7 +238,15 @@ export function detectMode(rootPath: string): DetectionResult {
   const standalone: string[] = [];
   const bff: string[] = [];
 
-  const deps = readDependencies(rootPath);
+  const dependencies = readDependencies(rootPath);
+  if (dependencies.kind === "failure") {
+    return {
+      mode: Mode.STANDALONE,
+      reasons: [`package.json could not be read (${dependencies.reason}); assumed standalone`],
+      ambiguous: true,
+    };
+  }
+  const deps = dependencies.names;
   if (deps.has("drizzle-orm")) standalone.push("drizzle-orm is a dependency");
   if (existsSync(join(rootPath, "src/lib/server"))) standalone.push("src/lib/server/ exists");
   if (deps.has("openapi-fetch")) bff.push("openapi-fetch is a dependency");
@@ -183,20 +267,20 @@ export function detectMode(rootPath: string): DetectionResult {
   return { mode: Mode.STANDALONE, reasons, ambiguous: true };
 }
 
-function readDependencies(rootPath: string): Set<string> {
+type Dependencies =
+  | { readonly kind: "read"; readonly names: ReadonlySet<string> }
+  | { readonly kind: "failure"; readonly reason: string };
+
+function readDependencies(rootPath: string): Dependencies {
   const path = join(rootPath, "package.json");
-  if (!existsSync(path)) return new Set();
-  try {
-    const pkg = JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
-    const names = new Set<string>();
-    for (const field of ["dependencies", "devDependencies", "peerDependencies"]) {
-      const section = pkg[field];
-      if (typeof section === "object" && section !== null) {
-        for (const name of Object.keys(section)) names.add(name);
-      }
-    }
-    return names;
-  } catch {
-    return new Set();
+  if (!existsSync(path)) return { kind: "read", names: new Set() };
+  const read = readJsonFile(path);
+  if (read.kind === "failure") return read;
+  const pkg = asObject(read.value);
+  if (pkg === undefined) return { kind: "failure", reason: "package.json is not a JSON object" };
+  const names = new Set<string>();
+  for (const field of ["dependencies", "devDependencies", "peerDependencies"]) {
+    for (const name of Object.keys(asObject(pkg[field]) ?? {})) names.add(name);
   }
+  return { kind: "read", names };
 }

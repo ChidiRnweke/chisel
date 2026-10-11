@@ -10,6 +10,9 @@ import { createViolation } from "chisel/checker/models/violation";
  * `db` is part of the repository layer: the schema is the repositories' own
  * data definition, not a peer they would have to import across a boundary.
  *
+ * `infrastructure` holds provider clients and runtime plumbing. It classifies
+ * as utils, so it can import no layer above it.
+ *
  * `factories` is wiring, not a layer in the import-direction sense, but it
  * earns a place here: once an app has more than a handful of factory modules,
  * leaving them flat at the server root means the directory listing stops
@@ -21,6 +24,7 @@ const SERVER_LAYER_FOLDERS = new Set([
   "services",
   "controllers",
   "factories",
+  "infrastructure",
 ]);
 
 /** Files allowed directly under `$lib/server/`, rather than in a layer folder. */
@@ -29,12 +33,15 @@ const SERVER_ROOT_FILE_RE = /^src\/lib\/server\/([^/]*[Ff]actory|application|con
 /**
  * Server-side layers that must live under `$lib/server/`, and where a universal
  * copy of each is found.
+ *
+ * Only repositories. Services, controllers and factories exist on both sides:
+ * shared services hold the domain rules the browser and the server both apply,
+ * and the browser composes its own controllers in its own factories. A
+ * repository at a universal path is neither: the browser's repositories live
+ * under `$lib/client/repositories/`.
  */
 const MISPLACED_LAYER_DIRS: ReadonlyArray<readonly [RegExp, string, string]> = [
-  [/^src\/lib\/services\//, "src/lib/services/", "src/lib/server/services/"],
-  [/^src\/lib\/controllers\//, "src/lib/controllers/", "src/lib/server/controllers/"],
   [/^src\/lib\/repositories\//, "src/lib/repositories/", "src/lib/server/repositories/"],
-  [/^src\/lib\/(factories|factory)\//, "src/lib/factories/", "src/lib/server/"],
 ];
 
 /**
@@ -141,11 +148,11 @@ export class LayoutService {
       {
         id: "structure:layer-outside-server",
         category: this.ruleIdPrefix,
-        description: "A server-side layer sits at a universal path instead of under $lib/server/.",
+        description: "A repository sits at a universal path instead of under $lib/server/.",
         fixGuidance:
-          "Move services, controllers, repositories and the factory under $lib/server/. "
-          + "SvelteKit then makes a client import of them a build error, which is "
-          + "stronger than anything a linter can offer. Reported once per directory.",
+          "Move database repositories under $lib/server/repositories/ and browser "
+          + "repositories under $lib/client/repositories/. SvelteKit then makes a client "
+          + "import of a server repository a build error. Reported once per directory.",
       },
       {
         id: "structure:unknown-server-folder",
@@ -153,7 +160,7 @@ export class LayoutService {
         description: "A folder under $lib/server/ does not name a layer.",
         fixGuidance:
           "$lib/server/ holds db/, repositories/, services/, controllers/, factories/, "
-          + "config.ts and the factory. An adapter for an external capability is a "
+          + "infrastructure/, config.ts and the factory. An adapter for an external capability is a "
           + "service, not a repository — repositories are persistence. Wiring modules "
           + "may stay at the root or be grouped under factories/. Reported once per folder.",
       },

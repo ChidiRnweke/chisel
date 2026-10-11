@@ -28,6 +28,13 @@ const TEST_ROOTS = ["tests/unit/", "tests/integration/", "tests/e2e/"];
  */
 const MIN_REASON_LENGTH = 12;
 
+/** Whether `foo.spec.ts` has its `foo.ts` / `foo.js` in the same directory. */
+function hasSubjectBeside(path: string, paths: ReadonlySet<string>): boolean {
+  const subject = path.replace(/\.(?:test|spec)\.(?:ts|js)$/, "");
+  if (subject === path) return false;
+  return [".ts", ".js"].some(extension => paths.has(`${subject}${extension}`));
+}
+
 function lineOf(source: string, offset: number): number {
   return source.slice(0, offset).split("\n").length;
 }
@@ -55,7 +62,8 @@ function isSkipDeclaration(name: string | undefined): boolean {
 }
 
 function isAssertion(name: string | undefined): boolean {
-  return name === "expect" || name === "expect.element" || name === "expect.soft";
+  return name === "expect" || name === "expect.element" || name === "expect.soft"
+    || name === "expect.poll";
 }
 
 function callbackOf(node: ts.CallExpression): ts.ArrowFunction | ts.FunctionExpression | undefined {
@@ -83,10 +91,11 @@ export class TestStructureService {
 
   check(project: ProjectInfo): Violation[] {
     const violations: Violation[] = [];
+    const paths = new Set(project.files.map(file => file.path));
     for (const file of project.files) {
       if (file.layer !== Layer.TESTS) continue;
       if (file.source === "") continue;
-      violations.push(...this._checkTestLocation(file));
+      violations.push(...this._checkTestLocation(file, paths));
       violations.push(...this._checkAst(file));
     }
     return violations;
@@ -94,13 +103,15 @@ export class TestStructureService {
 
   /**
    * A test file lives beside the code it covers, or in a `tests/` directory
-   * that names its kind. Both are coherent conventions; a spec in `scripts/`
-   * is neither.
+   * that names its kind. Under `src/` every spec counts as colocated. Outside
+   * it — a repository script, say — a spec is colocated when the file it is
+   * named after sits next to it: `scripts/deploy.spec.ts` beside
+   * `scripts/deploy.ts`.
    */
-  private _checkTestLocation(file: FileInfo): Violation[] {
+  private _checkTestLocation(file: FileInfo, paths: ReadonlySet<string>): Violation[] {
     if (!TEST_FILE_RE.test(file.path)) return [];
 
-    const colocated = file.path.startsWith("src/");
+    const colocated = file.path.startsWith("src/") || hasSubjectBeside(file.path, paths);
     const inTestRoot = TEST_ROOTS.some(root => file.path.startsWith(root));
     if (colocated || inTestRoot) return [];
 
@@ -124,8 +135,8 @@ export class TestStructureService {
   /** One walk of the file, collecting every AST-based finding. */
   private _checkAst(file: FileInfo): Violation[] {
     const violations: Violation[] = [];
-    // End-to-end specs drive a whole flow; asserting once per step is the point
-    // of them, so the assertion count rule does not apply.
+    // End-to-end specs drive a whole flow and often assert through the page
+    // helpers they call, so the assertion rule does not apply to them.
     const isEndToEnd = file.path.includes("tests/e2e/") || /\.e2e\.(?:ts|js)$/.test(file.path);
 
     for (const { sf, offset } of scriptsOf(file.ast)) {
@@ -183,20 +194,16 @@ export class TestStructureService {
 
           if (!isEndToEnd && isTestDeclaration(name)) {
             const body = callbackOf(node);
-            if (body !== undefined) {
-              const count = this._countAssertions(body.body);
-              if (count > 1) {
-                violations.push(createViolation({
-                  file: file.path,
-                  line: at(node),
-                  severity: Severity.ERROR,
-                  ruleId: `${this.ruleIdPrefix}:one-assert-per-test`,
-                  message:
-                    `This test makes ${count} assertions. Split it, one invariant each: a `
-                    + "multi-assertion test fails at the first wrong line and hides the "
-                    + "rest, and its name can no longer say what broke.",
-                }));
-              }
+            if (body !== undefined && this._countAssertions(body.body) === 0) {
+              violations.push(createViolation({
+                file: file.path,
+                line: at(node),
+                severity: Severity.ERROR,
+                ruleId: `${this.ruleIdPrefix}:no-assertion`,
+                message:
+                  "This test asserts nothing, so it passes whatever the code does. Assert the "
+                  + "outcome of the behaviour it names, in the test body where a reader sees it.",
+              }));
             }
           }
         }
@@ -221,14 +228,19 @@ export class TestStructureService {
             severity: Severity.ERROR,
             ruleId: `${this.ruleIdPrefix}:unsafe-dependency-cast`,
             message:
-              "`as unknown as T` exists to silence the type error that was telling you the "
-              + "fake does not match the interface. Complete the fake, or narrow the "
-              + "interface the code under test actually depends on.",
+              "`{ ... } as unknown as T` silences the type error that was telling you the "
+              + "fixture is incomplete. Build a complete value with a typed builder or fake, "
+              + "or narrow the type the code under test actually depends on.",
           }));
         }
 
+        // A double declared inside a spec is typed by nothing else. A shared one
+        // under a testing folder is passed to production parameters, which type it
+        // where it is used — and many of those are controllable servers and
+        // journals with no production interface to name.
         if (
-          ts.isClassDeclaration(node)
+          TEST_FILE_RE.test(file.path)
+          && ts.isClassDeclaration(node)
           && node.name !== undefined
           && TEST_DOUBLE_NAME_RE.test(node.name.text)
           && (node.heritageClauses ?? []).length === 0
@@ -254,11 +266,23 @@ export class TestStructureService {
     return violations;
   }
 
-  /** `x as unknown as T` — an `as` whose operand is itself an `as unknown`. */
+  /**
+   * `{ ... } as unknown as T` — a hand-built object or array forced into a type
+   * it does not satisfy.
+   *
+   * Only literals count. A partial literal is the fixture that represents a
+   * state production cannot produce: the missing fields are exactly what the
+   * type checker was reporting. Casting a single value is a different act —
+   * branding an id, or feeding a deliberately corrupt value to a parser to
+   * prove it rejects it — and the reader can see the whole value being cast.
+   */
   private _isUnknownCast(node: ts.Node): boolean {
     if (!ts.isAsExpression(node)) return false;
     const inner = node.expression;
-    return ts.isAsExpression(inner) && inner.type.kind === ts.SyntaxKind.UnknownKeyword;
+    if (!ts.isAsExpression(inner) || inner.type.kind !== ts.SyntaxKind.UnknownKeyword) return false;
+    let operand: ts.Expression = inner.expression;
+    while (ts.isParenthesizedExpression(operand)) operand = operand.expression;
+    return ts.isObjectLiteralExpression(operand) || ts.isArrayLiteralExpression(operand);
   }
 
   /**
@@ -328,12 +352,14 @@ export class TestStructureService {
           + "When it fails, the name alone should say what broke.",
       },
       {
-        id: "test-structure:one-assert-per-test",
+        id: "test-structure:no-assertion",
         category: this.ruleIdPrefix,
-        description: "More than one assertion in a test",
+        description: "A test that asserts nothing",
         fixGuidance:
-          "Split into separate tests, one per assertion, each named after its invariant. "
-          + "End-to-end specs are exempt.",
+          "Assert the outcome of the behaviour the test names, in the test body. One test "
+          + "covers one behaviour and may assert all of its outcomes; do not split outcomes "
+          + "just to count assertions, and do not hide them in helpers. End-to-end specs "
+          + "are exempt.",
       },
       {
         id: "test-structure:mocking-banned",
@@ -355,18 +381,21 @@ export class TestStructureService {
       {
         id: "test-structure:untyped-fake",
         category: this.ruleIdPrefix,
-        description: "A Fake*/Stub*/InMemory* class declares no interface",
+        description: "A Fake*/Stub*/InMemory* class declared in a spec with no interface",
         fixGuidance:
-          "Add `implements <Interface>`. Without it the fake drifts from the real contract "
-          + "silently, and the first thing to notice is a production path.",
+          "Add `implements <Interface>`, or move the double to the shared testing folder "
+          + "where production parameters type it. Without either, the fake drifts from the "
+          + "real contract silently.",
       },
       {
         id: "test-structure:unsafe-dependency-cast",
         category: this.ruleIdPrefix,
-        description: "`as unknown as T` in a test",
+        description: "An object or array literal cast through `unknown` in a test",
         fixGuidance:
-          "The cast is silencing the error that says the fake does not match the interface. "
-          + "Complete the fake, or narrow the interface the code under test depends on.",
+          "The cast silences the error that says the fixture is incomplete, so the test runs "
+          + "on a state production cannot produce. Build a complete value, or narrow the type "
+          + "the code under test depends on. Casting one value (a branded id, a corrupt input "
+          + "for a parser) is not reported.",
       },
       {
         id: "test-structure:interaction-assertion",

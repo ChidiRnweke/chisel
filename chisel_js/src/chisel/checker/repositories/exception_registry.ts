@@ -1,19 +1,31 @@
 import type { Exemption } from "chisel/checker/models/exemption";
 import type { Violation } from "chisel/checker/models/violation";
 import { createExemption } from "chisel/checker/models/exemption";
-import { existsSync, readFileSync } from "node:fs";
+import type { Json, JsonObject } from "chisel/checker/repositories/json_file";
+import { ConfigError } from "chisel/checker/errors";
+import { asObject, asString, asStrings, readJsonFile } from "chisel/checker/repositories/json_file";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 export class ExceptionRegistry {
   private readonly exemptions: Exemption[] = [];
 
+  /**
+   * Load `chisel-exceptions.json`. A file that does not parse stops the run: a
+   * registry read as empty would turn every exemption into a violation, and a
+   * registry that silently loses entries is worse.
+   */
   load(root: string): void {
     const configPath = join(root, "chisel-exceptions.json");
     if (!existsSync(configPath)) return;
-    const data = JSON.parse(readFileSync(configPath, "utf-8")) as { exceptions?: unknown };
-    const entries = Array.isArray(data.exceptions) ? data.exceptions : [];
-    for (const entry of entries) {
-      this.exemptions.push(this.toExemption(entry));
+    const read = readJsonFile(configPath);
+    if (read.kind === "failure") {
+      throw new ConfigError(`chisel-exceptions.json is not valid JSON: ${read.reason}`);
+    }
+    const entries = asObject(read.value)?.["exceptions"];
+    if (!Array.isArray(entries)) return;
+    for (const entry of entries as readonly Json[]) {
+      this.exemptions.push(this.toExemption(asObject(entry) ?? {}));
     }
   }
 
@@ -27,12 +39,11 @@ export class ExceptionRegistry {
     return violations.filter(v => !this.isExempted(v.file, v.ruleId));
   }
 
-  private toExemption(entry: unknown): Exemption {
-    const record = (entry ?? {}) as Record<string, unknown>;
+  private toExemption(entry: JsonObject): Exemption {
     return createExemption({
-      filePatterns: toStringList(record.files),
-      ruleIds: toStringList(record.rules),
-      reason: typeof record.reason === "string" ? record.reason : "",
+      filePatterns: asStrings(entry["files"]) ?? [],
+      ruleIds: asStrings(entry["rules"]) ?? [],
+      reason: asString(entry["reason"]) ?? "",
     });
   }
 
@@ -51,10 +62,6 @@ export class ExceptionRegistry {
   }
 }
 
-function toStringList(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === "string");
-}
 
 // Mirrors Python's fnmatch so patterns behave identically under both checkers,
 // even though the files differ by ecosystem (chisel-exceptions.json here,

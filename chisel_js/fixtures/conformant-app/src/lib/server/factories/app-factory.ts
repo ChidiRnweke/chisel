@@ -1,6 +1,6 @@
 import type { ControllerFactory } from "./contracts";
 import { createApplication } from "$lib/server/application";
-import { connect } from "$lib/server/db";
+import { Connection } from "$lib/server/db";
 import { databaseUrl } from "$lib/server/config";
 
 /** Built on first use, then reused: the graph is assembled once per process. */
@@ -12,7 +12,7 @@ class DeferredValue<T> {
   }
 }
 
-const application = new DeferredValue(() => createApplication({ database: connect(databaseUrl()) }));
+const application = new DeferredValue(() => createApplication({ database: new Connection(databaseUrl()) }));
 
 /**
  * The one entry point routes and remote functions use. Keeping it static means

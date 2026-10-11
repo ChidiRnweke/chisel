@@ -48,11 +48,11 @@ describe("acceptance: standalone SSR specimen", () => {
     ]);
   });
 
-  test("server-side layers at a universal path, reported once per directory", () => {
-    // Not once per file: a misplaced layer is one decision to reverse.
+  test("a repository at a universal path, reported once per directory", () => {
+    // Shared services and browser factories may be universal; a repository may
+    // not. Not once per file: a misplaced layer is one decision to reverse.
     expect(findings("structure:layer-outside-server")).toEqual([
-      "structure:layer-outside-server @ src/lib/factories/production-controller-factory.ts:1",
-      "structure:layer-outside-server @ src/lib/services/notes/search.ts:1",
+      "structure:layer-outside-server @ src/lib/repositories/local-notes.ts:1",
     ]);
   });
 
@@ -124,7 +124,6 @@ describe("acceptance: standalone SSR specimen", () => {
       "topology:composition-root-construction @ src/lib/server/application.ts:11",
       "topology:composition-root-placeholder @ src/lib/server/application.ts:13",
       "topology:deep-feature-import @ src/lib/components/app/note-list.svelte:5",
-      "topology:factory-shape @ src/lib/server/factories/broken-factory.ts:1",
       "topology:generic-bucket-directory @ src/lib/misc/scratch.ts:1",
       "topology:layer-barrel-import @ src/lib/components/app/note-list.svelte:3",
     ]);

@@ -19,7 +19,7 @@ skills/
   building-python-backend/SKILL.md          ← teaches service/controller/repository patterns
   building-sveltekit-frontend/SKILL.md      ← teaches $effect, onMount, store patterns
   designing-svelte-ui/SKILL.md              ← teaches shadcn component rules, Tailwind tokens
-  qa/SKILL.md                               ← teaches one-assert-per-test, fakes over mocks
+  qa/SKILL.md                               ← teaches behaviour tests, fakes over mocks
 
 chisel check .                              ← enforces every rule from those skills
 ```

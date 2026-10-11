@@ -4,15 +4,17 @@ import { createProjectInfo } from "chisel/checker/models/project_info";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 
 /** Run the service over a throwaway tree; it reads the filesystem, not ProjectInfo. */
-function check(files: Record<string, string>): string[] {
+function check(files: Record<string, string>, options: { git?: boolean } = {}): string[] {
   const root = mkdtempSync(join(tmpdir(), "chisel-coherence-"));
   try {
     for (const [path, source] of Object.entries(files)) {
       mkdirSync(join(root, path, ".."), { recursive: true });
       writeFileSync(join(root, path), source);
     }
+    if (options.git === true) spawnSync("git", ["init", "-q"], { cwd: root });
     return new CoherenceService()
       .check(createProjectInfo({ rootPath: root }))
       .map(v => v.ruleId);
@@ -66,6 +68,13 @@ describe("coherence — documentation paths", () => {
       "ARCHITECTURE.md": "The wiring lives in `src/lib/server/application.ts`.\n",
       "src/lib/server/application.ts": "export const app = 1;\n",
     })).toEqual([]);
+  });
+
+  test("a cited path the repository gitignores is a run-time file, not a broken one", () => {
+    expect(check({
+      ".gitignore": "tests/.auth/\n",
+      "README.md": "The login is cached in `tests/.auth/state.json`.\n",
+    }, { git: true })).toEqual([]);
   });
 
   test("docs one level down are maintained too", () => {

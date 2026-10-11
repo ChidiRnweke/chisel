@@ -76,23 +76,18 @@ export const actions: Actions = {
 ## Service — interface + implementation
 
 ```typescript
-// src/lib/services/IRecipeService.ts
-import type { Recipe, CreateRecipeInput } from "$lib/models";
+// src/lib/server/services/recipes/catalog.ts
+import type { Recipe, CreateRecipeInput } from '$lib/models/recipes';
+import type { ApiClient } from '$lib/api/client';
+import { ServiceError } from '$lib/errors';
 
-export interface IRecipeService {
+/** The capability callers depend on, declared beside the class that offers it. */
+export interface RecipeCatalog {
   getByUserId(userId: string): Promise<Recipe[]>;
   create(input: CreateRecipeInput): Promise<Recipe>;
 }
-```
 
-```typescript
-// src/lib/services/RecipeService.ts
-import type { IRecipeService } from './IRecipeService';
-import type { Recipe, CreateRecipeInput } from '$lib/models';
-import type { ApiClient } from '$lib/api/client';
-import { ServiceError } from '$lib/models/errors';
-
-export class RecipeService implements IRecipeService {
+export class ApiRecipeCatalog implements RecipeCatalog {
   constructor(private readonly client: ApiClient) {}
 
   async getByUserId(userId: string): Promise<Recipe[]> {
@@ -123,15 +118,15 @@ function mapToRecipe(raw: components['schemas']['Recipe']): Recipe { ... }
 ## Controller — orchestration with DI
 
 ```typescript
-// src/lib/controllers/RecipeController.ts
-import type { IRecipeService } from "$lib/services/IRecipeService";
-import type { IPantryService } from "$lib/services/IPantryService";
+// src/lib/server/controllers/recipes/controller.ts
+import type { RecipeCatalog } from "$lib/server/services/recipes/catalog";
+import type { PantryStock } from "$lib/server/services/pantry/stock";
 import type { Recipe } from "$lib/models";
 
 export class RecipeController {
   constructor(
-    private readonly recipeService: IRecipeService,
-    private readonly pantryService: IPantryService,
+    private readonly recipeService: RecipeCatalog,
+    private readonly pantryService: PantryStock,
   ) {}
 
   async getRecipesForUser(userId: string): Promise<Recipe[]> {

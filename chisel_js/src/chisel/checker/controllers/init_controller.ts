@@ -39,9 +39,10 @@ export class InitController {
     const detection = detectMode(projectPath);
     const mode = options.mode ?? detection.mode;
 
+    const defaults = defaultConfig(mode);
     const config: CheckerConfig = {
-      ...defaultConfig(mode),
-      designSystem: { allowIn: seedAllowIn(projectPath) },
+      ...defaults,
+      designSystem: { ...defaults.designSystem, allowIn: seedAllowIn(projectPath) },
     };
 
     const written = options.dryRun !== true;
@@ -70,14 +71,10 @@ function seedAllowIn(projectPath: string): readonly string[] {
   const componentsDir = join(projectPath, "src/lib/components");
   const found = new Set<string>(DEFAULT_ALLOW_IN);
 
-  let entries: string[];
-  try {
-    entries = readdirSync(componentsDir, { withFileTypes: true })
-      .filter(entry => entry.isDirectory())
-      .map(entry => entry.name);
-  } catch {
-    return [...found];
-  }
+  if (!existsSync(componentsDir)) return [...found];
+  const entries = readdirSync(componentsDir, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name);
 
   for (const name of entries) {
     if (VENDORED_HINTS.includes(name.toLowerCase())) {
