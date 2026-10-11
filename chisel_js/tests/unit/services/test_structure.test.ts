@@ -120,10 +120,17 @@ describe("test-structure — assertions", () => {
 });
 
 describe("test-structure — test doubles", () => {
-  test("a fake with no declared interface is reported", () => {
+  test("a fake declared in a spec with no interface is reported", () => {
+    expect(check("src/lib/notes.spec.ts", `
+      class FakeNotes { list() { return []; } }
+      test("lists the notes it holds", () => { expect(new FakeNotes().list()).toEqual([]); });
+    `)).toEqual(["test-structure:untyped-fake"]);
+  });
+
+  test("a shared fake is typed where production parameters receive it", () => {
     expect(check("src/lib/testing/fakes/notes.ts",
-      "export class FakeNotes { list() { return []; } }",
-    )).toEqual(["test-structure:untyped-fake"]);
+      "export class InMemorySyncServer { pull() { return []; } }",
+    )).toEqual([]);
   });
 
   test("a fake declaring the interface it stands in for passes", () => {

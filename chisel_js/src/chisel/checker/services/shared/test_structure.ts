@@ -234,8 +234,13 @@ export class TestStructureService {
           }));
         }
 
+        // A double declared inside a spec is typed by nothing else. A shared one
+        // under a testing folder is passed to production parameters, which type it
+        // where it is used — and many of those are controllable servers and
+        // journals with no production interface to name.
         if (
-          ts.isClassDeclaration(node)
+          TEST_FILE_RE.test(file.path)
+          && ts.isClassDeclaration(node)
           && node.name !== undefined
           && TEST_DOUBLE_NAME_RE.test(node.name.text)
           && (node.heritageClauses ?? []).length === 0
@@ -376,10 +381,11 @@ export class TestStructureService {
       {
         id: "test-structure:untyped-fake",
         category: this.ruleIdPrefix,
-        description: "A Fake*/Stub*/InMemory* class declares no interface",
+        description: "A Fake*/Stub*/InMemory* class declared in a spec with no interface",
         fixGuidance:
-          "Add `implements <Interface>`. Without it the fake drifts from the real contract "
-          + "silently, and the first thing to notice is a production path.",
+          "Add `implements <Interface>`, or move the double to the shared testing folder "
+          + "where production parameters type it. Without either, the fake drifts from the "
+          + "real contract silently.",
       },
       {
         id: "test-structure:unsafe-dependency-cast",

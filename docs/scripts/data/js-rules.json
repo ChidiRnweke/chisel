@@ -597,8 +597,8 @@
   {
     "id": "test-structure:untyped-fake",
     "category": "test-structure",
-    "description": "A Fake*/Stub*/InMemory* class declares no interface",
-    "fixGuidance": "Add `implements <Interface>`. Without it the fake drifts from the real contract silently, and the first thing to notice is a production path.",
+    "description": "A Fake*/Stub*/InMemory* class declared in a spec with no interface",
+    "fixGuidance": "Add `implements <Interface>`, or move the double to the shared testing folder where production parameters type it. Without either, the fake drifts from the real contract silently.",
     "skillName": "qa"
   },
   {
