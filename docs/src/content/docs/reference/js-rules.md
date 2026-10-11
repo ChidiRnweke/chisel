@@ -13,7 +13,145 @@ tableOfContents:
 This page mirrors `scripts/data/js-rules.json` captured at release time. Run `chisel-js rules --json` to see the live list for your installed version.
 :::
 
-70 rules across 16 categories, enforced by `chisel-js`.
+112 rules across 23 categories, enforced by `chisel-js`.
+
+## Agent
+
+`agent` · 1 rule
+
+### `agent:tool-boundary`
+
+An agent tool or protocol server constructed outside the declared tool adapters
+
+**Fix.** Build tools through the adapter listed in `agent.toolAdapters`, which applies the shared approval and feedback policy.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+## Architecture
+
+`architecture` · 12 rules
+
+### `architecture:indirect-dependency`
+
+Prohibited behaviour reached through an alias, barrel, namespace import, wrapper or injected function port; or an entry point calling a service, repository or store
+
+**Fix.** Put the application operation in a controller and inject the narrow capability there. An entry point parses its input and calls controller operations.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `architecture:public-service-helper`
+
+An exported service function or callable, or a public service member outside its implemented contract
+
+**Fix.** Expose one cohesive class capability through its interface; keep helpers private. A test does not justify a public helper.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `architecture:service-interface`
+
+A public service class without explicit interface contracts, including alias and default exports
+
+**Fix.** Declare the capability callers need and `implements` it.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `architecture:concrete-dependency`
+
+A concrete implementation used as a dependency type, including through aliases, utility types and inferred factory results
+
+**Fix.** Depend on the declared contract. `Pick<ConcreteService, …>` is still the concrete class, and a factory's public results need interface annotations; `satisfies` keeps the inferred concrete type.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `architecture:controller-orchestration`
+
+A controller invoking another controller, through an interface, alias, getter or callback
+
+**Fix.** Coordinate the underlying services in the owning controller. Shared data types belong in models.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `architecture:controller-repository`
+
+A controller calling a repository, directly or through an injected port typed as one
+
+**Fix.** Put a service between them. The service owns the reads and writes and the rules around them.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `architecture:controller-collaborator`
+
+A controller result exposing a service, transport, repository or writable store
+
+**Fix.** Return operation results or readonly state views, never the collaborators that produced them.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `architecture:retained-service-state`
+
+Mutable service fields, module state or captured state that survive an operation
+
+**Fix.** Keep values local to the operation. State that must outlive it is a database record on the server and a store in the browser.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `architecture:store-workflow`
+
+A store invoking a capability or network transport, directly or through a traced callback
+
+**Fix.** A store applies controlled updates. Let a controller do the work and write the result.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `architecture:factory-workflow`
+
+A factory executing a capability, including inside a callback it returns
+
+**Fix.** Construct and connect dependencies only. Execution belongs to a controller, called by an entry point.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `architecture:tool-operation`
+
+An agent tool calling a service, repository or store instead of a controller operation
+
+**Fix.** Wrap the one public controller operation the tool stands for. When none exists, give the controller an ordinary operation any entry point could call.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `architecture:unresolved-source`
+
+Source or a local module the analyzer cannot inspect
+
+**Fix.** Repair the syntax or the module path. An incomplete scan is not a passing one.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
 
 ## Bundle
 
@@ -24,6 +162,20 @@ This page mirrors `scripts/data/js-rules.json` captured at release time. Run `ch
 A client chunk containing application code exceeds the size budget
 
 **Fix.** Split the route or import the heavy part dynamically. Vendor-only chunks are tolerated as a known cost; a chunk mixing application code is a regression. Requires a production build — run `chisel-js bundle` after building.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+## Checker
+
+`checker` · 1 rule
+
+### `checker:unparseable-file`
+
+A file that does not parse, so rules reading its syntax skipped it
+
+**Fix.** Fix the syntax error the message names. Until then the file is checked by import and path rules only, and a violation inside it cannot be reported.
 
 :::tip[Skill]
 Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
@@ -47,7 +199,7 @@ Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>`
 
 Maintained documentation cites a path that does not exist
 
-**Fix.** Update the reference or remove it. Checked in root and docs/ markdown; generated API references and build output are excluded.
+**Fix.** Update the reference or remove it. Checked in root and docs/ markdown; generated API references and build output are excluded. A path the repository gitignores is a file the project creates at run time, such as a cached login, so it is allowed to be absent.
 
 :::tip[Skill]
 Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
@@ -341,6 +493,170 @@ Raw <li> used as menu structure
 Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
 :::
 
+## Design System
+
+`design-system` · 16 rules
+
+### `design-system:no-raw-font-family`
+
+A raw font-family utility (font-sans, font-serif, font-mono)
+
+**Fix.** Use the type utility that carries the family, so faces stay where the design system puts them.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:font-weight-bounds`
+
+A font weight outside 400–800
+
+**Fix.** Use font-normal through font-extrabold. Thin and black weights fall apart at UI sizes.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:no-em-font-size`
+
+A font-size in em
+
+**Fix.** Use rem or a type-scale utility; em compounds through nesting.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:uppercase-needs-tracking`
+
+Uppercase text without positive letter-spacing
+
+**Fix.** Add a tracking-wide class. Capitals set solid read as shouting and crowd each other.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:no-wide-tracking-on-display`
+
+Wide tracking on display-size text
+
+**Fix.** Display sizes already space themselves; keep tracking normal or tight.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:no-hex-rgb-color`
+
+A hex or rgb() colour literal
+
+**Fix.** Use a token, or oklch() in the token stylesheet. Vendored theme stylesheets are exempt.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:no-runtime-color-derivation`
+
+A colour derived at run time (lighten, color-mix, relative colours)
+
+**Fix.** Define the colour as a token. A token wash toward transparent is the one allowed color-mix.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:no-pure-black`
+
+Pure black as a colour
+
+**Fix.** Use the foreground token; pure black is harsher than any surface it sits on.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:token-contrast-aa`
+
+A text token pair below WCAG AA 4.5:1, or a missing pair
+
+**Fix.** Adjust the token's lightness in the token stylesheet until the pair passes in both modes.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:heading-needs-utility`
+
+A heading element without a type-scale utility
+
+**Fix.** Add a text size or a configured heading utility; otherwise it inherits browser sizes.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:justify-needs-hyphens`
+
+Justified text without automatic hyphenation
+
+**Fix.** Add hyphens-auto, or align left. Justified text without hyphens opens rivers.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:text-shadow-glow-only`
+
+A text shadow with an offset or a small blur
+
+**Fix.** Only soft glows (no offset, blur of 8px or more) are allowed.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:no-accent-bars`
+
+A thick coloured edge bar on a container
+
+**Fix.** Mark state with a wash or a hairline ring instead of a coloured side border.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:no-ad-hoc-shadow`
+
+A shadow outside the vendored primitives
+
+**Fix.** The surfaces are flat; use ring-1 ring-inset for a hairline edge.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:alpha-fixed-steps`
+
+A colour opacity step outside the sanctioned steps
+
+**Fix.** Use /5, /10, /15, /20, /25, /30, /35, /40, /50, /60, /70, /75, /80 or /90.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `design-system:icon-library`
+
+An icon library imported instead of the project's own icon set
+
+**Fix.** Import the icon from the module named in `designSystem.icons`. Component generators write library imports into what they add; replace them.
+
+:::tip[Skill]
+Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to install it.
+:::
+
 ## Error Flow
 
 `error-flow` · 1 rule
@@ -350,6 +666,20 @@ Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to inst
 Raw HTTP status code outside error handler / api route
 
 **Fix.** Pages/actions: throw error(status, ...) or return fail(status, ...). API routes under src/routes/api/**/+server.ts: return json(payload, { status }). Services: throw a typed domain error; HTTP status is decided only in error_handlers.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+## Fail Loudly
+
+`fail-loudly` · 1 rule
+
+### `fail-loudly:silent-catch`
+
+A catch or rejection handler that neither rethrows nor returns a failure result
+
+**Fix.** Rethrow, or return an object whose `kind` is 'error', 'failure' or 'corrupt' (or `ok: false`) so the caller decides. Add a log or toast as well where someone needs to know; it never counts as the recovery. Suppress only where the recovery reports itself somewhere the type cannot show, and name where.
 
 :::tip[Skill]
 Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
@@ -424,6 +754,124 @@ Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>`
 An import specifier resolved to no file in the project.
 
 **Fix.** Fix the path. A dangling import is invisible to every layer rule, so it hides architectural violations as well as being broken.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+## Models
+
+`models` · 3 rules
+
+### `models:procedure`
+
+A model function that computes instead of constructing data or a schema
+
+**Fix.** Move the calculation to a service. Models hold values, types, schemas and constructors; a branded-scalar constructor may validate its input.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `models:state`
+
+A class or mutable module state in a model
+
+**Fix.** Models are data. Runtime state belongs in a store, behaviour in a service.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `models:instanceof`
+
+instanceof in a model
+
+**Fix.** Discriminate with a tagged union; models carry no classes to test against.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+## Narrowing
+
+`narrowing` · 8 rules
+
+### `narrowing:shape-cast`
+
+A type assertion onto an object literal
+
+**Fix.** Construct the value with its real type, or parse it. `value as never` on one branded value is fine; `{ … } as T` hides every missing field.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `narrowing:no-cast-probe`
+
+A cast onto an inline object type (`x as { a?: unknown }`)
+
+**Fix.** Parse the value into a named type at the boundary instead of probing its fields.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `narrowing:no-json-parse-cast`
+
+A JSON.parse result given a type nothing checked
+
+**Fix.** Annotate it `unknown` and parse it with a schema that produces the type.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `narrowing:no-response-json-cast`
+
+A response JSON result cast without parsing
+
+**Fix.** Parse `await response.json()` with the schema of the type it should be.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `narrowing:no-record-unknown`
+
+`Record<string, unknown>` or an `unknown` index signature used as a struct
+
+**Fix.** Name the fields the code reads, or parse into a type that does.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `narrowing:no-weak-record-guard`
+
+A type predicate that narrows to an open-keyed record
+
+**Fix.** Parse into the concrete type. A guard to `Record<string, unknown>` leaves every caller probing.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `narrowing:no-zod-unknown`
+
+A z.unknown() or z.any() schema
+
+**Fix.** Describe the shape. A schema that accepts anything narrows nothing.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `narrowing:no-unknown-type`
+
+`unknown` on a parameter, return, field or alias in a model, service or controller
+
+**Fix.** Parse at the boundary — remote functions, routes, repositories, the service that owns a provider, browser services — so the layers inward receive narrow types.
 
 :::tip[Skill]
 Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
@@ -507,11 +955,11 @@ Taught by `designing-svelte-ui`. Run `chisel-js setup --target <target>` to inst
 
 ## Structural
 
-`structural` · 5 rules
+`structural` · 4 rules
 
 ### `structural:inline-style-banned`
 
-inline style= attribute in .svelte
+An inline style attribute or style: directive in .svelte
 
 **Fix.** Use Tailwind utility classes defined in app.css. Styling comes from the design system, not from the element.
 
@@ -531,19 +979,9 @@ Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>`
 
 ### `structural:missing-service-interface`
 
-Concrete service without a matching I<ServiceName> interface
+Public service class without an explicitly implemented capability interface
 
-**Fix.** Declare an I<ServiceName> interface in the same file. Controllers depend on the interface and the factory supplies the implementation. It has to be the same file — a sibling contracts.ts is a same-layer import, which the boundary rules ban.
-
-:::tip[Skill]
-Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
-:::
-
-### `structural:factory-contains-logic`
-
-A factory contains branching or looping
-
-**Fix.** A factory wires concrete implementations together and decides nothing — no if, for, while, switch, try or ternary. Instance methods are fine: holding injected collaborators is what a factory is for.
+**Fix.** Declare a narrow capability interface beside the service and write `implements` on the class. Controllers depend on that interface and the factory supplies the implementation. It has to be the same file — a sibling contracts.ts is a same-layer import, which the boundary rules ban.
 
 :::tip[Skill]
 Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
@@ -565,9 +1003,9 @@ Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>`
 
 ### `structure:layer-outside-server`
 
-A server-side layer sits at a universal path instead of under $lib/server/.
+A repository sits at a universal path instead of under $lib/server/.
 
-**Fix.** Move services, controllers, repositories and the factory under $lib/server/. SvelteKit then makes a client import of them a build error, which is stronger than anything a linter can offer. Reported once per directory.
+**Fix.** Move database repositories under $lib/server/repositories/ and browser repositories under $lib/client/repositories/. SvelteKit then makes a client import of a server repository a build error. Reported once per directory.
 
 :::tip[Skill]
 Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
@@ -577,7 +1015,7 @@ Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>`
 
 A folder under $lib/server/ does not name a layer.
 
-**Fix.** $lib/server/ holds db/, repositories/, services/, controllers/, factories/, config.ts and the factory. An adapter for an external capability is a service, not a repository — repositories are persistence. Wiring modules may stay at the root or be grouped under factories/. Reported once per folder.
+**Fix.** $lib/server/ holds db/, repositories/, services/, controllers/, factories/, infrastructure/, config.ts and the factory. An adapter for an external capability is a service, not a repository — repositories are persistence. Wiring modules may stay at the root or be grouped under factories/. Reported once per folder.
 
 :::tip[Skill]
 Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
@@ -595,13 +1033,33 @@ Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>`
 
 ## Suppression
 
-`suppression` · 1 rule
+`suppression` · 3 rules
 
 ### `suppression:missing-reason`
 
 A chisel-ignore comment gave no reason, so it suppressed nothing.
 
 **Fix.** Write `chisel-ignore <rule-id> -- <why this case is different>`. A suppression nobody has to justify is one nobody will revisit.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `suppression:unused`
+
+A chisel-ignore comment that suppresses no violation.
+
+**Fix.** Delete it. The code it excused has changed; left in place, it hides the next violation written on that line.
+
+:::tip[Skill]
+Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
+:::
+
+### `suppression:unknown-rule`
+
+A chisel-ignore comment naming a rule chisel does not have.
+
+**Fix.** Correct the id — `chisel-js rules` lists them — or delete the comment.
 
 :::tip[Skill]
 Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
@@ -631,11 +1089,11 @@ Test name does not describe an invariant
 Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
 :::
 
-### `test-structure:one-assert-per-test`
+### `test-structure:no-assertion`
 
-More than one assertion in a test
+A test that asserts nothing
 
-**Fix.** Split into separate tests, one per assertion, each named after its invariant. End-to-end specs are exempt.
+**Fix.** Assert the outcome of the behaviour the test names, in the test body. One test covers one behaviour and may assert all of its outcomes; do not split outcomes just to count assertions, and do not hide them in helpers. End-to-end specs are exempt.
 
 :::tip[Skill]
 Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
@@ -663,9 +1121,9 @@ Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
 
 ### `test-structure:untyped-fake`
 
-A Fake*/Stub*/InMemory* class declares no interface
+A Fake*/Stub*/InMemory* class declared in a spec with no interface
 
-**Fix.** Add `implements <Interface>`. Without it the fake drifts from the real contract silently, and the first thing to notice is a production path.
+**Fix.** Add `implements <Interface>`, or move the double to the shared testing folder where production parameters type it. Without either, the fake drifts from the real contract silently.
 
 :::tip[Skill]
 Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
@@ -673,9 +1131,9 @@ Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
 
 ### `test-structure:unsafe-dependency-cast`
 
-`as unknown as T` in a test
+An object or array literal cast through `unknown` in a test
 
-**Fix.** The cast is silencing the error that says the fake does not match the interface. Complete the fake, or narrow the interface the code under test depends on.
+**Fix.** The cast silences the error that says the fixture is incomplete, so the test runs on a state production cannot produce. Build a complete value, or narrow the type the code under test depends on. Casting one value (a branded id, a corrupt input for a parser) is not reported.
 
 :::tip[Skill]
 Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
@@ -693,7 +1151,7 @@ Taught by `qa`. Run `chisel-js setup --target <target>` to install it.
 
 ## Topology
 
-`topology` · 7 rules
+`topology` · 6 rules
 
 ### `topology:layer-barrel-import`
 
@@ -750,16 +1208,6 @@ Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>`
 Placeholder wiring (undefined as unknown as T, LateValue)
 
 **Fix.** A placeholder means two objects need each other. Restructure so one does not — extract the shared part, or pass a typed lazy accessor. The placeholder turns a build error into a runtime one.
-
-:::tip[Skill]
-Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
-:::
-
-### `topology:factory-shape`
-
-A *-factory.ts does not export exactly one value
-
-**Fix.** One factory module builds one thing. Split it, or rename the file after what it actually holds. Exported types do not count — a factory may declare its own dependency shape.
 
 :::tip[Skill]
 Taught by `building-sveltekit-frontend`. Run `chisel-js setup --target <target>` to install it.
