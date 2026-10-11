@@ -133,3 +133,35 @@ export function scriptsOf(ast: ParsedSource | undefined): { sf: ts.SourceFile; o
   if (ast.module !== undefined) out.push({ sf: ast.module, offset: ast.offsets.module });
   return out;
 }
+
+/**
+ * Visit every node in a Svelte template.
+ *
+ * Walks the object graph generically rather than following named child
+ * properties. The modern AST reaches children through a different key for
+ * almost every construct — `fragment.nodes` on an element, `body` on an each
+ * block, `consequent`/`alternate` on an if block — and enumerating them means
+ * silently missing elements nested inside whichever construct was overlooked.
+ */
+export function walkMarkup(root: any, fn: (node: any) => void): void {
+  const seen = new Set<any>();
+
+  const visit = (value: any): void => {
+    if (value === null || typeof value !== "object") return;
+    if (seen.has(value)) return;
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+
+    if (typeof value.type === "string") fn(value);
+    for (const key of Object.keys(value)) {
+      if (key === "parent") continue;
+      visit(value[key]);
+    }
+  };
+
+  visit(root);
+}

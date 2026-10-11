@@ -11,6 +11,7 @@ import { ImportBoundaryService } from "chisel/checker/services/architecture/impo
 import { LayoutService } from "chisel/checker/services/architecture/layout";
 import { ServerLayerLeakService } from "chisel/checker/services/architecture/server_layer_leak";
 import { TopologyService } from "chisel/checker/services/architecture/topology";
+import { SemanticArchitectureService } from "chisel/checker/services/architecture/semantic";
 
 import { StructuralSvelteService } from "chisel/checker/services/svelte/structural";
 import { ComponentEnforcementService } from "chisel/checker/services/svelte/component_enforcement";
@@ -47,6 +48,12 @@ export class CheckerFactory {
       new ServerLayerLeakService(importGraph),
       new LayoutService(),
       new TopologyService(importGraph, config.designSystem.allowIn),
+      new SemanticArchitectureService({
+        mode: config.mode,
+        tsconfig: config.tsconfig,
+        entryPoints: config.entryPoints,
+        agentTools: config.agent.tools,
+      }),
 
       new StructuralSvelteService(),
       new ComponentEnforcementService(config.designSystem.allowIn),

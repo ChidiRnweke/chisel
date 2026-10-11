@@ -152,14 +152,6 @@ export class SuppressionService {
     if (source === undefined) return undefined;
     const lines = source.split("\n");
 
-    // File scope: a header directive covers everything below it.
-    for (let i = 0; i < Math.min(FILE_HEADER_LINES, lines.length); i++) {
-      const directive = parseDirective(lines[i] ?? "", i + 1);
-      if (directive?.fileScoped === true && matchesRule(violation.ruleId, directive.ruleIds)) {
-        return directive;
-      }
-    }
-
     // Line scope: the violation's own line, or the line immediately above it.
     // Accepting the line above is what makes the directive usable at all — most
     // violations sit on a line with no room left for a trailing comment.
@@ -167,6 +159,16 @@ export class SuppressionService {
       if (index < 0 || index >= lines.length) continue;
       const directive = parseDirective(lines[index] ?? "", index + 1);
       if (directive?.fileScoped === false && matchesRule(violation.ruleId, directive.ruleIds)) {
+        return directive;
+      }
+    }
+
+    // File scope: a header directive covers everything below it. Line scope is
+    // tried first, so a precise directive is the one credited, and a header made
+    // redundant by line directives is reported as unused.
+    for (let i = 0; i < Math.min(FILE_HEADER_LINES, lines.length); i++) {
+      const directive = parseDirective(lines[i] ?? "", i + 1);
+      if (directive?.fileScoped === true && matchesRule(violation.ruleId, directive.ruleIds)) {
         return directive;
       }
     }

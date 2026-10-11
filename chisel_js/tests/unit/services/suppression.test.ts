@@ -206,3 +206,15 @@ describe("suppression — idle directives", () => {
       .toEqual([]);
   });
 });
+
+describe("suppression — precedence", () => {
+  test("a line directive is credited before a file header, which is then unused", () => {
+    const source = [
+      "// chisel-ignore-file structural:raw-fetch -- vendored transport",
+      "// chisel-ignore structural:raw-fetch -- health probe",
+      "await fetch(url);",
+    ].join("\n");
+    expect(ruleIds(new SuppressionService().check([violation(3)], new Map([[FILE, source]]), ["structural:raw-fetch"])))
+      .toEqual(["suppression:unused"]);
+  });
+});

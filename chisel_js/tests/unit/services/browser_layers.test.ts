@@ -5,6 +5,7 @@ import { createProjectInfo } from "chisel/checker/models/project_info";
 import { Layer } from "chisel/checker/models/layer";
 import { FakeImportGraph, edge } from "../../fakes/fake_import_graph";
 import { parsedFile } from "../../fakes/parsed_file";
+import { semanticLayerOf } from "chisel/checker/services/architecture/semantic";
 
 /**
  * The browser has the same layers as the server: services, repositories,
@@ -144,5 +145,31 @@ describe("browser layers — controller contracts", () => {
 
   test("an alias of the class is not a contract either", () => {
     expect(importing("SessionClass")).toEqual(["import-boundary:banned-layer-import"]);
+  });
+});
+
+describe("semantic layers — configured facts", () => {
+  const facts = {
+    mode: "sveltekit-standalone" as const,
+    entryPoints: ["src/worker.ts"],
+    agentTools: "src/lib/server/factories/agent/tools/",
+  };
+
+  test("agent tools, configured entry points, routes and server hooks are entry points", () => {
+    expect(Object.fromEntries([
+      "src/lib/server/factories/agent/tools/notes.ts",
+      "src/worker.ts",
+      "src/routes/api/x/+server.ts",
+      "src/hooks.server.ts",
+      "src/hooks.client.ts",
+      "src/lib/server/application.ts",
+    ].map(path => [path, semanticLayerOf(path, facts)]))).toEqual({
+      "src/lib/server/factories/agent/tools/notes.ts": "tool-factory",
+      "src/worker.ts": "entry",
+      "src/routes/api/x/+server.ts": "entry",
+      "src/hooks.server.ts": "entry",
+      "src/hooks.client.ts": "other",
+      "src/lib/server/application.ts": "factories",
+    });
   });
 });
