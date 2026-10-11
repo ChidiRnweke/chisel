@@ -174,3 +174,35 @@ describe("suppression — edge cases", () => {
     expect(ruleIds(run(source, [violation(2)]))).toEqual(["structural:raw-fetch"]);
   });
 });
+
+describe("suppression — idle directives", () => {
+  const known = ["structural:raw-fetch", "colour:dynamic-class"];
+
+  function audit(source: string, violations: Violation[], tests: ReadonlySet<string> = new Set()): string[] {
+    return ruleIds(new SuppressionService().check(violations, new Map([[FILE, source]]), known, tests));
+  }
+
+  test("a directive that suppresses nothing is reported", () => {
+    expect(audit("// chisel-ignore structural:raw-fetch -- health probe\nconst a = 1;", []))
+      .toEqual(["suppression:unused"]);
+  });
+
+  test("a directive that suppresses its violation is not reported", () => {
+    expect(audit("// chisel-ignore structural:raw-fetch -- health probe\nawait fetch(url);", [violation(2)]))
+      .toEqual([]);
+  });
+
+  test("a directive naming no chisel rule is reported", () => {
+    expect(audit("// chisel-ignore structural:raw-fetchh -- typo\nawait fetch(url);", [violation(2)]))
+      .toEqual(["structural:raw-fetch", "suppression:unknown-rule"]);
+  });
+
+  test("prose that mentions chisel-ignore is not a directive", () => {
+    expect(audit('const help = "write chisel-ignore comment to silence a rule";', [])).toEqual([]);
+  });
+
+  test("a test file may carry directives as fixtures", () => {
+    expect(audit("// chisel-ignore structural:raw-fetch -- fixture\nconst a = 1;", [], new Set([FILE])))
+      .toEqual([]);
+  });
+});

@@ -1,4 +1,5 @@
 import type { TodoStatus } from "$lib/models/todos";
+import { userIdOf } from "$lib/models/projects";
 import { AppFactory } from "$lib/server/factories/app-factory";
 
 /**
@@ -10,7 +11,7 @@ export const load = async ({ url }: { url: URL }) => {
   const status = url.searchParams.get("status") as TodoStatus | null;
   const todos = await AppFactory.controllers()
     .todos()
-    .list({ userId: "user-1" as never }, status === null ? {} : { status });
+    .list({ userId: userIdOf("user-1") }, status === null ? {} : { status });
 
   return { todos };
 };

@@ -7,14 +7,17 @@ import { createViolation } from "chisel/checker/models/violation";
  * `chisel-ignore <rule>[, <rule>...] -- <reason>`
  *
  * Both `--` and an em dash are accepted as the separator. The reason is not
- * optional — see `check` for why the parser tolerates its absence.
+ * optional — see `check` for why the parser tolerates its absence. Only a
+ * comment is a directive: a string that mentions `chisel-ignore` is prose.
  */
-const IGNORE_RE = /chisel-ignore(-file)?\s*:?\s+([a-zA-Z0-9_:.\-]+(?:\s*,\s*[a-zA-Z0-9_:.\-]+)*)\s*(?:--|—)?\s*(.*)$/;
+const IGNORE_RE = /(?:\/\/|\/\*|<!--|^\s*\*|^\s*#)\s*chisel-ignore(-file)?\s*:?\s+([a-zA-Z0-9_:.\-]+(?:\s*,\s*[a-zA-Z0-9_:.\-]+)*)\s*(?:--|—)?\s*(.*)$/;
 
 /** How far into a file a `chisel-ignore-file` comment is honoured. */
 const FILE_HEADER_LINES = 5;
 
 interface Directive {
+  /** 1-indexed line the comment sits on. */
+  readonly line: number;
   readonly ruleIds: string[];
   readonly reason: string;
   readonly fileScoped: boolean;
@@ -51,12 +54,19 @@ export class SuppressionService {
    * `chisel-ignore` is the thing this rule exists to surface, so the original
    * violation is kept as well.
    */
-  check(violations: readonly Violation[], sources: ReadonlyMap<string, string>): Violation[] {
+  check(
+    violations: readonly Violation[],
+    sources: ReadonlyMap<string, string>,
+    knownRuleIds: readonly string[] = [],
+    tests: ReadonlySet<string> = new Set(),
+  ): Violation[] {
     const active: Violation[] = [];
     const reported = new Set<string>();
+    const used = new Set<string>();
 
     for (const violation of violations) {
       const directive = this._directiveFor(violation, sources);
+      if (directive !== undefined) used.add(`${violation.file}:${directive.line}`);
 
       if (directive === undefined) {
         active.push(violation);
@@ -80,7 +90,57 @@ export class SuppressionService {
       }));
     }
 
+    active.push(...this._idleDirectives(sources, used, knownRuleIds, tests));
     return active;
+  }
+
+  /**
+   * Directives that name no rule chisel has, or that suppressed nothing.
+   *
+   * A suppression outlives the code it excused: the line is fixed or deleted,
+   * and the comment stays, ready to hide the next violation someone writes
+   * there. A misspelt rule id never worked at all. Both are reported, so every
+   * `chisel-ignore` in the tree is one a reader can trust. Test files are
+   * skipped: a checker's own tests carry directives as fixtures.
+   */
+  private _idleDirectives(
+    sources: ReadonlyMap<string, string>,
+    used: ReadonlySet<string>,
+    knownRuleIds: readonly string[],
+    tests: ReadonlySet<string>,
+  ): Violation[] {
+    if (knownRuleIds.length === 0) return [];
+    const violations: Violation[] = [];
+    for (const [file, source] of sources) {
+      if (tests.has(file) || !source.includes("chisel-ignore")) continue;
+      const lines = source.split("\n");
+      for (const [index, text] of lines.entries()) {
+        const directive = parseDirective(text, index + 1);
+        if (directive === undefined) continue;
+        const unknown = directive.ruleIds.filter(id => !knownRuleIds.some(known => matchesRule(known, [id])));
+        if (unknown.length > 0) {
+          violations.push(createViolation({
+            file,
+            line: index + 1,
+            severity: Severity.ERROR,
+            ruleId: `${this.ruleIdPrefix}:unknown-rule`,
+            message: `chisel-ignore names ${unknown.join(", ")}, which is no chisel rule, so it `
+              + `suppresses nothing. Check the id with \`chisel-js rules\`.`,
+          }));
+          continue;
+        }
+        if (directive.reason === "" || used.has(`${file}:${index + 1}`)) continue;
+        violations.push(createViolation({
+          file,
+          line: index + 1,
+          severity: Severity.ERROR,
+          ruleId: `${this.ruleIdPrefix}:unused`,
+          message: `This chisel-ignore suppresses nothing: the violation it excused is gone. `
+            + `Delete it, so it cannot hide the next one written here.`,
+        }));
+      }
+    }
+    return violations;
   }
 
   /** The directive suppressing this violation, if any. */
@@ -94,7 +154,7 @@ export class SuppressionService {
 
     // File scope: a header directive covers everything below it.
     for (let i = 0; i < Math.min(FILE_HEADER_LINES, lines.length); i++) {
-      const directive = parseDirective(lines[i] ?? "");
+      const directive = parseDirective(lines[i] ?? "", i + 1);
       if (directive?.fileScoped === true && matchesRule(violation.ruleId, directive.ruleIds)) {
         return directive;
       }
@@ -105,7 +165,7 @@ export class SuppressionService {
     // violations sit on a line with no room left for a trailing comment.
     for (const index of [violation.line - 1, violation.line - 2]) {
       if (index < 0 || index >= lines.length) continue;
-      const directive = parseDirective(lines[index] ?? "");
+      const directive = parseDirective(lines[index] ?? "", index + 1);
       if (directive?.fileScoped === false && matchesRule(violation.ruleId, directive.ruleIds)) {
         return directive;
       }
@@ -121,12 +181,23 @@ export class SuppressionService {
       description: "A chisel-ignore comment gave no reason, so it suppressed nothing.",
       fixGuidance: "Write `chisel-ignore <rule-id> -- <why this case is different>`. "
         + "A suppression nobody has to justify is one nobody will revisit.",
+    }, {
+      id: "suppression:unused",
+      category: this.ruleIdPrefix,
+      description: "A chisel-ignore comment that suppresses no violation.",
+      fixGuidance: "Delete it. The code it excused has changed; left in place, it hides the "
+        + "next violation written on that line.",
+    }, {
+      id: "suppression:unknown-rule",
+      category: this.ruleIdPrefix,
+      description: "A chisel-ignore comment naming a rule chisel does not have.",
+      fixGuidance: "Correct the id — `chisel-js rules` lists them — or delete the comment.",
     }];
   }
 }
 
-function parseDirective(line: string): Directive | undefined {
-  const match = IGNORE_RE.exec(line);
+function parseDirective(text: string, line: number): Directive | undefined {
+  const match = IGNORE_RE.exec(text);
   if (match === null) return undefined;
 
   const raw = match[3] ?? "";
@@ -134,6 +205,7 @@ function parseDirective(line: string): Directive | undefined {
   const reason = raw.replace(/--+>\s*$/, "").trim();
 
   return {
+    line,
     fileScoped: match[1] === "-file",
     ruleIds: (match[2] ?? "").split(",").map(r => r.trim()).filter(r => r !== ""),
     reason,

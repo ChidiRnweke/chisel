@@ -12,7 +12,8 @@ import { withSkillName } from "chisel/checker/rule_metadata";
 import { CONFIG_FILENAME, loadConfig } from "chisel/checker/config";
 import type { SelfUpdateManager } from "chisel/checker/services/self_update";
 import { createInterface } from "node:readline/promises";
-import { readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
+import { asObject, asString, readJsonFile } from "chisel/checker/repositories/json_file";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,13 +24,13 @@ import { fileURLToPath } from "node:url";
  */
 function packageVersion(): string {
   for (const candidate of ["../package.json", "../../package.json", "../../../package.json"]) {
-    try {
-      const path = join(dirname(fileURLToPath(import.meta.url)), candidate);
-      const pkg = JSON.parse(readFileSync(path, "utf-8")) as { name?: string; version?: string };
-      if (pkg.name?.includes("chisel") === true && pkg.version !== undefined) return pkg.version;
-    } catch {
-      continue;
-    }
+    const path = join(dirname(fileURLToPath(import.meta.url)), candidate);
+    if (!existsSync(path)) continue;
+    const read = readJsonFile(path);
+    if (read.kind === "failure") continue;
+    const pkg = asObject(read.value);
+    const version = asString(pkg?.["version"]);
+    if (asString(pkg?.["name"])?.includes("chisel") === true && version !== undefined) return version;
   }
   return "unknown";
 }
@@ -123,6 +124,7 @@ program
       }
 
       if (result.hasErrors) process.exit(1);
+      // chisel-ignore fail-loudly:silent-catch -- Terminal reporter: prints the error on stderr and exits non-zero.
     } catch (err) {
       console.error(`Error: ${err}`);
       process.exit(1);
@@ -152,6 +154,7 @@ program
       }
 
       if (result.hasErrors) process.exit(1);
+      // chisel-ignore fail-loudly:silent-catch -- Terminal reporter: prints the error on stderr and exits non-zero.
     } catch (err) {
       // A missing build is a usage error, not a passing check: staying silent
       // would report success for a budget nothing was measured against.
@@ -196,6 +199,7 @@ program
         ? `Wrote ${result.configPath}`
         : `Would write ${result.configPath}:\n${JSON.stringify(result.config, null, 2)}`);
       console.log("\nNext: `chisel-js update skills` to install the agent skills.");
+      // chisel-ignore fail-loudly:silent-catch -- Terminal reporter: prints the error on stderr and exits non-zero.
     } catch (err) {
       console.error(`Error: ${err}`);
       process.exit(1);
@@ -296,6 +300,7 @@ update
         process.exit(result.returnCode);
       }
       console.log("Chisel JS updated. Restart the CLI to use the new version.");
+      // chisel-ignore fail-loudly:silent-catch -- Terminal reporter: prints the error on stderr and exits non-zero.
     } catch (err) {
       console.error(`Error: ${err}`);
       process.exit(1);
@@ -336,6 +341,7 @@ update
         console.log(`${item.status.padEnd(15)} ${item.name.padEnd(32)} ${item.destination}`);
       }
       await showVersionNotice();
+      // chisel-ignore fail-loudly:silent-catch -- Terminal reporter: prints the error on stderr and exits non-zero.
     } catch (err) {
       console.error(`Error: ${err}`);
       process.exit(1);

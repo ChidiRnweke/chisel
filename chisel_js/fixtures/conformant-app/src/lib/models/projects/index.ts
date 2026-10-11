@@ -1,6 +1,11 @@
 type Brand<T, Name extends string> = T & { readonly __brand: Name };
 
-type UserId = Brand<string, "UserId">;
+export type UserId = string & { readonly __brand: "UserId" };
+
+/** Spells a user id. A scalar constructor is the one kind of function a model holds. */
+export function userIdOf(value: string): UserId {
+  return value as UserId;
+}
 type DateTime = Brand<string, "DateTime">;
 
 export type ProjectId = Brand<string, "ProjectId">;

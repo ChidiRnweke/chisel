@@ -41,20 +41,18 @@ export class ProjectStructureService {
     const violations: Violation[] = [];
     const envPath = join(project.rootPath, ".env");
     if (existsSync(envPath)) {
-      try {
-        const content = readFileSync(envPath, "utf-8");
-        const backendVars = ["DATABASE_URL", "POSTGRES_", "REDIS_URL"];
-        for (const v of backendVars) {
-          if (content.includes(v)) {
-            violations.push(createViolation({
-              file: ".env", line: 1, severity: Severity.ERROR,
-              ruleId: "project-structure:backend-env-in-frontend",
-              message: `.env must not contain backend infrastructure variables (${v}). Keep frontend/.env and backend/.env separate.`,
-            }));
-            break;
-          }
+      const content = readFileSync(envPath, "utf-8");
+      const backendVars = ["DATABASE_URL", "POSTGRES_", "REDIS_URL"];
+      for (const v of backendVars) {
+        if (content.includes(v)) {
+          violations.push(createViolation({
+            file: ".env", line: 1, severity: Severity.ERROR,
+            ruleId: "project-structure:backend-env-in-frontend",
+            message: `.env must not contain backend infrastructure variables (${v}). Keep frontend/.env and backend/.env separate.`,
+          }));
+          break;
         }
-      } catch {}
+      }
     }
     return violations;
   }

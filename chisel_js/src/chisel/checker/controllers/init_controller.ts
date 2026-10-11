@@ -70,14 +70,10 @@ function seedAllowIn(projectPath: string): readonly string[] {
   const componentsDir = join(projectPath, "src/lib/components");
   const found = new Set<string>(DEFAULT_ALLOW_IN);
 
-  let entries: string[];
-  try {
-    entries = readdirSync(componentsDir, { withFileTypes: true })
-      .filter(entry => entry.isDirectory())
-      .map(entry => entry.name);
-  } catch {
-    return [...found];
-  }
+  if (!existsSync(componentsDir)) return [...found];
+  const entries = readdirSync(componentsDir, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name);
 
   for (const name of entries) {
     if (VENDORED_HINTS.includes(name.toLowerCase())) {

@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import type { Json } from "chisel/checker/repositories/json_file";
+import { asObject, asString, parseJson, readJsonFile } from "chisel/checker/repositories/json_file";
 import { get } from "node:https";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -23,6 +25,20 @@ export interface ISelfUpdater {
   update(manager?: SelfUpdateManager, dryRun?: boolean): SelfUpdateResult;
   commandFor(manager?: SelfUpdateManager): string[];
   versionNotice(): Promise<VersionNotice | undefined>;
+}
+
+type VersionLookup =
+  | { readonly kind: "known"; readonly version: string }
+  | { readonly kind: "failure"; readonly reason: string };
+
+type WriteOutcome = { readonly kind: "written" } | { readonly kind: "failure"; readonly reason: string };
+
+/** The non-empty string at `field` of a JSON object, as a version. */
+function versionIn(value: Json, field: string, source: string): VersionLookup {
+  const version = asString(asObject(value)?.[field]);
+  return version === undefined || version === ""
+    ? { kind: "failure", reason: `${source} has no "${field}"` }
+    : { kind: "known", version };
 }
 
 export class SelfUpdater {
@@ -49,17 +65,23 @@ export class SelfUpdater {
     return ["npm", "install", "-g", this.packageName];
   }
 
+  /**
+   * An update notice, when a newer release is known. The notice is advisory: when
+   * either version cannot be determined — offline, no cache, an unreadable
+   * package.json — there is nothing to say, and the check must never fail the
+   * command it decorates.
+   */
   async versionNotice(): Promise<VersionNotice | undefined> {
     const current = this.localVersion();
     const latest = await this.cachedLatestVersion();
-    if (!current || !latest) return undefined;
-    if (!this.isNewer(latest, current)) return undefined;
+    if (current.kind === "failure" || latest.kind === "failure") return undefined;
+    if (!this.isNewer(latest.version, current.version)) return undefined;
     const command = "chisel-js update self";
     return {
-      currentVersion: current,
-      latestVersion: latest,
+      currentVersion: current.version,
+      latestVersion: latest.version,
       command,
-      message: `${this.displayName} ${latest} is available. Update with: ${command}`,
+      message: `${this.displayName} ${latest.version} is available. Update with: ${command}`,
     };
   }
 
@@ -70,53 +92,48 @@ export class SelfUpdater {
     return "npm";
   }
 
-  private localVersion(): string {
-    if (this.currentVersion) return this.currentVersion;
+  private localVersion(): VersionLookup {
+    if (this.currentVersion) return { kind: "known", version: this.currentVersion };
     for (const path of this.packageJsonCandidates()) {
-      try {
-        if (!existsSync(path)) continue;
-        const data = JSON.parse(readFileSync(path, "utf-8"));
-        return String(data.version ?? "");
-      } catch {
-        continue;
-      }
+      if (!existsSync(path)) continue;
+      const read = readJsonFile(path);
+      if (read.kind === "failure") return read;
+      return versionIn(read.value, "version", path);
     }
-    return "";
+    return { kind: "failure", reason: "no package.json found beside the installed CLI" };
   }
 
-  private async cachedLatestVersion(): Promise<string> {
+  private async cachedLatestVersion(): Promise<VersionLookup> {
     const cacheFile = this.cacheFile();
     const cached = this.readCache(cacheFile);
-    if (cached) return cached;
-    try {
-      const latest = await this.fetchLatestVersion();
-      this.writeCache(cacheFile, latest);
-      return latest;
-    } catch {
-      return "";
-    }
+    if (cached.kind === "known") return cached;
+    const latest = await this.fetchLatestVersion();
+    // A cache that cannot be written only costs a registry request next time.
+    if (latest.kind === "known") this.writeCache(cacheFile, latest.version);
+    return latest;
   }
 
-  private readCache(cacheFile: string): string {
-    try {
-      const data = JSON.parse(readFileSync(cacheFile, "utf-8"));
-      const checkedAt = Number(data.checkedAt ?? 0);
-      if (Date.now() - checkedAt > this.cacheTtlMs) return "";
-      return String(data.latestVersion ?? "");
-    } catch {
-      return "";
+  private readCache(cacheFile: string): VersionLookup {
+    if (!existsSync(cacheFile)) return { kind: "failure", reason: "no cached version" };
+    const read = readJsonFile(cacheFile);
+    if (read.kind === "failure") return read;
+    const checkedAt = asObject(read.value)?.["checkedAt"];
+    if (typeof checkedAt !== "number" || Date.now() - checkedAt > this.cacheTtlMs) {
+      return { kind: "failure", reason: "the cached version is stale" };
     }
+    return versionIn(read.value, "latestVersion", cacheFile);
   }
 
-  private writeCache(cacheFile: string, latest: string): void {
+  private writeCache(cacheFile: string, latest: string): WriteOutcome {
     try {
       mkdirSync(dirname(cacheFile), { recursive: true });
       writeFileSync(cacheFile, JSON.stringify({
         checkedAt: Date.now(),
         latestVersion: latest,
       }), "utf-8");
-    } catch {
-      return;
+      return { kind: "written" };
+    } catch (exc) {
+      return { kind: "failure", reason: String(exc) };
     }
   }
 
@@ -126,13 +143,23 @@ export class SelfUpdater {
     return join(root, "chisel-js", "version.json");
   }
 
-  private async fetchLatestVersion(): Promise<string> {
-    if (this.latestFetcher) return this.latestFetcher();
+  private async fetchLatestVersion(): Promise<VersionLookup> {
+    if (this.latestFetcher) {
+      let version: string;
+      try {
+        version = await this.latestFetcher();
+      } catch (exc) {
+        return { kind: "failure", reason: String(exc) };
+      }
+      return version === ""
+        ? { kind: "failure", reason: "the registry reported no version" }
+        : { kind: "known", version };
+    }
     return new Promise(resolve => {
       get(this.registryUrl, response => {
         if (response.statusCode !== 200) {
           response.resume();
-          resolve("");
+          resolve({ kind: "failure", reason: `the registry answered ${response.statusCode}` });
           return;
         }
         let body = "";
@@ -141,15 +168,11 @@ export class SelfUpdater {
           body += chunk;
         });
         response.on("end", () => {
-          try {
-            const data = JSON.parse(body) as { version?: string };
-            resolve(String(data.version ?? ""));
-          } catch {
-            resolve("");
-          }
+          const read = parseJson(body);
+          resolve(read.kind === "failure" ? read : versionIn(read.value, "version", this.registryUrl));
         });
-      }).on("error", () => {
-        resolve("");
+      }).on("error", error => {
+        resolve({ kind: "failure", reason: String(error) });
       });
     });
   }

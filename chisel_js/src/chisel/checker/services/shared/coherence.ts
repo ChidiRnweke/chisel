@@ -60,13 +60,7 @@ export class CoherenceService {
       const path = join(project.rootPath, name);
       if (!existsSync(path)) continue;
 
-      let source: string;
-      try {
-        source = readFileSync(path, "utf-8");
-      } catch {
-        continue;
-      }
-
+      const source = readFileSync(path, "utf-8");
       const sf = ts.createSourceFile(name, source, ts.ScriptTarget.Latest, true);
       for (const { pattern, line } of this._includePatterns(sf)) {
         // A glob naming a literal path is checked as one; both forms appear in
@@ -136,12 +130,7 @@ export class CoherenceService {
     const missing: { document: string; line: number; referenced: string }[] = [];
 
     for (const document of this._maintainedDocuments(project.rootPath)) {
-      let source: string;
-      try {
-        source = readFileSync(join(project.rootPath, document), "utf-8");
-      } catch {
-        continue;
-      }
+      const source = readFileSync(join(project.rootPath, document), "utf-8");
 
       for (const match of source.matchAll(DOC_PATH_RE)) {
         const referenced = match[1]!;
@@ -182,12 +171,7 @@ export class CoherenceService {
       if (!existsSync(absolute)) return;
       if (UNMAINTAINED_DIR_RE.test(relativeDir)) return;
 
-      let entries;
-      try {
-        entries = readdirSync(absolute, { withFileTypes: true });
-      } catch {
-        return;
-      }
+      const entries = readdirSync(absolute, { withFileTypes: true });
 
       for (const entry of entries) {
         if (!entry.isFile()) continue;

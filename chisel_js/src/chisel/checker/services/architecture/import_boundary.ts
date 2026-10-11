@@ -5,7 +5,7 @@ import type { ProjectInfo } from "chisel/checker/models/project_info";
 import type { RuleInfo } from "chisel/checker/rule_metadata";
 import type { Violation } from "chisel/checker/models/violation";
 import { CheckerMode as Mode } from "chisel/checker/models/mode";
-import { Layer, isServerContext, isServerOnlyModule } from "chisel/checker/models/layer";
+import { Layer, isBrowserService, isServerContext, isServerOnlyModule } from "chisel/checker/models/layer";
 import { Severity } from "chisel/checker/models/severity";
 import { createViolation } from "chisel/checker/models/violation";
 import { ContractImports } from "chisel/checker/services/architecture/contract_imports";
@@ -355,10 +355,6 @@ function isBarrel(path: string): boolean {
   return /(^|\/)index\.(ts|js)$/.test(path);
 }
 
-/** A service that runs only in the browser, as opposed to a shared one. */
-function isBrowserService(path: string): boolean {
-  return path.startsWith("src/lib/client/services/");
-}
 
 
 function fixFor(importer: Layer, imported: Layer): string {

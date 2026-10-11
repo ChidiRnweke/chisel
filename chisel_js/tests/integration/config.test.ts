@@ -42,6 +42,8 @@ describe("parseConfig", () => {
       tsconfig: "tsconfig.json",
       ignore: [],
       designSystem: { allowIn: [...DEFAULT_ALLOW_IN] },
+      entryPoints: [],
+      agent: { toolAdapters: [] },
     });
   });
 
@@ -50,12 +52,16 @@ describe("parseConfig", () => {
       mode: "sveltekit-bff",
       tsconfig: "tsconfig.app.json",
       ignore: ["src/lib/components/edra/**"],
-      designSystem: { allowIn: ["src/vendor/"] },
+      designSystem: { allowIn: ["src/vendor/"], icons: "$lib/components/icons", tokens: "src/app.css" },
+      entryPoints: ["src/worker.ts"],
+      agent: { tools: "src/lib/server/factories/agent/tools/", toolAdapters: ["src/lib/server/sdk-tool.ts"] },
     })).toEqual({
       mode: "sveltekit-bff",
       tsconfig: "tsconfig.app.json",
       ignore: ["src/lib/components/edra/**"],
-      designSystem: { allowIn: ["src/vendor/"] },
+      designSystem: { allowIn: ["src/vendor/"], icons: "$lib/components/icons", tokens: "src/app.css" },
+      entryPoints: ["src/worker.ts"],
+      agent: { tools: "src/lib/server/factories/agent/tools/", toolAdapters: ["src/lib/server/sdk-tool.ts"] },
     });
   });
 

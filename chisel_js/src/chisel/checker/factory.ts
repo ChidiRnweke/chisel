@@ -21,6 +21,7 @@ import { RouteStyleService } from "chisel/checker/services/svelte/route_style";
 import { TestStructureService } from "chisel/checker/services/shared/test_structure";
 import { ProjectStructureService } from "chisel/checker/services/shared/project_structure";
 import { CoherenceService } from "chisel/checker/services/shared/coherence";
+import { SourceRulesService } from "chisel/checker/services/shared/source_rules";
 
 export interface CheckerFactoryOptions {
   readonly config?: CheckerConfig;
@@ -54,6 +55,10 @@ export class CheckerFactory {
       new TestStructureService(),
       new ProjectStructureService(),
       new CoherenceService(),
+      new SourceRulesService({
+        icons: config.designSystem.icons,
+        toolAdapters: config.agent.toolAdapters,
+      }),
     ];
 
     if (config.mode === CheckerMode.BFF) {

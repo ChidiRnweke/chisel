@@ -34,8 +34,3 @@ export interface CreateTodoInput {
 export interface TodoListFilter {
   readonly status?: TodoStatus;
 }
-
-/** Pure domain phrasing, inlined rather than imported down from the component layer. */
-export function todoSummary(todo: Todo): string {
-  return todo.status === "done" ? `${todo.title} (done)` : todo.title;
-}

@@ -11,21 +11,33 @@ import ts from "typescript";
  * each parsed the same `.svelte` file independently, and most other rules gave
  * up and matched raw text.
  *
- * A file that fails to parse yields `undefined` rather than throwing: one
- * unparseable component must not cost the whole run. Rules that need an AST
- * skip such a file, exactly as the Python side does.
+ * A file that fails to parse yields a failure rather than throwing: one
+ * unparseable component must not cost the whole run. The controller reports
+ * each failure as `checker:unparseable-file`, because a rule that silently skips
+ * a file is a rule that silently passes it. A `.svelte` file whose markup does
+ * not compile still yields its scripts — the import graph must not lose the
+ * file's imports to a markup typo — and is reported as `partial`.
  */
+export type ParseOutcome =
+  | { readonly kind: "parsed"; readonly ast: ParsedSource }
+  | { readonly kind: "partial"; readonly ast: ParsedSource; readonly reason: string }
+  | { readonly kind: "failure"; readonly reason: string };
+
 export class FileParser {
-  parse(file: FileInfo): ParsedSource | undefined {
-    if (file.source === "") return undefined;
+  parse(file: FileInfo): ParseOutcome {
     try {
       return file.path.endsWith(".svelte")
         ? parseSvelte(file.path, file.source)
-        : parseScript(file.path, file.source);
-    } catch {
-      return undefined;
+        : { kind: "parsed", ast: parseScript(file.path, file.source) };
+    } catch (exc) {
+      return { kind: "failure", reason: String(exc) };
     }
   }
+}
+
+/** The tree an outcome carries, when it carries one. */
+export function astOf(outcome: ParseOutcome): ParsedSource | undefined {
+  return outcome.kind === "failure" ? undefined : outcome.ast;
 }
 
 function parseScript(path: string, source: string): ParsedSource {
@@ -39,7 +51,7 @@ function parseScript(path: string, source: string): ParsedSource {
   });
 }
 
-function parseSvelte(path: string, source: string): ParsedSource {
+function parseSvelte(path: string, source: string): ParseOutcome {
   const blocks = extractScripts(source);
   const instanceBlock = blocks.find(b => !b.isModule);
   const moduleBlock = blocks.find(b => b.isModule);
@@ -47,38 +59,37 @@ function parseSvelte(path: string, source: string): ParsedSource {
   // The markup AST is a bonus: if svelte/compiler cannot parse the component we
   // still return the scripts, because TypeScript parses them independently and
   // the import graph must not lose a file to a markup syntax error.
-  let fragment: unknown;
-  let instance: unknown;
-  let hasStyleBlock = false;
-  try {
-    const ast = parse(source, { modern: true, filename: path }) as {
-      fragment?: unknown;
-      instance?: unknown;
-      css?: unknown;
-    };
-    fragment = ast.fragment;
-    instance = ast.instance;
-    hasStyleBlock = ast.css !== null && ast.css !== undefined;
-  } catch {
-    fragment = undefined;
-    instance = undefined;
-  }
-
-  return Object.freeze({
+  const markup = parseMarkup(path, source);
+  const ast: ParsedSource = Object.freeze({
     script: instanceBlock === undefined
       ? undefined
       : ts.createSourceFile(`${path}.ts`, instanceBlock.text, ts.ScriptTarget.ESNext, true),
     module: moduleBlock === undefined
       ? undefined
       : ts.createSourceFile(`${path}.module.ts`, moduleBlock.text, ts.ScriptTarget.ESNext, true),
-    fragment,
-    instance,
-    hasStyleBlock,
+    fragment: markup.kind === "parsed" ? markup.root.fragment : undefined,
+    instance: markup.kind === "parsed" ? markup.root.instance : undefined,
+    hasStyleBlock: markup.kind === "parsed" && markup.root.css !== null,
     offsets: Object.freeze({
       script: instanceBlock?.offset ?? 0,
       module: moduleBlock?.offset ?? 0,
     }),
   });
+  return markup.kind === "parsed"
+    ? { kind: "parsed", ast }
+    : { kind: "partial", ast, reason: markup.reason };
+}
+
+type MarkupOutcome =
+  | { readonly kind: "parsed"; readonly root: ReturnType<typeof parse> }
+  | { readonly kind: "failure"; readonly reason: string };
+
+function parseMarkup(path: string, source: string): MarkupOutcome {
+  try {
+    return { kind: "parsed", root: parse(source, { modern: true, filename: path }) };
+  } catch (exc) {
+    return { kind: "failure", reason: String(exc) };
+  }
 }
 
 interface ScriptBlock {

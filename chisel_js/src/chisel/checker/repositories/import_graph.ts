@@ -3,7 +3,7 @@ import type { ImportEdge } from "chisel/checker/models/import_edge";
 import type { ProjectInfo } from "chisel/checker/models/project_info";
 import { createImportEdge } from "chisel/checker/models/import_edge";
 import { ImportGraphError } from "chisel/checker/errors";
-import { FileParser, scriptsOf } from "chisel/checker/repositories/file_parser";
+import { FileParser, astOf, scriptsOf } from "chisel/checker/repositories/file_parser";
 import { existsSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import ts from "typescript";
@@ -93,7 +93,7 @@ export class ImportGraph {
         if (file.source === "") continue;
         // Parsed once by the controller; the graph reads that tree rather than
         // parsing the file a second time.
-        const parsed = file.ast ?? this.parser.parse(file);
+        const parsed = file.ast ?? astOf(this.parser.parse(file));
         for (const edge of this._edgesForFile(file, parsed, project.rootPath, aliases.paths, known)) {
           edges.push(edge);
         }
