@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type { CheckerMode } from "chisel/checker/models/mode";
 import type { ProjectInfo } from "chisel/checker/models/project_info";
 import type { RuleInfo } from "chisel/checker/rule_metadata";
@@ -42,10 +42,14 @@ export class SemanticArchitectureService {
     }
     if (Object.keys(files).length === 0) return [];
 
+    // The compiler resolves `rootDirs` and aliases against this path, and source
+    // file names are absolute; a relative root (`chisel-js check .`) would make
+    // every generated `./$types` import unresolvable.
+    const rootPath = resolve(project.rootPath);
     const findings = analyzeArchitecture(
       files,
-      project.rootPath,
-      this._compilerOptions(project.rootPath),
+      rootPath,
+      this._compilerOptions(rootPath),
       path => semanticLayerOf(path, this.options),
       path => classifyFile(path, this.options.mode).layer === Layer.TESTS,
       isBrowserService,

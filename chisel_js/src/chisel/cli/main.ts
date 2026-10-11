@@ -123,7 +123,7 @@ program
         await showVersionNotice();
       }
 
-      if (result.hasErrors) process.exit(1);
+      if (result.hasErrors) process.exitCode = 1;
       // chisel-ignore fail-loudly:silent-catch -- Terminal reporter: prints the error on stderr and exits non-zero.
     } catch (err) {
       console.error(`Error: ${err}`);
@@ -153,7 +153,7 @@ program
         }
       }
 
-      if (result.hasErrors) process.exit(1);
+      if (result.hasErrors) process.exitCode = 1;
       // chisel-ignore fail-loudly:silent-catch -- Terminal reporter: prints the error on stderr and exits non-zero.
     } catch (err) {
       // A missing build is a usage error, not a passing check: staying silent
