@@ -3,4 +3,4 @@
   let { note }: { note: Note } = $props();
 </script>
 
-<h1>{note.title}</h1>
+<h1 class="text-2xl font-semibold">{note.title}</h1>

@@ -47,6 +47,10 @@ export interface CheckerConfig {
      * `src/routes/layout.css`. Token rules (contrast, colour steps) read it.
      */
     readonly tokens?: string;
+    /** Utilities that set a heading's type scale, beyond `text-*` and `sr-only`. */
+    readonly headingUtilities: readonly string[];
+    /** Utilities that render display-size text, beyond `text-xl` and up. */
+    readonly displayUtilities: readonly string[];
   };
   /**
    * Process entry points beyond the ones SvelteKit names (hooks, routes,
@@ -66,7 +70,7 @@ export interface CheckerConfig {
 }
 
 const TOP_LEVEL_KEYS = new Set(["mode", "tsconfig", "ignore", "designSystem", "entryPoints", "agent"]);
-const DESIGN_SYSTEM_KEYS = new Set(["allowIn", "icons", "tokens"]);
+const DESIGN_SYSTEM_KEYS = new Set(["allowIn", "icons", "tokens", "headingUtilities", "displayUtilities"]);
 const AGENT_KEYS = new Set(["tools", "toolAdapters"]);
 
 export function defaultConfig(mode: CheckerMode = Mode.STANDALONE): CheckerConfig {
@@ -74,7 +78,11 @@ export function defaultConfig(mode: CheckerMode = Mode.STANDALONE): CheckerConfi
     mode,
     tsconfig: "tsconfig.json",
     ignore: Object.freeze([]),
-    designSystem: Object.freeze({ allowIn: Object.freeze([...DEFAULT_ALLOW_IN]) }),
+    designSystem: Object.freeze({
+      allowIn: Object.freeze([...DEFAULT_ALLOW_IN]),
+      headingUtilities: Object.freeze([]),
+      displayUtilities: Object.freeze([]),
+    }),
     entryPoints: Object.freeze([]),
     agent: Object.freeze({ toolAdapters: Object.freeze([]) }),
   });
@@ -136,12 +144,16 @@ export function parseConfig(raw: Json): CheckerConfig {
   let allowIn = [...DEFAULT_ALLOW_IN];
   let icons: string | undefined;
   let tokens: string | undefined;
+  let headingUtilities: string[] = [];
+  let displayUtilities: string[] = [];
   if (obj.designSystem !== undefined) {
     const ds = readObject(obj.designSystem, "designSystem");
     rejectUnknownKeys(ds, DESIGN_SYSTEM_KEYS, `${CONFIG_FILENAME} "designSystem"`);
     if (ds.allowIn !== undefined) allowIn = readStringArray(ds.allowIn, "designSystem.allowIn");
     icons = readOptionalString(ds.icons, "designSystem.icons");
     tokens = readOptionalString(ds.tokens, "designSystem.tokens");
+    headingUtilities = readStringArray(ds.headingUtilities, "designSystem.headingUtilities");
+    displayUtilities = readStringArray(ds.displayUtilities, "designSystem.displayUtilities");
   }
 
   const entryPoints = readStringArray(obj.entryPoints, "entryPoints");
@@ -163,6 +175,8 @@ export function parseConfig(raw: Json): CheckerConfig {
       allowIn: Object.freeze(allowIn),
       ...(icons === undefined ? {} : { icons }),
       ...(tokens === undefined ? {} : { tokens }),
+      headingUtilities: Object.freeze(headingUtilities),
+      displayUtilities: Object.freeze(displayUtilities),
     }),
     entryPoints: Object.freeze(entryPoints),
     agent: Object.freeze({

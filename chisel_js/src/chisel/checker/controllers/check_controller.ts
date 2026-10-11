@@ -112,7 +112,11 @@ export class CheckController {
       }
       return createFileInfo({ ...withSource, ast: astOf(outcome) });
     });
-    const project = createProjectInfo({ ...discovered, files });
+    const stylesheets = discovered.stylesheets.map(sheet => ({
+      path: sheet.path,
+      source: readFileSync(join(projectPath, sheet.path), "utf-8"),
+    }));
+    const project = createProjectInfo({ ...discovered, files, stylesheets });
 
     const violations: Violation[] = [...unparseable, ...this._buildGraph(project)];
     for (const service of this.services) {
@@ -159,7 +163,10 @@ export class CheckController {
 
   private _applySuppressions(violations: Violation[], project: ProjectInfo): Violation[] {
     if (this.suppression === undefined) return violations;
-    const sources = new Map(project.files.map(file => [file.path, file.source]));
+    const sources = new Map([
+      ...project.files.map(file => [file.path, file.source] as const),
+      ...project.stylesheets.map(sheet => [sheet.path, sheet.source] as const),
+    ]);
     const known = this.describeAllRules().map(rule => rule.id);
     const tests = new Set(project.files.filter(file => file.layer === Layer.TESTS).map(file => file.path));
     return this.suppression.check(violations, sources, known, tests);

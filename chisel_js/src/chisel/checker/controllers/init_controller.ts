@@ -39,9 +39,10 @@ export class InitController {
     const detection = detectMode(projectPath);
     const mode = options.mode ?? detection.mode;
 
+    const defaults = defaultConfig(mode);
     const config: CheckerConfig = {
-      ...defaultConfig(mode),
-      designSystem: { allowIn: seedAllowIn(projectPath) },
+      ...defaults,
+      designSystem: { ...defaults.designSystem, allowIn: seedAllowIn(projectPath) },
     };
 
     const written = options.dryRun !== true;

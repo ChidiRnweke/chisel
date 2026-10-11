@@ -16,6 +16,7 @@ import { SemanticArchitectureService } from "chisel/checker/services/architectur
 import { StructuralSvelteService } from "chisel/checker/services/svelte/structural";
 import { ComponentEnforcementService } from "chisel/checker/services/svelte/component_enforcement";
 import { ColourEnforcementService } from "chisel/checker/services/svelte/colour_enforcement";
+import { DesignTokensService } from "chisel/checker/services/svelte/design_tokens";
 import { ApiEndpointsService } from "chisel/checker/services/svelte/api_endpoints";
 import { ErrorFlowService } from "chisel/checker/services/svelte/error_flow";
 import { RouteStyleService } from "chisel/checker/services/svelte/route_style";
@@ -58,6 +59,12 @@ export class CheckerFactory {
       new StructuralSvelteService(),
       new ComponentEnforcementService(config.designSystem.allowIn),
       new ColourEnforcementService(),
+      new DesignTokensService({
+        tokens: config.designSystem.tokens,
+        vendored: config.designSystem.allowIn,
+        headingUtilities: config.designSystem.headingUtilities,
+        displayUtilities: config.designSystem.displayUtilities,
+      }),
       new ErrorFlowService(),
       new TestStructureService(),
       new ProjectStructureService(),

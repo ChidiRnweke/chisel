@@ -162,9 +162,16 @@ export class FileDiscovery {
 
     files.sort(comparePaths);
 
+    const stylesheets = (await fastGlob(["src/**/*.css"], {
+      cwd: rootPath,
+      ignore: [...IGNORED_DIRS, ...(options.ignore ?? [])],
+      onlyFiles: true,
+    })).map(normalisePath).sort();
+
     return createProjectInfo({
       rootPath,
       files,
+      stylesheets: stylesheets.map(path => ({ path, source: "" })),
       packageName: derivePackageName(rootPath),
     });
   }

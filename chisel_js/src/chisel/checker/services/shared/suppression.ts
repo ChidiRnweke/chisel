@@ -152,15 +152,16 @@ export class SuppressionService {
     if (source === undefined) return undefined;
     const lines = source.split("\n");
 
-    // Line scope: the violation's own line, or the line immediately above it.
-    // Accepting the line above is what makes the directive usable at all — most
-    // violations sit on a line with no room left for a trailing comment.
-    for (const index of [violation.line - 1, violation.line - 2]) {
-      if (index < 0 || index >= lines.length) continue;
+    // Line scope: the violation's own line, then upward through a stack of
+    // directives directly above it. Accepting the line above is what makes the
+    // directive usable at all — most violations sit on a line with no room left
+    // for a trailing comment — and a line that breaks two rules needs two.
+    const own = parseDirective(lines[violation.line - 1] ?? "", violation.line);
+    if (own?.fileScoped === false && matchesRule(violation.ruleId, own.ruleIds)) return own;
+    for (let index = violation.line - 2; index >= 0; index--) {
       const directive = parseDirective(lines[index] ?? "", index + 1);
-      if (directive?.fileScoped === false && matchesRule(violation.ruleId, directive.ruleIds)) {
-        return directive;
-      }
+      if (directive === undefined || directive.fileScoped) break;
+      if (matchesRule(violation.ruleId, directive.ruleIds)) return directive;
     }
 
     // File scope: a header directive covers everything below it. Line scope is
@@ -203,8 +204,9 @@ function parseDirective(text: string, line: number): Directive | undefined {
   if (match === null) return undefined;
 
   const raw = match[3] ?? "";
-  // Strip a trailing `-->` so the directive reads naturally inside markup.
-  const reason = raw.replace(/--+>\s*$/, "").trim();
+  // Strip a trailing `-->` or `*/` so the directive reads naturally inside
+  // markup and stylesheets.
+  const reason = raw.replace(/(?:--+>|\*\/)\s*$/, "").trim();
 
   return {
     line,
