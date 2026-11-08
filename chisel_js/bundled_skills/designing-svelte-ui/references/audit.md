@@ -20,18 +20,16 @@ Use this workflow when the user wants to improve an existing SvelteKit project r
 
 ## Step 1: Reconnaissance
 
-
 Before suggesting any changes, read the following files:
 
-1. `src/app.css` — does a token system exist in `:root`? Is there an `@theme inline` block wiring tokens to Tailwind utilities?
+1. `src/routes/layout.css` — does a token system exist in `:root`? Is there an `@theme inline` block wiring tokens to Tailwind utilities?
 2. A representative page component (e.g. `src/routes/+page.svelte`)
 3. 2–3 shared components from `src/lib/components/`
-4. `DESIGN_SYSTEM.md` if it exists
+4. `docs/design/design-system.md` if it exists
 
 Form a picture of the current state before saying anything. Don't start listing fixes yet.
 
-If `DESIGN_SYSTEM.md` doesn't exist, you will gather information to create it, map out the tokens and primitives you find, and propose a structure for it in the diagnosis report. You can also suggest running the `designing-svelte-ui` skill to create one based on the audit findings.
-
+If `docs/design/design-system.md` doesn't exist, you will gather information to create it, map out the tokens and primitives you find, and propose a structure for it in the diagnosis report. You can also suggest running the `designing-svelte-ui` skill to create one based on the audit findings.
 
 ---
 
@@ -46,7 +44,7 @@ Produce a structured diagnosis. Be specific — reference actual file paths and 
 - [Genuine strengths — don't skip this, it sets a constructive tone]
 
 ### Design System
-- [ ] Token system in `app.css` `:root`: EXISTS / MISSING / PARTIAL
+- [ ] Token system in `layout.css` `:root`: EXISTS / MISSING / PARTIAL
 - [ ] `@theme inline` block wiring tokens to Tailwind: YES / NO
 - [ ] shadcn themed: YES / NO / NOT USED
 
@@ -56,14 +54,15 @@ Produce a structured diagnosis. Be specific — reference actual file paths and 
 |------|-------|----------|
 | src/routes/+page.svelte:42 | Raw `<button class="bg-blue-500">` | High |
 | src/lib/components/Card.svelte | bg-white, no border-radius token | Medium |
-| src/app.css | No token system, Tailwind defaults only | High |
-| src/app.css | No `@theme inline` block — tokens not wired to Tailwind | High |
+| src/routes/layout.css | No token system, Tailwind defaults only | High |
+| src/routes/layout.css | No `@theme inline` block — tokens not wired to Tailwind | High |
 
 ### Overall assessment
 [2–3 sentences on the dominant problems and what fixing them would achieve]
 ```
 
 Severity guide:
+
 - **High** — Affects consistency across the whole codebase (missing token system, raw HTML elements, unthemed shadcn)
 - **Medium** — Localised inconsistency (one component using wrong spacing, one-off colour)
 - **Low** — Polish (missing letter-spacing, could use a skeleton instead of spinner)
@@ -75,15 +74,18 @@ Severity guide:
 Don't rewrite everything at once. Propose a phased approach:
 
 **Phase A — Foundation (do this first, unblocks everything else)**
-- Establish token system in `app.css`
+
+- Establish token system in `layout.css`
 - Wire tokens into Tailwind via `@theme inline`
 - Remap shadcn variables if used
 
 **Phase B — Primitives (do before touching pages)**
+
 - Create/fix `Button`, `Card`, `Input`, `Badge` primitives
 - Replace raw HTML tags with primitives across the codebase
 
 **Phase C — Pages (do last)**
+
 - Apply tokens and primitives to each page
 - Fix spacing rhythm
 - Fix typography
@@ -104,15 +106,19 @@ Work through one file or component at a time. For each change:
 Example:
 
 > **Before** (`src/routes/+page.svelte:42`):
+>
 > ```svelte
-> <button class="bg-blue-500 text-white px-4 py-2 rounded">Add Item</button>
+> <button class="rounded bg-blue-500 px-4 py-2 text-white">Add Item</button>
 > ```
+>
 > Problem: raw `<button>` tag, Tailwind default blue (`bg-blue-500`), arbitrary padding not on spacing scale.
 >
 > **After**:
+>
 > ```svelte
 > <Button variant="default">Add Item</Button>
 > ```
+>
 > Now uses the `Button` primitive which pulls from `--color-primary` and `--space-*` tokens.
 
 ---
@@ -123,7 +129,7 @@ After changes, check:
 
 - [ ] Does the updated component visually match the rest of the app?
 - [ ] Are all new class values referencing tokens, not Tailwind defaults?
-- [ ] Does `DESIGN_SYSTEM.md` need updating to reflect any new decisions made during the audit?
+- [ ] Does `docs/design/design-system.md` need updating to reflect any new decisions made during the audit?
 - [ ] Are there other files with the same anti-pattern that should be fixed in this session?
 
 ---

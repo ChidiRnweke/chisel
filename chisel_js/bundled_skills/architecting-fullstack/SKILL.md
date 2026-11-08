@@ -221,7 +221,6 @@ controllers for multi-service orchestration, stores for client state — applies
 | Frontend pages, components, UI              | `designing-svelte-ui` skill                      |
 | Frontend loaders, actions, stores           | `building-sveltekit-frontend` skill                     |
 | Backend services, controllers, repositories | `building-python-backend` skill                     |
-| Typed API client (frontend ↔ backend)       | `building-sveltekit-frontend` → `references/openapi.md` |
 
 The contract between frontend and backend is the OpenAPI spec. The backend owns it. The
 frontend generates types from it and never hand-writes API types.

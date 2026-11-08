@@ -1,0 +1,2403 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<!--
+  Architecture call graph. Generated from the drawing-call-graphs skill template.
+  Edit ONLY the JSON data block (the script element with id call-graph-data, near the end).
+  Everything else is the renderer: update it with scripts/sync-template.mjs, never by hand.
+  Check the data with scripts/check-call-graph.mjs <this file>.
+-->
+		<title>Call Graph</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+		/>
+		<style>
+			html {
+				color-scheme: light;
+			}
+			body {
+				margin: 0;
+			}
+			[hidden] {
+				display: none !important;
+			}
+			img {
+				max-width: 100%;
+			}
+
+			/* Layout: reference sheet. Intro, rule banner, the layered map (click → drawer), proposals, layer guide, models, status ledger. */
+			:root {
+				--bg: #f7f7f4;
+				--surface: #ffffff;
+				--fg: #1c1b19;
+				--muted: #6b6862;
+				--line: #e1dfd9;
+				--band: #efeee9;
+				--no: #c62828;
+				--yes: #2f7a3f;
+				--amber: #b7791f;
+				--p0: #2563a8;
+				--p1: #0f7f6e;
+				--p2: #b0601a;
+				--p3: #6d45bd;
+				--p4: #b02f6a;
+				--p5: #56731b;
+				--p6: #6b5a46;
+				--p7: #1f6f8b;
+				--p8: #8a6d00;
+				--p9: #a23b2a;
+				--pure: #7a7770;
+				--st-planned: #8a8780;
+				--st-interface: #b7791f;
+				--st-built: #2f7a3f;
+				--font-body: 'Figtree', system-ui, sans-serif;
+				--font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+			}
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme='light']) {
+					--bg: #121211;
+					--surface: #1b1b19;
+					--fg: #ecebe7;
+					--muted: #a19e97;
+					--line: #33322f;
+					--band: #232220;
+					--no: #ff6b6b;
+					--yes: #6fcf87;
+					--amber: #e8ad52;
+					--p0: #6ea8ea;
+					--p1: #4cc4ae;
+					--p2: #eea05a;
+					--p3: #ab8df0;
+					--p4: #ee7dae;
+					--p5: #a6c85c;
+					--p6: #c4ad90;
+					--p7: #5cc0e0;
+					--p8: #e0c04a;
+					--p9: #f08a76;
+					--pure: #a19e97;
+					--st-planned: #8a8780;
+					--st-interface: #e8ad52;
+					--st-built: #6fcf87;
+					color-scheme: dark;
+				}
+			}
+			:root[data-theme='dark'] {
+				--bg: #121211;
+				--surface: #1b1b19;
+				--fg: #ecebe7;
+				--muted: #a19e97;
+				--line: #33322f;
+				--band: #232220;
+				--no: #ff6b6b;
+				--yes: #6fcf87;
+				--amber: #e8ad52;
+				--p0: #6ea8ea;
+				--p1: #4cc4ae;
+				--p2: #eea05a;
+				--p3: #ab8df0;
+				--p4: #ee7dae;
+				--p5: #a6c85c;
+				--p6: #c4ad90;
+				--p7: #5cc0e0;
+				--p8: #e0c04a;
+				--p9: #f08a76;
+				--pure: #a19e97;
+				--st-planned: #8a8780;
+				--st-interface: #e8ad52;
+				--st-built: #6fcf87;
+				color-scheme: dark;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				background: var(--bg);
+				color: var(--fg);
+				font: 15px/1.55 var(--font-body);
+			}
+			.wrap {
+				max-width: 1320px;
+				margin: 0 auto;
+				padding-inline: 16px;
+				padding-block: 28px 72px;
+				display: grid;
+				gap: 44px;
+			}
+			h1,
+			h2,
+			h3 {
+				text-wrap: balance;
+				margin: 0;
+				line-height: 1.2;
+			}
+			h1 {
+				font-size: 32px;
+				font-weight: 700;
+				letter-spacing: -0.015em;
+			}
+			h2 {
+				font-size: 21px;
+				font-weight: 650;
+			}
+			h3 {
+				font-size: 15.5px;
+				font-weight: 650;
+			}
+			p {
+				margin: 0;
+				max-width: 72ch;
+			}
+			code,
+			.mono {
+				font-family: var(--font-mono);
+				font-size: 0.85em;
+				overflow-wrap: anywhere;
+			}
+			.muted {
+				color: var(--muted);
+			}
+			.eyebrow {
+				font-size: 11px;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--muted);
+				font-weight: 650;
+			}
+			section,
+			header {
+				display: grid;
+				gap: 16px;
+				min-width: 0;
+			}
+			.sechead {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: end;
+				justify-content: space-between;
+				gap: 10px 20px;
+			}
+			.ico {
+				width: 18px;
+				height: 18px;
+				flex: none;
+				fill: none;
+				stroke: currentColor;
+				stroke-width: 1.8;
+				stroke-linecap: round;
+				stroke-linejoin: round;
+			}
+			.intro {
+				display: grid;
+				grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+				gap: 24px;
+				align-items: start;
+			}
+			@media (max-width: 860px) {
+				.intro {
+					grid-template-columns: 1fr;
+				}
+			}
+			.facts {
+				display: grid;
+				gap: 10px;
+				background: var(--surface);
+				border: 1px solid var(--line);
+				border-radius: 10px;
+				padding: 16px;
+				font-size: 14px;
+			}
+			.facts div {
+				display: flex;
+				gap: 10px;
+				align-items: start;
+			}
+			.facts .ico {
+				margin-top: 2px;
+				color: var(--muted);
+			}
+			.rule {
+				background: var(--surface);
+				border: 1px solid var(--line);
+				border-radius: 10px;
+				padding: 20px;
+				display: grid;
+				gap: 14px;
+			}
+			.rule-text {
+				font-size: 17px;
+				font-weight: 500;
+			}
+			.rule-text strong {
+				color: var(--no);
+			}
+			.rule-figs {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+				gap: 16px;
+			}
+			.rule-figs figure {
+				margin: 0;
+				display: grid;
+				gap: 6px;
+				min-width: 0;
+			}
+			.rule-figs svg {
+				width: 100%;
+				height: auto;
+				max-width: 460px;
+				color: var(--fg);
+			}
+			figcaption {
+				font-size: 13px;
+				color: var(--muted);
+			}
+			.controls {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 8px;
+				align-items: center;
+				font-size: 13px;
+			}
+			.seg {
+				display: inline-flex;
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				overflow: hidden;
+				background: var(--surface);
+			}
+			.seg button {
+				font: 500 13px var(--font-body);
+				color: var(--muted);
+				background: none;
+				border: 0;
+				padding: 6px 12px;
+				cursor: pointer;
+			}
+			.seg button[aria-pressed='true'] {
+				background: var(--fg);
+				color: var(--bg);
+			}
+			button:focus-visible,
+			.node:focus-visible,
+			.card:focus-visible {
+				outline: 2px solid var(--p0);
+				outline-offset: 2px;
+			}
+			.mapbox {
+				background: var(--surface);
+				border: 1px solid var(--line);
+				border-radius: 12px;
+				overflow-x: auto;
+			}
+			#map {
+				display: block;
+				width: 100%;
+				min-width: 1040px;
+				height: auto;
+				color: var(--fg);
+				font-family: var(--font-body);
+			}
+			.node {
+				cursor: pointer;
+				outline: none;
+			}
+			.node rect.bg {
+				fill: var(--surface);
+				stroke: var(--line);
+				stroke-width: 1.3;
+			}
+			.node.k-controller rect.bg {
+				stroke: var(--muted);
+				stroke-dasharray: 6 4;
+				stroke-width: 1.5;
+			}
+			.node.k-service rect.bg {
+				fill: color-mix(in srgb, var(--c) 11%, var(--surface));
+				stroke: var(--c);
+				stroke-width: 1.6;
+			}
+			[data-color='status'] .node.k-service rect.bg {
+				fill: color-mix(in srgb, var(--cs) 11%, var(--surface));
+				stroke: var(--cs);
+			}
+			.node.k-store rect.bg {
+				fill: var(--band);
+			}
+			.node .t {
+				fill: currentColor;
+				font-size: 13px;
+				font-weight: 650;
+			}
+			.node .s {
+				fill: var(--muted);
+				font-size: 11px;
+			}
+			.node .gl {
+				color: var(--c, var(--muted));
+			}
+			[data-color='status'] .node.k-service .gl {
+				color: var(--cs);
+			}
+			.node:hover rect.bg,
+			.node:focus-visible rect.bg {
+				stroke-width: 2.4;
+			}
+			.e {
+				fill: none;
+				stroke: var(--muted);
+				stroke-opacity: 0.35;
+				stroke-width: 1.2;
+				transition: stroke-opacity 0.15s;
+			}
+			.e.svc {
+				stroke: var(--c);
+				stroke-opacity: 0.45;
+			}
+			[data-color='status'] .e.svc {
+				stroke: var(--cs);
+			}
+			#map.focus .e {
+				stroke-opacity: 0.06;
+			}
+			#map.focus .e.on {
+				stroke-opacity: 0.95;
+				stroke-width: 1.9;
+			}
+			#map.focus .node {
+				opacity: 0.22;
+			}
+			#map.focus .node.on {
+				opacity: 1;
+			}
+			@media (prefers-reduced-motion: no-preference) {
+				.node {
+					transition: opacity 0.15s;
+				}
+			}
+			.colhead {
+				fill: var(--muted);
+				font-size: 11px;
+				font-weight: 700;
+				letter-spacing: 0.1em;
+			}
+			.legend {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 10px 20px;
+				font-size: 13px;
+				color: var(--muted);
+				align-items: center;
+			}
+			.legend span {
+				display: inline-flex;
+				align-items: center;
+				gap: 7px;
+			}
+			.chip {
+				--c: var(--pure);
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				font: 650 11px var(--font-body);
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				padding: 3px 8px;
+				border-radius: 5px;
+				border: 1.5px solid var(--c);
+				color: var(--c);
+				background: color-mix(in srgb, var(--c) 10%, transparent);
+				cursor: pointer;
+			}
+			.chip .ico {
+				width: 13px;
+				height: 13px;
+			}
+			[data-color='status'] .chip {
+				--c: var(--cs);
+			}
+			.badge {
+				font: 650 11px var(--font-body);
+				white-space: nowrap;
+				padding: 2px 8px;
+				border-radius: 99px;
+				color: var(--sc);
+				border: 1px solid var(--sc);
+			}
+			.badge::before {
+				content: '';
+				display: inline-block;
+				width: 6px;
+				height: 6px;
+				border-radius: 50%;
+				background: var(--sc);
+				margin-right: 5px;
+				vertical-align: 1px;
+			}
+			.tag {
+				font: 500 12px var(--font-mono);
+				padding: 2px 7px;
+				border-radius: 5px;
+				background: var(--band);
+				border: 1px solid var(--line);
+				color: var(--fg);
+				white-space: nowrap;
+			}
+			button.tag {
+				cursor: pointer;
+			}
+			button.tag:hover {
+				border-color: var(--fg);
+			}
+			.tags {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+			}
+			/* a type expression: model names are links, externals have a tooltip */
+			.ty {
+				font: inherit;
+				color: inherit;
+				background: none;
+				border: 0;
+				padding: 0;
+				cursor: pointer;
+				text-decoration: underline;
+				text-decoration-color: var(--p0);
+				text-decoration-thickness: 1.5px;
+				text-underline-offset: 2px;
+			}
+			.ty:hover {
+				color: var(--p0);
+			}
+			.ext {
+				text-decoration: underline dotted var(--muted);
+				cursor: help;
+			}
+			.sig {
+				font: 12.5px/1.55 var(--font-mono);
+				overflow-wrap: anywhere;
+			}
+			.sig .nm {
+				font-weight: 600;
+			}
+			.sig .pn {
+				color: var(--muted);
+			}
+			.guide {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+				gap: 14px;
+			}
+			.card {
+				background: var(--surface);
+				border: 1px solid var(--line);
+				border-radius: 10px;
+				padding: 16px;
+				display: grid;
+				gap: 9px;
+				align-content: start;
+				font-size: 14px;
+			}
+			.card-h {
+				display: flex;
+				gap: 10px;
+				align-items: center;
+			}
+			.card-h .ico {
+				width: 26px;
+				height: 26px;
+				padding: 4px;
+				border-radius: 7px;
+				background: var(--band);
+			}
+			.card dl {
+				margin: 0;
+				display: grid;
+				grid-template-columns: auto 1fr;
+				gap: 4px 10px;
+			}
+			.card dt {
+				font-size: 11px;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--muted);
+				font-weight: 650;
+				padding-top: 2px;
+			}
+			.card dd {
+				margin: 0;
+				min-width: 0;
+			}
+			.card dd.never {
+				color: var(--no);
+			}
+			.models {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+				gap: 12px;
+			}
+			.mgroup {
+				background: var(--surface);
+				border: 1px solid var(--line);
+				border-radius: 10px;
+				padding: 14px;
+				display: grid;
+				gap: 9px;
+				align-content: start;
+			}
+			.mgroup h3 {
+				font-size: 13px;
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				color: var(--muted);
+				display: flex;
+				gap: 8px;
+				align-items: center;
+			}
+			.tablewrap {
+				overflow-x: auto;
+				background: var(--surface);
+				border: 1px solid var(--line);
+				border-radius: 10px;
+			}
+			table {
+				border-collapse: collapse;
+				width: 100%;
+				font-size: 13.5px;
+			}
+			th,
+			td {
+				text-align: left;
+				padding: 9px 12px;
+				border-bottom: 1px solid var(--line);
+				vertical-align: top;
+			}
+			th {
+				font-size: 11px;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--muted);
+				font-weight: 650;
+			}
+			tr:last-child td {
+				border-bottom: 0;
+			}
+			.warn {
+				border: 1.5px solid var(--no);
+				color: var(--no);
+				border-radius: 8px;
+				padding: 10px 14px;
+				font-weight: 500;
+			}
+			.ok {
+				color: var(--yes);
+				font-size: 13.5px;
+			}
+			.proposal {
+				background: var(--surface);
+				border: 1.5px dashed var(--st-planned);
+				border-radius: 12px;
+				padding: 18px;
+				display: grid;
+				gap: 14px;
+			}
+			.reuse {
+				font-size: 11px;
+				font-weight: 650;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+			}
+			.reuse.r {
+				color: var(--yes);
+			}
+			.reuse.n {
+				color: var(--amber);
+			}
+			#scrim {
+				position: fixed;
+				inset: 0;
+				background: color-mix(in srgb, var(--fg) 22%, transparent);
+				z-index: 9;
+			}
+			#drawer {
+				position: fixed;
+				z-index: 10;
+				top: 0;
+				right: 0;
+				bottom: 0;
+				width: min(820px, 94vw);
+				background: var(--surface);
+				border-left: 1px solid var(--line);
+				box-shadow: -12px 0 40px rgba(0, 0, 0, 0.14);
+				display: grid;
+				grid-template-rows: auto 1fr;
+				padding-top: env(safe-area-inset-top, 0px);
+			}
+			@media (max-width: 720px) {
+				#drawer {
+					top: auto;
+					left: 0;
+					width: auto;
+					height: 86%;
+					border-left: 0;
+					border-top: 1px solid var(--line);
+					border-radius: 14px 14px 0 0;
+					padding-bottom: env(safe-area-inset-bottom, 0px);
+				}
+			}
+			.dbar {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				padding: 10px 14px;
+				border-bottom: 1px solid var(--line);
+			}
+			.dbar button {
+				font: 500 13px var(--font-body);
+				background: var(--band);
+				color: var(--fg);
+				border: 1px solid var(--line);
+				border-radius: 7px;
+				padding: 5px 11px;
+				cursor: pointer;
+			}
+			.dbody {
+				overflow-y: auto;
+				padding: 18px 18px 40px;
+				display: grid;
+				gap: 18px;
+				align-content: start;
+				min-width: 0;
+			}
+			.dhead {
+				display: flex;
+				gap: 12px;
+				align-items: start;
+			}
+			.dhead > .ico {
+				width: 40px;
+				height: 40px;
+				padding: 8px;
+				border-radius: 10px;
+				background: color-mix(in srgb, var(--c, var(--muted)) 14%, var(--surface));
+				color: var(--c, var(--fg));
+				flex: none;
+			}
+			.dhead h2 {
+				font-family: var(--font-mono);
+				font-size: 19px;
+			}
+			.block {
+				display: grid;
+				gap: 8px;
+				min-width: 0;
+			}
+			.block > .eyebrow {
+				margin-bottom: 2px;
+			}
+			.lead {
+				font-size: 15.5px;
+				font-weight: 500;
+			}
+			.why {
+				display: grid;
+				gap: 8px;
+				border-left: 3px solid var(--line);
+				padding-left: 12px;
+			}
+			pre.def {
+				margin: 0;
+				font: 12.5px/1.5 var(--font-mono);
+				background: var(--band);
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				padding: 12px;
+				overflow-x: auto;
+				white-space: pre;
+			}
+			.never-line {
+				border-left: 3px solid var(--no);
+				padding: 6px 10px;
+				background: color-mix(in srgb, var(--no) 7%, transparent);
+				border-radius: 0 6px 6px 0;
+				font-size: 14px;
+			}
+			ul.plain {
+				margin: 0;
+				padding-left: 18px;
+				display: grid;
+				gap: 3px;
+				font-size: 14px;
+			}
+			.methods {
+				display: grid;
+				gap: 0;
+				border: 1px solid var(--line);
+				border-radius: 8px;
+				overflow: hidden;
+			}
+			.method {
+				display: grid;
+				gap: 3px;
+				padding: 9px 12px;
+				border-bottom: 1px solid var(--line);
+			}
+			.method:last-child {
+				border-bottom: 0;
+			}
+			.method p {
+				font-size: 13.5px;
+				color: var(--muted);
+				max-width: none;
+			}
+			.method .top {
+				display: flex;
+				gap: 8px;
+				align-items: baseline;
+				flex-wrap: wrap;
+				justify-content: space-between;
+			}
+			.ops {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+			}
+			.ops button {
+				font: 500 12.5px var(--font-mono);
+				background: var(--bg);
+				color: var(--fg);
+				border: 1px solid var(--line);
+				border-radius: 6px;
+				padding: 4px 9px;
+				cursor: pointer;
+			}
+			.ops button[aria-pressed='true'] {
+				background: var(--fg);
+				color: var(--bg);
+				border-color: var(--fg);
+			}
+			.lanes {
+				display: grid;
+				gap: 18px;
+			}
+			.opwhat {
+				font-size: 14px;
+				max-width: 80ch;
+			}
+			.lane {
+				display: grid;
+				gap: 6px;
+			}
+			.lane-scroll {
+				overflow-x: auto;
+				padding-bottom: 4px;
+			}
+			.lane-scroll svg {
+				display: block;
+				color: var(--fg);
+				font-family: var(--font-body);
+			}
+			.sv rect.box {
+				fill: var(--c);
+				fill-opacity: 0.1;
+				stroke: var(--c);
+				stroke-width: 1.5;
+			}
+			[data-color='status'] .sv rect.box {
+				fill: var(--cs);
+				stroke: var(--cs);
+			}
+			[data-color='status'] .sv text.svc,
+			[data-color='status'] .sv use {
+				fill: var(--cs);
+				color: var(--cs);
+			}
+			.sv text.svc {
+				fill: var(--c);
+				font-size: 10.5px;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+			}
+			.sv use {
+				color: var(--c);
+			}
+			.sv text.meth {
+				fill: currentColor;
+				font-family: var(--font-mono);
+				font-size: 12px;
+			}
+			.sv text.note {
+				fill: var(--muted);
+				font-size: 10.5px;
+				font-style: italic;
+			}
+			.pill rect {
+				fill: var(--surface);
+				stroke: currentColor;
+				stroke-width: 1;
+			}
+			.pill text {
+				fill: currentColor;
+				font-family: var(--font-mono);
+				font-size: 11px;
+			}
+			.pill.click {
+				cursor: pointer;
+			}
+			.pill.click:hover rect {
+				stroke-width: 2;
+				fill: var(--band);
+			}
+			.edge {
+				fill: none;
+				stroke: currentColor;
+				stroke-width: 1.4;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- icon library: 24px, stroke = currentColor. Kinds are i-*, glyphs are g-<name> (pick by name in the data). -->
+		<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+			<defs>
+				<symbol
+					id="i-entry"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
+					<path d="M10 17l5-5-5-5" />
+					<path d="M15 12H3" />
+				</symbol>
+				<symbol
+					id="i-controller"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<rect x="2.5" y="9" width="6" height="6" rx="1.5" />
+					<rect x="15.5" y="2.5" width="6" height="6" rx="1.5" />
+					<rect x="15.5" y="15.5" width="6" height="6" rx="1.5" />
+					<path d="M8.5 12h3.5M12 5.5v13M12 5.5h3.5M12 18.5h3.5" />
+				</symbol>
+				<symbol
+					id="i-service"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="12" cy="12" r="3" />
+					<circle cx="12" cy="12" r="6.8" />
+					<path
+						d="M12 2.5V5.2M12 18.8v2.7M2.5 12h2.7M18.8 12h2.7M5.3 5.3l1.9 1.9M16.8 16.8l1.9 1.9M18.7 5.3l-1.9 1.9M7.2 16.8l-1.9 1.9"
+					/>
+				</symbol>
+				<symbol
+					id="i-repository"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8" />
+					<path d="M4.5 5.5v13c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8v-13" />
+					<path d="M4.5 12c0 1.6 3.4 2.8 7.5 2.8s7.5-1.2 7.5-2.8" />
+				</symbol>
+				<symbol
+					id="i-provider"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M9 2.5v5M15 2.5v5" />
+					<path d="M6 7.5h12v3.5a6 6 0 0 1-12 0z" />
+					<path d="M12 17v4.5" />
+				</symbol>
+				<symbol
+					id="i-store"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<rect x="3" y="3.5" width="18" height="7" rx="1.6" />
+					<rect x="3" y="13.5" width="18" height="7" rx="1.6" />
+					<path d="M7 7h.01M7 17h.01" />
+				</symbol>
+				<symbol
+					id="i-model"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M12 2.5l8.5 4.7v9.6L12 21.5l-8.5-4.7V7.2z" />
+					<path d="M3.5 7.2L12 12l8.5-4.8" />
+					<path d="M12 12v9.5" />
+				</symbol>
+				<symbol
+					id="i-tx"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M8 3.5H5v17h3M16 3.5h3v17h-3" />
+					<path d="M9 9.5h6M9 14.5h6" />
+				</symbol>
+				<symbol
+					id="i-caller"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="12" cy="8" r="3.8" />
+					<path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
+				</symbol>
+				<symbol
+					id="i-factory"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M3 20.5V10l5 3V10l5 3V10l5 3V4h3v16.5z" />
+				</symbol>
+				<symbol
+					id="g-branch"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="6" cy="5" r="2.2" />
+					<circle cx="6" cy="19" r="2.2" />
+					<circle cx="18" cy="12" r="2.2" />
+					<path d="M6 7.2v9.6M6 12h9.8" />
+				</symbol>
+				<symbol
+					id="g-document"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+					<path d="M14 3v5h5M9 13h6M9 17h6" />
+				</symbol>
+				<symbol
+					id="g-clip"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path
+						d="M21 11l-8.6 8.6a5.6 5.6 0 0 1-7.9-7.9L13.1 3a3.7 3.7 0 0 1 5.3 5.3l-8.6 8.6a1.9 1.9 0 0 1-2.6-2.6l8-8"
+					/>
+				</symbol>
+				<symbol
+					id="g-bookmark"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M18.5 21L12 17.3 5.5 21V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2z" />
+					<path d="M9.5 9.5l1.8 1.8 3.4-3.6" />
+				</symbol>
+				<symbol
+					id="g-search"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="10.5" cy="10.5" r="6.8" />
+					<path d="M20.5 20.5l-5.2-5.2" />
+				</symbol>
+				<symbol
+					id="g-pulse"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M22 12h-4l-3 8.5L9 3.5 6 12H2" />
+				</symbol>
+				<symbol
+					id="g-folder"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path
+						d="M4 20h16a2 2 0 0 0 2-2V8.5a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"
+					/>
+				</symbol>
+				<symbol
+					id="g-terminal"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path
+						d="M4 20h16a2 2 0 0 0 2-2V8.5a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"
+					/>
+					<path d="M8 13.5l2 2-2 2M12.5 17.5h3.5" />
+				</symbol>
+				<symbol
+					id="g-refresh"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M21 12a9 9 0 1 1-2.6-6.4L21 8" />
+					<path d="M21 3v5h-5" />
+				</symbol>
+				<symbol
+					id="g-clock"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M21 12a9 9 0 1 1-2.6-6.4L21 8" />
+					<path d="M21 3v5h-5" />
+					<path d="M12 7.5V12l3 2" />
+				</symbol>
+				<symbol
+					id="g-function"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M15.5 3.5c-2.6 0-3.6 1.2-4 3.8l-1.6 9.6c-.4 2.5-1.4 3.6-4 3.6" />
+					<path d="M7.5 10h7.5" />
+				</symbol>
+				<symbol
+					id="g-monitor"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<rect x="2.5" y="4" width="19" height="13" rx="2" />
+					<path d="M8 21h8M12 17v4" />
+				</symbol>
+				<symbol
+					id="g-braces"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path
+						d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1M16 3h1a2 2 0 0 1 2 2v5a2 2 0 0 0 2 2 2 2 0 0 0-2 2v5a2 2 0 0 1-2 2h-1"
+					/>
+				</symbol>
+				<symbol
+					id="g-robot"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<rect x="4" y="8" width="16" height="12" rx="2.5" />
+					<path d="M12 8V4.5M9 13.5v2M15 13.5v2" />
+					<circle cx="12" cy="3.5" r="1" />
+				</symbol>
+				<symbol
+					id="g-pin"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+					<circle cx="12" cy="10" r="2.4" />
+				</symbol>
+				<symbol
+					id="g-cloud"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M7 19a4.5 4.5 0 0 1-.7-8.95A6 6 0 0 1 17.8 9.6 4.2 4.2 0 0 1 17.5 19z" />
+				</symbol>
+				<symbol
+					id="g-cart"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="9" cy="20" r="1.5" />
+					<circle cx="18" cy="20" r="1.5" />
+					<path d="M2.5 3.5h3l2.4 11.5h11.2l2-8H6.6" />
+				</symbol>
+				<symbol
+					id="g-card"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<rect x="2.5" y="5" width="19" height="14" rx="2" />
+					<path d="M2.5 10h19M6.5 15h4" />
+				</symbol>
+				<symbol
+					id="g-user"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<circle cx="12" cy="8" r="3.8" />
+					<path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
+				</symbol>
+				<symbol
+					id="g-mail"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<rect x="2.5" y="5" width="19" height="14" rx="2" />
+					<path d="M3 6l9 7 9-7" />
+				</symbol>
+				<symbol
+					id="g-lock"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<rect x="5" y="11" width="14" height="10" rx="2" />
+					<path d="M8 11V7a4 4 0 0 1 8 0v4" />
+				</symbol>
+				<marker
+					id="ar"
+					viewBox="0 0 10 10"
+					refX="9"
+					refY="5"
+					markerWidth="7"
+					markerHeight="7"
+					orient="auto-start-reverse"
+				>
+					<path d="M0 0L10 5L0 10z" fill="currentColor" />
+				</marker>
+				<marker
+					id="arN"
+					viewBox="0 0 10 10"
+					refX="9"
+					refY="5"
+					markerWidth="7"
+					markerHeight="7"
+					orient="auto-start-reverse"
+				>
+					<path d="M0 0L10 5L0 10z" style="fill: var(--no)" />
+				</marker>
+			</defs>
+		</svg>
+
+		<div class="wrap" id="root" data-color="domain">
+			<header>
+				<div class="eyebrow" id="p-eyebrow"></div>
+				<h1 id="p-title"></h1>
+				<div class="intro">
+					<div style="display: grid; gap: 12px" id="p-intro"></div>
+					<div class="facts" id="p-facts"></div>
+				</div>
+			</header>
+
+			<div class="rule">
+				<p class="rule-text" id="p-rule"></p>
+				<div class="rule-figs">
+					<figure>
+						<svg
+							viewBox="0 0 440 120"
+							role="img"
+							aria-label="Forbidden: a direct arrow from one service to another service."
+						>
+							<g class="sv" style="--c: var(--p0)">
+								<rect class="box" x="10" y="40" width="140" height="48" rx="6" />
+								<use href="#i-service" x="20" y="47" width="14" height="14" />
+								<text class="svc" x="40" y="58">SERVICE A</text>
+								<text class="meth" x="20" y="78">read()</text>
+							</g>
+							<g class="sv" style="--c: var(--p1)">
+								<rect class="box" x="290" y="40" width="140" height="48" rx="6" />
+								<use href="#i-service" x="300" y="47" width="14" height="14" />
+								<text class="svc" x="320" y="58">SERVICE B</text>
+								<text class="meth" x="300" y="78">write()</text>
+							</g>
+							<line
+								x1="152"
+								y1="64"
+								x2="286"
+								y2="64"
+								style="stroke: var(--no); stroke-width: 2"
+								marker-end="url(#arN)"
+							/>
+							<g style="stroke: var(--no); stroke-width: 3.5; stroke-linecap: round">
+								<line x1="206" y1="46" x2="234" y2="82" />
+								<line x1="234" y1="46" x2="206" y2="82" />
+							</g>
+							<text
+								x="220"
+								y="30"
+								text-anchor="middle"
+								style="fill: var(--no); font-weight: 700; font-size: 13px"
+							>
+								never
+							</text>
+						</svg>
+						<figcaption>
+							No import, no constructor argument, no call from one service into another.
+						</figcaption>
+					</figure>
+					<figure>
+						<svg
+							viewBox="0 0 440 150"
+							role="img"
+							aria-label="Allowed: the controller calls service A, receives a model, and passes it to service B."
+						>
+							<rect
+								x="2"
+								y="2"
+								width="436"
+								height="144"
+								rx="8"
+								style="fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 6 4"
+							/>
+							<use
+								href="#i-controller"
+								x="12"
+								y="10"
+								width="16"
+								height="16"
+								style="color: var(--muted)"
+							/>
+							<text
+								x="34"
+								y="23"
+								style="
+									fill: currentColor;
+									font-family: var(--font-mono);
+									font-size: 12px;
+									font-weight: 600;
+								"
+							>
+								Controller
+							</text>
+							<g class="sv" style="--c: var(--p0)">
+								<rect class="box" x="10" y="86" width="140" height="48" rx="6" />
+								<use href="#i-service" x="20" y="93" width="14" height="14" />
+								<text class="svc" x="40" y="104">SERVICE A</text>
+								<text class="meth" x="20" y="124">read()</text>
+							</g>
+							<g class="sv" style="--c: var(--p1)">
+								<rect class="box" x="290" y="86" width="140" height="48" rx="6" />
+								<use href="#i-service" x="300" y="93" width="14" height="14" />
+								<text class="svc" x="320" y="104">SERVICE B</text>
+								<text class="meth" x="300" y="124">write()</text>
+							</g>
+							<polyline class="edge" points="103,86 103,48 337,48 337,82" marker-end="url(#ar)" />
+							<g class="pill">
+								<rect x="183" y="38" width="74" height="20" rx="10" />
+								<text x="220" y="52" text-anchor="middle">Model</text>
+							</g>
+							<text
+								x="220"
+								y="76"
+								text-anchor="middle"
+								style="fill: var(--yes); font-weight: 700; font-size: 13px"
+							>
+								always
+							</text>
+						</svg>
+						<figcaption>
+							The value rides on the controller (the line along the top of the dashed box). The
+							label on the line is a model.
+						</figcaption>
+					</figure>
+				</div>
+			</div>
+
+			<section aria-labelledby="h-map">
+				<div class="sechead">
+					<div style="display: grid; gap: 4px">
+						<div class="eyebrow">Map</div>
+						<h2 id="h-map">Who calls whom</h2>
+					</div>
+					<div class="controls">
+						<span class="muted">Colour services by</span>
+						<div class="seg" role="group" aria-label="Colour services by">
+							<button id="c-domain" type="button" aria-pressed="true">Domain</button>
+							<button id="c-status" type="button" aria-pressed="false">Build status</button>
+						</div>
+					</div>
+				</div>
+				<p class="muted" style="font-size: 14px">
+					Arrows only run one column to the right. Hover a box to trace everything it reaches and
+					everything that reaches it. Click it for the details.
+				</p>
+				<div class="mapbox">
+					<svg
+						id="map"
+						role="img"
+						aria-label="Layered map: entry points call controllers, controllers call services, services call repositories and providers, which reach the backing stores. No arrow joins two services."
+					></svg>
+				</div>
+				<div class="legend" id="legend"></div>
+				<div id="check"></div>
+			</section>
+
+			<section aria-labelledby="h-proposed" id="s-proposed" hidden>
+				<div style="display: grid; gap: 4px">
+					<div class="eyebrow">Proposals · not built</div>
+					<h2 id="h-proposed">Proposed operations</h2>
+				</div>
+				<div id="proposed" style="display: grid; gap: 16px"></div>
+			</section>
+
+			<section aria-labelledby="h-guide" id="s-guide" hidden>
+				<div style="display: grid; gap: 4px">
+					<div class="eyebrow">How to read it</div>
+					<h2 id="h-guide">The layers</h2>
+				</div>
+				<div class="guide" id="guide"></div>
+			</section>
+
+			<section aria-labelledby="h-models">
+				<div style="display: grid; gap: 4px">
+					<div class="eyebrow">Values</div>
+					<h2 id="h-models">Models</h2>
+				</div>
+				<p class="muted">
+					Models are the values that travel between layers. Click one to see its shape and every
+					operation and method that takes it, returns it or carries it.
+				</p>
+				<div class="models" id="models"></div>
+			</section>
+
+			<section aria-labelledby="h-status">
+				<div style="display: grid; gap: 4px">
+					<div class="eyebrow">Schedule</div>
+					<h2 id="h-status">Build status</h2>
+				</div>
+				<p class="muted">
+					<b>Planned</b>: not started. <b>Interface</b>: the contract or capability interface exists
+					but nothing implements it yet. <b>Built</b>: the class and its tests are merged.
+				</p>
+				<div class="tablewrap"><table id="ledger"></table></div>
+			</section>
+		</div>
+
+		<div id="scrim" hidden></div>
+		<aside id="drawer" hidden aria-labelledby="d-title" role="dialog" aria-modal="true">
+			<div class="dbar">
+				<button type="button" id="d-back" hidden>← Back</button>
+				<span style="flex: 1"></span>
+				<button type="button" id="d-close">Close</button>
+			</div>
+			<div class="dbody" id="dbody"></div>
+		</aside>
+
+		<!-- ======================= DATA: the only part of this file to edit ======================= -->
+		<script type="application/json" id="call-graph-data">
+			{}
+		</script>
+		<!-- ======================= rules (from the skill's assets/validate.js) ======================= -->
+		<script id="call-graph-validate">
+			/* validate.js is inlined here by scripts/sync-template.mjs */
+		</script>
+		<!-- ======================= renderer ======================= -->
+		<script>
+			const D = JSON.parse(document.getElementById('call-graph-data').textContent);
+			const { validateGraph, typeIdents, capIdents, methodNames, itemsOf, index } =
+				window.CallGraph;
+			const IX = index(D);
+			const STATUS = {
+				planned: { label: 'Planned', hint: 'not started' },
+				interface: { label: 'Interface', hint: 'contract exists, no implementation yet' },
+				built: { label: 'Built', hint: 'class and tests merged' }
+			};
+			const SERVICES = D.services || {},
+				CONTROLLERS = D.controllers || [],
+				REPOS = D.repos || [],
+				STORES = D.stores || [],
+				ENTRIES = D.entries || [],
+				MODELS = D.models || [];
+			const SVC_KEYS = Object.keys(SERVICES);
+			const KIND_WORD = {
+				m: 'model',
+				c: 'controller',
+				s: 'service',
+				r: 'part',
+				b: 'store',
+				e: 'entry'
+			};
+			const WORD_KIND = Object.fromEntries(Object.entries(KIND_WORD).map(([k, v]) => [v, k]));
+
+			// ---------- helpers ----------
+			const $ = (id) => document.getElementById(id);
+			// Every piece of generated HTML goes through setHtml, never innerHTML. The data block is text
+			// in the page, and some fields (intro, facts, rule) are authored HTML, so the markup is parsed
+			// in an inert document and only the elements and attributes the renderer itself produces are
+			// kept: no scripts, no event handlers, no javascript: links. Anything else is dropped.
+			const SAFE_TAGS = new Set(
+				(
+					'a b br code dd defs div dl dt em h2 h3 h4 i li p pre small span strong sub sup ' +
+					'table tbody td th thead tr ul ol button ' +
+					'svg g path line polyline polygon rect circle ellipse text tspan title use marker'
+				).split(' ')
+			);
+			const SAFE_ATTRS = new Set(
+				(
+					'class style id title role tabindex type width height x y x1 y1 x2 y2 dx dy r rx ry cx cy ' +
+					'd points transform viewBox fill stroke stroke-width stroke-dasharray stroke-linecap ' +
+					'stroke-linejoin opacity fill-opacity text-anchor dominant-baseline font-size font-weight ' +
+					'marker-start marker-end orient refX refY markerWidth markerHeight markerUnits href'
+				).split(' ')
+			);
+			const safeAttr = (el, name, value) => {
+				if (name.startsWith('data-') || name.startsWith('aria-')) return true;
+				if (!SAFE_ATTRS.has(name)) return false;
+				if (name === 'href')
+					return value.startsWith('#') || (el.localName === 'a' && /^https?:\/\//i.test(value));
+				if (name === 'style') return !/url\s*\(|expression\s*\(|javascript:/i.test(value);
+				return true;
+			};
+			const clean = (node) => {
+				for (const child of [...node.children]) {
+					if (!SAFE_TAGS.has(child.localName)) {
+						child.remove();
+						continue;
+					}
+					for (const { name, value } of [...child.attributes]) {
+						if (!safeAttr(child, name, value)) child.removeAttribute(name);
+					}
+					clean(child);
+				}
+			};
+			const setHtml = (el, html) => {
+				// Parse in the target's own context, so table rows and SVG shapes keep their place.
+				const wrap = el instanceof SVGElement ? 'svg' : el.localName === 'table' ? 'table' : null;
+				const doc = new DOMParser().parseFromString(
+					wrap ? `<${wrap}>${html}</${wrap}>` : html,
+					'text/html'
+				);
+				const root = wrap ? doc.body.firstElementChild : doc.body;
+				clean(root);
+				el.replaceChildren(...root.childNodes);
+			};
+			const esc = (t) =>
+				String(t)
+					.replace(/&/g, '&amp;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;');
+			const svcVar = (s) =>
+				s === 'pure' ? 'var(--pure)' : SERVICES[s].color || `var(--p${SVC_KEYS.indexOf(s) % 10})`;
+			const stVar = (s) => (s === 'pure' ? 'var(--pure)' : `var(--st-${SERVICES[s].status})`);
+			const label = (s) => (s === 'pure' ? 'pure rule' : s);
+			const glyphOf = (s) =>
+				s === 'pure' ? 'g-function' : symbolOf(SERVICES[s].glyph, 'i-service');
+			// A glyph name from the data: 'i-…' or 'g-…' is a symbol id; a bare name is g-<name>.
+			const symbolOf = (name, fallback) =>
+				!name ? fallback : /^[ig]-/.test(name) ? name : `g-${name}`;
+			const icon = (id, cls = 'ico') =>
+				`<svg class="${cls}" aria-hidden="true"><use href="#${id}"/></svg>`;
+			const badge = (st) =>
+				`<span class="badge" style="--sc:var(--st-${st})" title="${esc(STATUS[st].hint)}">${STATUS[st].label}</span>`;
+			const servicesOf = (c) =>
+				[
+					...new Set(c.ops.flatMap((o) => o.steps.flatMap((st) => itemsOf(st).map((i) => i.s))))
+				].filter((s) => s !== 'pure');
+			const svcChip = (s) =>
+				s === 'pure'
+					? `<span class="chip" style="--c:var(--pure);--cs:var(--pure);cursor:default">${icon('g-function')}pure rule</span>`
+					: `<button type="button" class="chip" data-open="s:${s}" style="--c:${svcVar(s)};--cs:${stVar(s)}">${icon(glyphOf(s))}${esc(s)}</button>`;
+			const modelOfName = (n) => {
+				const t = IX.typeNames.get(n);
+				return t && t.kind === 'model' ? t.model : null;
+			};
+			const modelsIn = (text) => [...new Set(capIdents(text).map(modelOfName).filter(Boolean))];
+			const modelTag = (m) =>
+				`<button type="button" class="tag" data-open="m:${m.id}">${esc(m.title)}</button>`;
+			const repoName = (id) => (REPOS.find((r) => r.id === id) || {}).name || id;
+			// A type expression with every model name as a link and every external with a tooltip.
+			const typeHtml = (t) =>
+				esc(String(t)).replace(/[A-Za-z_]\w*/g, (w) => {
+					const hit = IX.typeNames.get(w);
+					if (!hit) return w;
+					if (hit.kind === 'model')
+						return `<button type="button" class="ty" data-open="m:${hit.model.id}" title="${esc(hit.model.what)}">${w}</button>`;
+					return `<span class="ext" title="${esc(hit.external.what || 'external type')}">${w}</span>`;
+				});
+			const sigHtml = (m) =>
+				`<span class="nm">${esc(m.name)}</span>(${(m.params || []).map((p) => `<span class="pn">${esc(p.name)}:</span> ${typeHtml(p.type)}`).join(', ')}): ${typeHtml(m.returns)}`;
+			const sigText = (m) =>
+				`${m.name}(${(m.params || []).map((p) => `${p.name}: ${p.type}`).join(', ')}): ${m.returns}`;
+
+			// ---------- map ----------
+			const COLS = [
+				{ x: 16, w: 172, head: 'ENTRY POINTS', icon: 'i-entry' },
+				{ x: 250, w: 220, head: 'CONTROLLERS', icon: 'i-controller' },
+				{ x: 540, w: 196, head: 'SERVICES', icon: 'i-service' },
+				{ x: 806, w: 222, head: 'REPOSITORIES · PROVIDERS', icon: 'i-repository' },
+				{ x: 1100, w: 206, head: 'BACKING STORES', icon: 'i-store' }
+			];
+			const MAP_W = 1320,
+				NODE_H = 50,
+				TOP = 78,
+				PITCH = 58;
+			const ROWS = Math.max(
+				REPOS.length,
+				CONTROLLERS.length,
+				SVC_KEYS.length,
+				ENTRIES.length,
+				STORES.length,
+				2
+			);
+			const SPAN = (ROWS - 1) * PITCH;
+			const rowsY = (n) =>
+				Array.from({ length: n }, (_, i) => TOP + (n === 1 ? SPAN / 2 : (SPAN * i) / (n - 1)));
+			const NODES = {},
+				EDGES = [];
+			function addNode(id, col, y, o) {
+				NODES[id] = { id, col, y, ...o };
+			}
+			ENTRIES.forEach((e, i) =>
+				addNode('e:' + e.id, 0, rowsY(ENTRIES.length)[i], {
+					kind: 'entry',
+					title: e.name,
+					sub: e.sub || '',
+					glyph: symbolOf(e.glyph, 'i-entry')
+				})
+			);
+			CONTROLLERS.forEach((c, i) =>
+				addNode('c:' + c.key, 1, rowsY(CONTROLLERS.length)[i], {
+					kind: 'controller',
+					title: c.name,
+					sub: `${c.ops.length} operation${c.ops.length > 1 ? 's' : ''} · plan ${c.plan}`,
+					glyph: symbolOf(c.glyph, 'i-controller'),
+					status: c.status
+				})
+			);
+			SVC_KEYS.forEach((s, i) => {
+				const n = Object.keys(SERVICES[s].caps).length;
+				addNode('s:' + s, 2, rowsY(SVC_KEYS.length)[i], {
+					kind: 'service',
+					title: SERVICES[s].cls,
+					sub: `plan ${SERVICES[s].plan} · ${n} capabilit${n > 1 ? 'ies' : 'y'}`,
+					glyph: glyphOf(s),
+					status: SERVICES[s].status,
+					svc: s
+				});
+			});
+			REPOS.forEach((r, i) =>
+				addNode('r:' + r.id, 3, rowsY(REPOS.length)[i], {
+					kind: r.kind,
+					title: r.name,
+					sub: r.kind,
+					glyph: r.kind === 'provider' ? 'i-provider' : 'i-repository'
+				})
+			);
+			STORES.forEach((st, i) => {
+				const ys = REPOS.filter((r) => r.store === st.id).map((r) => NODES['r:' + r.id].y);
+				const y =
+					st.row !== undefined
+						? TOP + st.row * PITCH
+						: ys.length
+							? ys.reduce((a, b) => a + b, 0) / ys.length
+							: rowsY(STORES.length)[i];
+				addNode('b:' + st.id, 4, y, {
+					kind: 'store',
+					title: st.name,
+					sub: st.sub || '',
+					glyph: symbolOf(st.glyph, 'i-store')
+				});
+			});
+			ENTRIES.forEach((e) =>
+				e.calls.forEach((c) => NODES['c:' + c] && EDGES.push({ from: 'e:' + e.id, to: 'c:' + c }))
+			);
+			CONTROLLERS.forEach((c) =>
+				servicesOf(c).forEach(
+					(s) => SERVICES[s] && EDGES.push({ from: 'c:' + c.key, to: 's:' + s, svc: s })
+				)
+			);
+			SVC_KEYS.forEach((s) =>
+				SERVICES[s].owns.forEach(
+					(r) => NODES['r:' + r] && EDGES.push({ from: 's:' + s, to: 'r:' + r, svc: s })
+				)
+			);
+			REPOS.forEach(
+				(r) => NODES['b:' + r.store] && EDGES.push({ from: 'r:' + r.id, to: 'b:' + r.store })
+			);
+
+			function reach(id, dir) {
+				const seen = new Set([id]),
+					queue = [id];
+				while (queue.length) {
+					const cur = queue.shift();
+					for (const e of EDGES) {
+						const [a, b] = dir === 'down' ? [e.from, e.to] : [e.to, e.from];
+						if (a === cur && !seen.has(b)) {
+							seen.add(b);
+							queue.push(b);
+						}
+					}
+				}
+				return seen;
+			}
+
+			function renderMap() {
+				const H = TOP + SPAN + NODE_H + 30;
+				const svg = $('map');
+				svg.setAttribute('viewBox', `0 0 ${MAP_W} ${H}`);
+				let g = '';
+				const sc = COLS[2];
+				g += `<rect x="${sc.x - 16}" y="${TOP - 20}" width="${sc.w + 32}" height="${SPAN + NODE_H + 40}" rx="12" style="fill:var(--band);stroke:var(--no);stroke-opacity:.35;stroke-dasharray:3 4"><title>Services lane: no arrow ever joins two services</title></rect>`;
+				COLS.forEach((c) => {
+					g += `<use href="#${c.icon}" x="${c.x}" y="18" width="18" height="18" style="color:var(--muted)"/><text class="colhead" x="${c.x + 25}" y="31">${c.head}</text>`;
+				});
+				g += `<text x="${sc.x + sc.w / 2}" y="${TOP - 27}" text-anchor="middle" style="fill:var(--no);font-size:11px;font-weight:650">no arrows inside this lane</text>`;
+				const svcYs = SVC_KEYS.map((s) => NODES['s:' + s].y);
+				for (let i = 0; i < svcYs.length - 1; i++) {
+					const cy = (svcYs[i] + NODE_H + svcYs[i + 1]) / 2,
+						cx = sc.x + sc.w / 2;
+					g += `<g style="stroke:var(--no);stroke-width:1.6;fill:none" opacity=".75"><circle cx="${cx}" cy="${cy}" r="7"/><line x1="${cx - 5}" y1="${cy + 5}" x2="${cx + 5}" y2="${cy - 5}"/></g>`;
+				}
+				EDGES.forEach((e, i) => {
+					const a = NODES[e.from],
+						b = NODES[e.to];
+					const x1 = COLS[a.col].x + COLS[a.col].w,
+						y1 = a.y + NODE_H / 2,
+						x2 = COLS[b.col].x - 3,
+						y2 = b.y + NODE_H / 2;
+					const dx = (x2 - x1) * 0.5;
+					const style = e.svc ? `--c:${svcVar(e.svc)};--cs:${stVar(e.svc)}` : '';
+					g += `<path class="e${e.svc ? ' svc' : ''}" data-i="${i}" style="${style}" d="M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}"/>`;
+				});
+				Object.values(NODES).forEach((n) => {
+					const c = COLS[n.col],
+						st = n.status
+							? `<circle cx="${c.x + c.w - 12}" cy="${n.y + 12}" r="4.5" style="fill:var(--st-${n.status})"><title>${STATUS[n.status].label}</title></circle>`
+							: '';
+					const style = n.svc ? `--c:${svcVar(n.svc)};--cs:${stVar(n.svc)}` : '';
+					g += `<g class="node k-${n.kind}" data-id="${n.id}" tabindex="0" role="button" aria-label="${esc(n.title)}: open details" style="${style}">
+      <rect class="bg" x="${c.x}" y="${n.y}" width="${c.w}" height="${NODE_H}" rx="8"/>
+      <use class="gl" href="#${n.glyph}" x="${c.x + 11}" y="${n.y + 13}" width="24" height="24"/>
+      <text class="t" x="${c.x + 44}" y="${n.y + 22}">${esc(n.title)}</text>
+      <text class="s" x="${c.x + 44}" y="${n.y + 38}">${esc(n.sub)}</text>${st}
+    </g>`;
+				});
+				setHtml(svg, g);
+				const paths = [...svg.querySelectorAll('path.e')],
+					nodes = [...svg.querySelectorAll('.node')];
+				const light = (id) => {
+					const down = reach(id, 'down'),
+						up = reach(id, 'up');
+					svg.classList.add('focus');
+					nodes.forEach((el) =>
+						el.classList.toggle('on', down.has(el.dataset.id) || up.has(el.dataset.id))
+					);
+					paths.forEach((p) => {
+						const e = EDGES[p.dataset.i];
+						p.classList.toggle(
+							'on',
+							(down.has(e.from) && down.has(e.to)) || (up.has(e.from) && up.has(e.to))
+						);
+					});
+				};
+				const clear = () => {
+					svg.classList.remove('focus');
+				};
+				nodes.forEach((el) => {
+					el.addEventListener('mouseenter', () => light(el.dataset.id));
+					el.addEventListener('focus', () => light(el.dataset.id));
+					el.addEventListener('mouseleave', clear);
+					el.addEventListener('blur', clear);
+					el.addEventListener('click', () => openDetail(el.dataset.id, true));
+					el.addEventListener('keydown', (ev) => {
+						if (ev.key === 'Enter' || ev.key === ' ') {
+							ev.preventDefault();
+							openDetail(el.dataset.id, true);
+						}
+					});
+				});
+			}
+
+			function renderLegend() {
+				setHtml(
+					$('legend'),
+					`<span>${icon('i-entry')}entry point</span><span>${icon('i-controller')}controller (dashed box: it orchestrates)</span><span>${icon('i-service')}service</span>` +
+						`<span>${icon('i-repository')}repository</span><span>${icon('i-provider')}provider</span><span>${icon('i-store')}store</span><span>${icon('i-model')}model (underlined types are clickable)</span>` +
+						`<span style="gap:10px">${Object.keys(STATUS).map(badge).join(' ')}</span>`
+				);
+			}
+
+			// ---------- operation lanes ----------
+			const CW = 7.0;
+			const textW = (t, cw = CW) => t.length * cw;
+			const CH = 60,
+				ALT_GAP = 22,
+				BUS = 58,
+				LTOP = 100;
+			const chipW = (i) =>
+				Math.max(
+					140,
+					textW(i.m, 7.3) + 26,
+					textW(label(i.s), 7) + 46,
+					i.note ? textW(i.note, 5.9) + 26 : 0
+				);
+			const pillW = (t) => textW(t, 6.9) + 18;
+			const pillG = (x, y, w, text, extra = '') => {
+				const ms = modelsIn(text)
+					.map((m) => m.id)
+					.join(' ');
+				return `<g class="pill${ms ? ' click' : ''}" ${ms ? `data-models="${ms}" role="button" tabindex="0" aria-label="Models: ${esc(text)}"` : ''}><rect x="${x}" y="${y}" width="${w}" height="20" rx="10" ${extra}/><text x="${x + w / 2}" y="${y + 14}" text-anchor="middle">${esc(text)}</text></g>`;
+			};
+			function laneSvg(c, op) {
+				const cols = op.steps.map((st) => ({
+					st,
+					items: itemsOf(st),
+					w: Math.max(...itemsOf(st).map(chipW))
+				}));
+				const boxX = 4;
+				let prevDepart = boxX,
+					prevRight = boxX;
+				for (const col of cols) {
+					col.x = Math.max(prevRight + 34, prevDepart + pillW(col.st.pass) + 30 - col.w / 3);
+					col.ax = col.x + col.w / 3;
+					col.dx = col.x + (2 * col.w) / 3;
+					prevDepart = col.dx;
+					prevRight = col.x + col.w;
+				}
+				const params = (op.params || []).map((p) => `${p.name}: ${p.type}`).join(', ');
+				const outW = pillW(op.returns);
+				const boxR = Math.max(
+					prevDepart + outW + 44,
+					prevRight + 16,
+					textW(`${c.name}.${op.name}(${params})`, 7.4) + 50
+				);
+				const chipsBottom = Math.max(
+					LTOP + CH,
+					...cols.map((col) => LTOP + col.items.length * CH + (col.items.length - 1) * ALT_GAP)
+				);
+				const H = chipsBottom + 40,
+					W = boxR + 8;
+				const mk = `ar-${c.key}-${op.name}`;
+				let g = '';
+				const groups = {};
+				cols.forEach((col, i) => {
+					if (col.st.tx) (groups[col.st.tx] ||= []).push(i);
+				});
+				for (const [t, idx] of Object.entries(groups)) {
+					const a = cols[idx[0]],
+						b = cols[idx[idx.length - 1]];
+					const x = a.x - 12,
+						w = b.x + b.w + 12 - x;
+					g += `<rect x="${x}" y="${LTOP - 18}" width="${w}" height="${chipsBottom - LTOP + 46}" rx="8" style="fill:var(--band);stroke:var(--line)"/>`;
+					g += `<use href="#i-tx" x="${x + 8}" y="${chipsBottom + 9}" width="13" height="13" style="color:var(--muted)"/><text x="${x + 25}" y="${chipsBottom + 20}" style="fill:var(--muted);font-size:10.5px;font-weight:650;letter-spacing:.06em">TRANSACTION${Object.keys(groups).length > 1 ? ' ' + t : ''}</text>`;
+				}
+				g += `<rect x="${boxX}" y="4" width="${boxR - boxX}" height="${H - 8}" rx="10" style="fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:7 5"/>`;
+				g += `<use href="#i-controller" x="${boxX + 12}" y="13" width="16" height="16" style="color:var(--muted)"/>`;
+				g += `<text x="${boxX + 34}" y="26" style="fill:currentColor;font-family:var(--font-mono);font-size:12.5px;font-weight:600">${esc(c.name)}.${esc(op.name)}(<tspan style="fill:var(--muted);font-weight:400">${esc(params)}</tspan>)</text>`;
+				let prevX = boxX,
+					pills = '';
+				cols.forEach((col, i) => {
+					const pts =
+						i === 0
+							? `${boxX},${BUS} ${col.ax},${BUS} ${col.ax},${LTOP - 4}`
+							: `${prevX},${LTOP} ${prevX},${BUS} ${col.ax},${BUS} ${col.ax},${LTOP - 4}`;
+					g += `<polyline class="edge" points="${pts}" marker-end="url(#${mk})"/>`;
+					const mid = (prevX + col.ax) / 2,
+						pw = pillW(col.st.pass);
+					pills += pillG(mid - pw / 2, BUS - 10, pw, col.st.pass);
+					prevX = col.dx;
+				});
+				g += `<polyline class="edge" points="${prevX},${LTOP} ${prevX},${BUS} ${boxR + 2},${BUS}" marker-end="url(#${mk})"/>`;
+				const exMid = prevX + (boxR - prevX) / 2;
+				pills += pillG(exMid - outW / 2, BUS - 10, outW, op.returns, 'style="stroke-width:1.6"');
+				cols.forEach((col) => {
+					col.items.forEach((it, k) => {
+						const y = LTOP + k * (CH + ALT_GAP);
+						const dash =
+							it.s === 'pure'
+								? 'stroke-dasharray:1.5 2.5;'
+								: col.st.cond
+									? 'stroke-dasharray:5 3;'
+									: '';
+						const note = it.note || (k === 0 ? col.st.note : '');
+						g += `<g class="sv" style="--c:${svcVar(it.s)};--cs:${stVar(it.s)}">
+        <rect class="box" x="${col.x}" y="${y}" width="${col.w}" height="${CH}" rx="6" style="${dash}"/>
+        <use href="#${glyphOf(it.s)}" x="${col.x + 10}" y="${y + 6}" width="14" height="14"/>
+        <text class="svc" x="${col.x + 30}" y="${y + 17}">${esc(label(it.s).toUpperCase())}</text>
+        <text class="meth" x="${col.x + 12}" y="${y + 36}">${esc(it.m)}</text>
+        ${note ? `<text class="note" x="${col.x + 12}" y="${y + 52}">${esc(note)}</text>` : ''}
+      </g>`;
+						if (k < col.items.length - 1)
+							g += `<text x="${col.x + col.w / 2}" y="${y + CH + 15}" text-anchor="middle" style="fill:var(--muted);font-size:11px;font-style:italic">or, by item kind</text>`;
+					});
+				});
+				const aria =
+					`${c.name}.${op.name}: ` +
+					cols
+						.map(
+							(col) =>
+								`${col.items.map((i) => `${label(i.s)}.${i.m}`).join(' or ')} receives ${col.st.pass}`
+						)
+						.join('; ') +
+					`; returns ${op.returns}. Every value passes through the controller.`;
+				return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(aria)}">
+    <defs><marker id="${mk}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:currentColor"/></marker></defs>${g}${pills}</svg>`;
+			}
+
+			// ---------- drawer ----------
+			let stack = [],
+				laneFilter = null;
+			function openDetail(id, fresh) {
+				if (fresh) stack = [];
+				if (stack[stack.length - 1] !== id) stack.push(id);
+				laneFilter = null;
+				renderDetail();
+				$('drawer').hidden = false;
+				$('scrim').hidden = false;
+				const [k, key] = id.split(':');
+				try {
+					history.replaceState(null, '', `#${KIND_WORD[k]}-${key}`);
+				} catch (e) {
+					/* the hash is a convenience */
+				}
+				const h = $('d-title');
+				if (h) h.focus({ preventScroll: true });
+			}
+			function closeDetail() {
+				$('drawer').hidden = true;
+				$('scrim').hidden = true;
+				stack = [];
+				try {
+					history.replaceState(null, '', location.pathname + location.search);
+				} catch (e) {
+					/* ignore */
+				}
+			}
+			function back() {
+				if (stack.length > 1) {
+					stack.pop();
+					laneFilter = null;
+					renderDetail();
+				}
+			}
+			const head = (glyph, kindIcon, kindLabel, title, color, extra = '') => `
+  <div class="dhead" style="--c:${color || 'var(--fg)'}">${icon(glyph)}
+    <div style="display:grid;gap:4px;min-width:0">
+      <span class="eyebrow" style="display:inline-flex;gap:6px;align-items:center">${icon(kindIcon, 'ico')}${kindLabel}</span>
+      <h2 id="d-title" tabindex="-1" style="outline:none">${esc(title)}</h2>
+      ${extra}
+    </div>
+  </div>`;
+			const block = (title, html) =>
+				`<div class="block"><div class="eyebrow">${title}</div>${html}</div>`;
+			const NEVER = `<div class="never-line">Receives repositories, providers and context. <b>Never another service.</b> Anything it needs from another domain, the controller fetches and hands over as a model.</div>`;
+			const methodList = (ms) =>
+				`<div class="methods">${ms
+					.map(
+						(m) => `<div class="method">
+  <div class="top"><div class="sig">${sigHtml(m)}</div>${m.status ? badge(m.status) : ''}</div>
+  ${m.what ? `<p>${esc(m.what)}</p>` : ''}</div>`
+					)
+					.join('')}</div>`;
+
+			// Every place a model appears: as input, as result, or on an arrow between steps.
+			function usesOf(m) {
+				const has = (t) => typeIdents(t).some((n) => m.names.includes(n));
+				const carried = (t) => capIdents(t).some((n) => m.names.includes(n));
+				const input = [],
+					output = [],
+					passed = [];
+				CONTROLLERS.forEach((c) =>
+					c.ops.forEach((o) => {
+						const at = `<button type="button" class="tag" data-open="c:${c.key}">${esc(c.name)}.${esc(o.name)}</button>`;
+						if ((o.params || []).some((p) => has(p.type))) input.push(at);
+						if (has(o.returns)) output.push(at);
+						o.steps.forEach((st) => {
+							if (carried(st.pass))
+								passed.push(
+									`${at} → <code>${esc(
+										itemsOf(st)
+											.map((i) => label(i.s) + '.' + methodNames(i.m).join('/'))
+											.join(' | ')
+									)}</code>`
+								);
+						});
+					})
+				);
+				SVC_KEYS.forEach((k) =>
+					Object.values(SERVICES[k].caps)
+						.flat()
+						.forEach((me) => {
+							const at = `<button type="button" class="tag" data-open="s:${k}">${esc(SERVICES[k].cls)}.${esc(me.name)}</button>`;
+							if ((me.params || []).some((p) => has(p.type))) input.push(at);
+							if (has(me.returns)) output.push(at);
+						})
+				);
+				REPOS.forEach((r) =>
+					(r.methods || []).forEach((me) => {
+						const at = `<button type="button" class="tag" data-open="r:${r.id}">${esc(r.name)}.${esc(me.name)}</button>`;
+						if ((me.params || []).some((p) => has(p.type))) input.push(at);
+						if (has(me.returns)) output.push(at);
+					})
+				);
+				const uniq = (xs) => [...new Set(xs)];
+				return { input: uniq(input), output: uniq(output), passed: uniq(passed) };
+			}
+
+			function renderDetail() {
+				const id = stack[stack.length - 1];
+				$('d-back').hidden = stack.length < 2;
+				const [kind, key] = id.split(':');
+				let html = '';
+				if (kind === 'c') {
+					const c = CONTROLLERS.find((x) => x.key === key);
+					const shown = laneFilter ? c.ops.filter((o) => o.name === laneFilter) : c.ops;
+					html =
+						head(
+							symbolOf(c.glyph, 'i-controller'),
+							'i-controller',
+							'Controller',
+							c.name,
+							null,
+							`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="muted" style="font-size:13px">implements <code>${esc(c.contract)}</code> · plan ${esc(c.plan)}</span>${badge(c.status)}</div>`
+						) +
+						`<p class="lead">${esc(c.what)}</p>` +
+						block(
+							'Why it exists and how it fits',
+							`<div class="why">${(c.why || []).map((p) => `<p>${esc(p)}</p>`).join('')}</div>`
+						) +
+						block(
+							'Services it sequences',
+							`<div class="tags">${servicesOf(c).map(svcChip).join('')}</div>`
+						) +
+						block(
+							`Operations · ${c.ops.length}`,
+							`<p class="muted" style="font-size:13.5px">Each operation shows its typed signature, then its steps left to right. Each model travels along the controller line at the top. Click an underlined type or a label to see the model.</p>
+        <div class="ops">${['', ...c.ops.map((o) => o.name)].map((n) => `<button type="button" data-lane="${n}" aria-pressed="${(laneFilter || '') === n}">${n || 'all ' + c.ops.length}</button>`).join('')}</div>
+        <div class="lanes">${shown.map((o) => `<div class="lane" id="op-${esc(c.key)}-${esc(o.name)}"><div class="sig">${sigHtml(o)}</div>${o.what ? `<p class="opwhat">${esc(o.what)}</p>` : ''}<div class="lane-scroll">${laneSvg(c, o)}</div></div>`).join('')}</div>`
+						) +
+						(c.reachedFrom
+							? block(
+									'Reached from',
+									`<ul class="plain">${Object.entries(c.reachedFrom)
+										.map(
+											([k, v]) =>
+												`<li><b>${esc(k)}:</b> ${v.length ? v.map((r) => `<code>${esc(r)}</code>`).join(', ') : '<span class="muted">none</span>'}</li>`
+										)
+										.join('')}</ul>`
+								)
+							: '') +
+						(c.lives ? block('Lives in', `<code>${esc(c.lives)}</code>`) : '');
+				} else if (kind === 's') {
+					const s = SERVICES[key];
+					const by = CONTROLLERS.filter((c) => servicesOf(c).includes(key));
+					html =
+						head(
+							glyphOf(key),
+							'i-service',
+							'Service',
+							s.cls,
+							svcVar(key),
+							`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="muted" style="font-size:13px">plan ${esc(s.plan)}</span>${badge(s.status)}</div>`
+						) +
+						`<p class="lead">${esc(s.what)}</p>` +
+						NEVER +
+						Object.entries(s.caps)
+							.map(([cap, ms]) => block(`Capability · ${esc(cap)}`, methodList(ms)))
+							.join('') +
+						block(
+							'Owns',
+							`<div class="tags">${s.owns.map((r) => `<button type="button" class="tag" data-open="r:${r}">${esc(repoName(r))}</button>`).join('')}</div>`
+						) +
+						block(
+							'Sequenced by',
+							by.length
+								? `<div class="tags">${by.map((c) => `<button type="button" class="tag" data-open="c:${c.key}">${esc(c.name)}</button>`).join('')}</div>`
+								: '<p class="muted">No controller yet.</p>'
+						) +
+						(s.lives ? block('Lives in', `<code>${esc(s.lives)}</code>`) : '');
+				} else if (kind === 'r') {
+					const r = REPOS.find((x) => x.id === key);
+					const owners = SVC_KEYS.filter((k) => SERVICES[k].owns.includes(key));
+					const st = STORES.find((x) => x.id === r.store);
+					html =
+						head(
+							r.kind === 'provider' ? 'i-provider' : 'i-repository',
+							r.kind === 'provider' ? 'i-provider' : 'i-repository',
+							r.kind === 'provider' ? 'Provider' : 'Repository',
+							r.name
+						) +
+						(r.note ? `<p class="lead">${esc(r.note)}</p>` : '') +
+						block('Interface', methodList(r.methods || [])) +
+						block('Owned by', `<div class="tags">${owners.map(svcChip).join('')}</div>`) +
+						(st
+							? block(
+									'Reaches',
+									`<div class="tags"><button type="button" class="tag" data-open="b:${st.id}">${esc(st.name)}</button></div>`
+								)
+							: '') +
+						(r.lives ? block('Lives in', `<code>${esc(r.lives)}</code>`) : '');
+				} else if (kind === 'b') {
+					const st = STORES.find((x) => x.id === key);
+					const repos = REPOS.filter((r) => r.store === key);
+					html =
+						head(symbolOf(st.glyph, 'i-store'), 'i-store', 'Backing store', st.name) +
+						`<p class="lead">${esc(st.what)}</p>` +
+						block(
+							'Reached through',
+							`<div class="tags">${repos.map((r) => `<button type="button" class="tag" data-open="r:${r.id}">${esc(r.name)}</button>`).join('')}</div>`
+						);
+				} else if (kind === 'e') {
+					const e = ENTRIES.find((x) => x.id === key);
+					html =
+						head(symbolOf(e.glyph, 'i-entry'), 'i-entry', 'Entry point', e.name) +
+						`<p class="lead">${esc(e.what)}</p>` +
+						`<div class="never-line">Parses input into models, calls <b>one</b> controller operation, shapes the result. No rules, no services, no repositories.</div>` +
+						block(
+							'Calls',
+							`<div class="tags">${e.calls.map((c) => `<button type="button" class="tag" data-open="c:${c}">${esc((CONTROLLERS.find((x) => x.key === c) || { name: c }).name)}</button>`).join('')}</div>`
+						) +
+						block(
+							'Lives in',
+							`<ul class="plain">${(e.where || []).map((w) => `<li><code>${esc(w)}</code></li>`).join('')}</ul>`
+						);
+				} else if (kind === 'm') {
+					const m = MODELS.find((x) => x.id === key);
+					const u = usesOf(m);
+					const list = (xs, none) =>
+						xs.length
+							? `<ul class="plain">${xs.map((x) => `<li>${x}</li>`).join('')}</ul>`
+							: `<p class="muted">${none}</p>`;
+					html =
+						head('i-model', 'i-model', `Model · ${esc(m.domain)}`, m.title) +
+						`<p class="lead">${esc(m.what)}</p>` +
+						block('Shape', `<pre class="def">${typeHtml(m.def)}</pre>`) +
+						(m.names.length > 1
+							? block(
+									'Type names',
+									`<div class="tags">${m.names.map((n) => `<span class="tag">${esc(n)}</span>`).join('')}</div>`
+								)
+							: '') +
+						block(
+							`Taken as input by · ${u.input.length}`,
+							list(u.input, 'No operation or method takes it.')
+						) +
+						block(
+							`Returned by · ${u.output.length}`,
+							list(u.output, 'No operation or method returns it.')
+						) +
+						block(
+							`Carried between steps by · ${u.passed.length}`,
+							list(u.passed, 'No controller hands it from one step to the next.')
+						) +
+						(m.lives ? block('Lives in', `<code>${esc(m.lives)}</code>`) : '');
+				}
+				setHtml($('dbody'), html);
+				$('dbody').scrollTop = 0;
+			}
+
+			$('dbody').addEventListener('click', (ev) => {
+				const open = ev.target.closest('[data-open]');
+				if (open) {
+					openDetail(open.dataset.open, false);
+					return;
+				}
+				const lane = ev.target.closest('[data-lane]');
+				if (lane) {
+					laneFilter = lane.dataset.lane || null;
+					renderDetail();
+					return;
+				}
+				const pill = ev.target.closest('.pill.click');
+				if (pill) openDetail('m:' + pill.dataset.models.split(' ')[0], false);
+			});
+			$('dbody').addEventListener('keydown', (ev) => {
+				const pill = ev.target.closest && ev.target.closest('.pill.click');
+				if (pill && (ev.key === 'Enter' || ev.key === ' ')) {
+					ev.preventDefault();
+					openDetail('m:' + pill.dataset.models.split(' ')[0], false);
+				}
+			});
+			document.addEventListener('click', (ev) => {
+				const open = ev.target.closest('#root [data-open]');
+				if (open) openDetail(open.dataset.open, true);
+			});
+			$('d-close').addEventListener('click', closeDetail);
+			$('d-back').addEventListener('click', back);
+			$('scrim').addEventListener('click', closeDetail);
+			document.addEventListener('keydown', (ev) => {
+				if (ev.key === 'Escape' && !$('drawer').hidden) closeDetail();
+			});
+
+			// ---------- sections ----------
+			function renderHeader() {
+				const p = D.project || {};
+				if (p.name) document.title = `${p.name} Call Graph`;
+				$('p-eyebrow').textContent = p.eyebrow || 'Architecture reference';
+				$('p-title').textContent = `${p.name || 'Project'} Call Graph`;
+				// intro, facts and rule are authored HTML in the data block (trusted: it is part of this file)
+				setHtml(
+					$('p-intro'),
+					(p.intro || []).map((x, i) => `<p${i ? ' class="muted"' : ''}>${x}</p>`).join('')
+				);
+				setHtml(
+					$('p-facts'),
+					(p.facts || [])
+						.map((f) => `<div>${icon(symbolOf(f.glyph, 'i-model'))}<span>${f.html}</span></div>`)
+						.join('')
+				);
+				$('p-facts').hidden = !(p.facts || []).length;
+				setHtml(
+					$('p-rule'),
+					p.rule ||
+						'A service <strong>never</strong> calls another service. It never even receives one. The controller calls each service, holds the model it returns, and passes that model to the next service.'
+				);
+			}
+			function renderGuide() {
+				const ls = D.layers || [];
+				$('s-guide').hidden = !ls.length;
+				setHtml(
+					$('guide'),
+					ls
+						.map(
+							(l) => `<div class="card">
+    <div class="card-h">${icon(symbolOf(l.glyph, 'i-model'))}<h3>${esc(l.title)}</h3></div>
+    <p>${esc(l.what)}</p>
+    <dl><dt>May call</dt><dd>${esc(l.may)}</dd><dt>Never</dt><dd class="never">${esc(l.never)}</dd>${l.where ? `<dt>Lives in</dt><dd><code>${esc(l.where)}</code></dd>` : ''}${l.see ? `<dt>See</dt><dd>${esc(l.see)}</dd>` : ''}</dl>
+  </div>`
+						)
+						.join('')
+				);
+			}
+			function renderModels() {
+				const domains = [...new Set(MODELS.map((m) => m.domain))];
+				setHtml(
+					$('models'),
+					domains
+						.map(
+							(d) =>
+								`<div class="mgroup"><h3>${icon('i-model')}${esc(d)}</h3><div class="tags">${MODELS.filter(
+									(m) => m.domain === d
+								)
+									.map(modelTag)
+									.join('')}</div></div>`
+						)
+						.join('')
+				);
+			}
+			function renderProposed() {
+				const ps = CONTROLLERS.filter((c) => c.proposal);
+				$('s-proposed').hidden = !ps.length;
+				const tag = {
+					reused: '<span class="reuse r">reused</span>',
+					new: '<span class="reuse n">new</span>'
+				};
+				setHtml(
+					$('proposed'),
+					ps
+						.map(
+							(c) => `<div class="proposal">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><h3 class="mono">${esc(c.name)}</h3>${badge(c.status)}</div>
+    <p>${esc(c.what)}</p>
+    ${(c.why || []).map((p) => `<p class="muted">${esc(p)}</p>`).join('')}
+    ${c.ops
+			.map(
+				(o) =>
+					`<div class="sig">${sigHtml(o)}</div>${o.what ? `<p class="opwhat">${esc(o.what)}</p>` : ''}<div class="tablewrap"><table><thead><tr><th>Step</th><th>Service</th><th>Method</th><th></th><th>Note</th></tr></thead><tbody>${o.steps
+						.map((st, i) =>
+							itemsOf(st)
+								.map(
+									(it) =>
+										`<tr><td class="mono">${i + 1}</td><td>${svcChip(it.s)}</td><td class="mono">${esc(it.m)}</td><td>${tag[st.reuse] || ''}</td><td class="muted">${esc(it.note || st.note || '')}</td></tr>`
+								)
+								.join('')
+						)
+						.join('')}</tbody></table></div>`
+			)
+			.join('')}
+    <div class="tags"><button type="button" class="tag" data-open="c:${c.key}">Open ${esc(c.name)}</button></div>
+  </div>`
+						)
+						.join('')
+				);
+			}
+			function renderLedger() {
+				const rows = [
+					...SVC_KEYS.map((k) => ({
+						icon: 'i-service',
+						name: SERVICES[k].cls,
+						open: 's:' + k,
+						plan: String(SERVICES[k].plan),
+						status: SERVICES[k].status,
+						what: Object.keys(SERVICES[k].caps).join(', ')
+					})),
+					...CONTROLLERS.map((c) => ({
+						icon: 'i-controller',
+						name: c.name,
+						open: 'c:' + c.key,
+						plan: String(c.plan),
+						status: c.status,
+						what: `${c.contract} · ${c.ops.length} operations`
+					}))
+				].sort((a, b) => a.plan.localeCompare(b.plan));
+				setHtml(
+					$('ledger'),
+					`<thead><tr><th>Plan</th><th>Part</th><th>Implements</th><th>Status</th></tr></thead><tbody>` +
+						rows
+							.map(
+								(r) =>
+									`<tr><td class="mono">${esc(r.plan)}</td><td><button type="button" class="tag" data-open="${r.open}" style="display:inline-flex;gap:6px;align-items:center">${icon(r.icon)}${esc(r.name)}</button></td><td class="muted">${esc(r.what)}</td><td>${badge(r.status)}</td></tr>`
+							)
+							.join('') +
+						'</tbody>'
+				);
+			}
+			function check() {
+				const problems = validateGraph(D);
+				for (const e of EDGES)
+					if (NODES[e.to].col !== NODES[e.from].col + 1)
+						problems.push(`Edge ${e.from} → ${e.to} skips or stays in a column`);
+				const ops = CONTROLLERS.reduce((n, c) => n + c.ops.length, 0);
+				const methods = SVC_KEYS.reduce(
+					(n, k) => n + Object.values(SERVICES[k].caps).flat().length,
+					0
+				);
+				setHtml(
+					$('check'),
+					problems.length
+						? `<div class="warn">${problems.map(esc).join('<br>')}</div>`
+						: `<p class="ok">✓ ${CONTROLLERS.length} controllers with ${ops} operations match their contracts. ${methods} service methods are typed and explained. All ${EDGES.length} arrows run exactly one column to the right, so none joins two services.</p>`
+				);
+			}
+			function setColour(mode) {
+				$('root').dataset.color = mode;
+				$('drawer').dataset.color = mode;
+				$('c-domain').setAttribute('aria-pressed', String(mode === 'domain'));
+				$('c-status').setAttribute('aria-pressed', String(mode === 'status'));
+				try {
+					localStorage.setItem('cg-colour', mode);
+				} catch (e) {
+					/* per-viewer convenience only */
+				}
+			}
+			$('c-domain').addEventListener('click', () => setColour('domain'));
+			$('c-status').addEventListener('click', () => setColour('status'));
+
+			renderHeader();
+			renderMap();
+			renderLegend();
+			check();
+			renderProposed();
+			renderGuide();
+			renderModels();
+			renderLedger();
+			let saved = 'domain';
+			try {
+				saved = localStorage.getItem('cg-colour') || 'domain';
+			} catch (e) {
+				/* default */
+			}
+			setColour(saved);
+			// Deep links: #model-<id>, #controller-<key>, #service-<key>, #part-<id>, #store-<id>, #entry-<id>
+			(function openFromHash() {
+				const h = decodeURIComponent(location.hash.slice(1));
+				const i = h.indexOf('-');
+				if (i < 0) return;
+				const k = WORD_KIND[h.slice(0, i)],
+					key = h.slice(i + 1);
+				if (!k) return;
+				const exists = k === 'm' ? MODELS.some((m) => m.id === key) : !!NODES[`${k}:${key}`];
+				if (exists) openDetail(`${k}:${key}`, true);
+			})();
+		</script>
+	</body>
+</html>

@@ -1,196 +1,132 @@
 # Error Handling
 
-## Table of Contents
-
-- [Layer responsibilities](#layer-responsibilities)
-- [Domain errors](#domain-errors)
-- [Service layer — map HTTP errors to domain errors](#service-layer--map-http-errors-to-domain-errors)
-- [Loader/Action layer — translate to SvelteKit errors](#loaderaction-layer--translate-to-sveltekit-errors)
-- [Error boundaries — +error.svelte](#error-boundaries--errorsvelte)
-- [Svelte error boundaries (client-side)](#svelte-error-boundaries-client-side)
-- [Summary: which error mechanism to use](#summary-which-error-mechanism-to-use)
-
-Errors flow upward through layers. Each layer translates errors into the right shape for the layer above.
+Errors flow upward. Services raise domain errors. The entry point translates them once. The UI
+shows what the entry point returned. No layer in between catches to hide a failure.
 
 ---
 
 ## Layer responsibilities
 
-| Layer | Throws | Catches |
-|---|---|---|
-| Service | `ServiceError` (domain error) | Raw `openapi-fetch` error responses |
-| Controller | Re-throws `ServiceError` or wraps in context | — |
-| Loader/Action | SvelteKit `error()` or `fail()` | `ServiceError` from controller |
-| `+error.svelte` | — | SvelteKit HTTP errors from loader |
+| Layer               | Throws                             | Catches                                           |
+| ------------------- | ---------------------------------- | ------------------------------------------------- |
+| Repository          | Domain error for an unreadable row | Nothing it cannot turn into a domain error        |
+| Service             | Domain errors (`NotFoundError`, …) | Provider failures → `ExternalServiceError`        |
+| Controller          | Lets domain errors pass            | — (except to roll back a transaction and rethrow) |
+| Remote function     | SvelteKit `error()` / form issues  | Domain errors, translated once                    |
+| `+error.svelte`     | —                                  | SvelteKit HTTP errors                             |
+| `<svelte:boundary>` | —                                  | Rendering and remote-query failures in a subtree  |
 
 ---
 
 ## Domain errors
 
-Define a base `ServiceError` in models:
+Define one small hierarchy in models. Each error is a fact the caller can act on.
 
 ```typescript
-// src/lib/models/errors.ts
-export class ServiceError extends Error {
-  constructor(
-    message: string,
-    public readonly options?: { cause?: unknown; code?: string }
-  ) {
-    super(message, { cause: options?.cause });
-    this.name = 'ServiceError';
-  }
+// src/lib/models/errors/domain-error.ts
+export abstract class DomainError extends Error {}
+
+export class NotFoundError extends DomainError {
+	constructor(readonly resource: string) {
+		super(`${resource} not found`);
+	}
 }
 
-export class NotFoundError extends ServiceError {
-  constructor(resource: string) {
-    super(`${resource} not found`, { code: 'NOT_FOUND' });
-    this.name = 'NotFoundError';
-  }
+export class ForbiddenError extends DomainError {
+	constructor() {
+		super('Forbidden');
+	}
 }
 
-export class UnauthorisedError extends ServiceError {
-  constructor() {
-    super('Unauthorised', { code: 'UNAUTHORISED' });
-    this.name = 'UnauthorisedError';
-  }
+export class ConflictError extends DomainError {}
+
+export class ExternalServiceError extends DomainError {
+	constructor(message: string, options: { cause: unknown }) {
+		super(message, options);
+	}
 }
 ```
 
+Before adding an error type, check that the state is producible. If the design excludes the state
+where data enters, do not add an error for it.
+
 ---
 
-## Service layer — map HTTP errors to domain errors
+## Services — raise domain errors
 
 ```typescript
-async getById(id: string): Promise<Recipe> {
-  const { data, error } = await this.client.GET('/recipes/{id}', {
-    params: { path: { id } }
-  });
-
-  if (error) {
-    if (error.status === 404) throw new NotFoundError('Recipe');
-    if (error.status === 401) throw new UnauthorisedError();
-    throw new ServiceError('Failed to fetch recipe', { cause: error });
-  }
-
-  return mapToRecipe(data);
+async rename(id: RecipeId, title: RecipeTitle): Promise<Recipe> {
+	const recipe = await this.repository.findById(id);
+	if (!recipe) throw new NotFoundError('Recipe');
+	if (recipe.owner !== this.actor) throw new ForbiddenError();
+	const renamed = { ...recipe, title };
+	await this.repository.save(renamed);
+	return renamed;
 }
 ```
 
-Never let raw HTTP status codes leak past the service layer.
-
----
-
-## Loader/Action layer — translate to SvelteKit errors
+A service that calls an external provider wraps its failure:
 
 ```typescript
-// +page.server.ts
-import { error, fail, redirect } from '@sveltejs/kit';
-import { NotFoundError, UnauthorisedError, ServiceError } from '$lib/models/errors';
-
-export const load: PageServerLoad = async ({ params, locals }) => {
-  if (!locals.user) throw redirect(302, '/login');
-
-  try {
-    const controller = AppFactory.getRecipeController();
-    const recipe = await controller.getRecipeById(params.id);
-    return { recipe };
-  } catch (e) {
-    if (e instanceof NotFoundError) throw error(404, 'Recipe not found');
-    if (e instanceof UnauthorisedError) throw error(403, 'Forbidden');
-    throw error(500, 'Something went wrong');
-  }
-};
-
-export const actions: Actions = {
-  create: async ({ request, locals }) => {
-    if (!locals.user) throw error(401);
-
-    const data = await request.formData();
-
-    try {
-      const controller = AppFactory.getRecipeController();
-      const recipe = await controller.createRecipe(locals.user.id, {
-        title: String(data.get('title')),
-      });
-      return { success: true, recipe };
-    } catch (e) {
-      if (e instanceof ServiceError) {
-        // Return as form error, not thrown — stays on the same page
-        return fail(400, { error: e.message });
-      }
-      throw error(500, 'Failed to create recipe');
-    }
-  }
-};
+try {
+	return await this.provider.embed(text);
+} catch (cause) {
+	throw new ExternalServiceError('Embedding provider failed', { cause });
+}
 ```
-
-**Key distinction:**
-- `throw error(...)` — redirects to `+error.svelte`, no form state preserved
-- `return fail(...)` — stays on page, form data preserved, use for validation/recoverable errors
 
 ---
 
-## Error boundaries — +error.svelte
+## Remote functions — translate once
 
-Create per-route error pages for meaningful messages:
+Put the translation in one shared function, so every remote function maps errors the same way.
 
-```svelte
-<!-- src/routes/recipes/+error.svelte -->
-<script lang="ts">
-  import { page } from '$app/stores';
-</script>
+```typescript
+// src/lib/remote/errors.ts
+import { error } from '@sveltejs/kit';
+import { ConflictError, ForbiddenError, NotFoundError } from '#lib/models/errors/domain-error';
 
-{#if $page.status === 404}
-  <EmptyState
-    title="Recipe not found"
-    description="This recipe may have been deleted or doesn't exist."
-    action={{ label: 'Back to recipes', href: '/recipes' }}
-  />
-{:else}
-  <ErrorState
-    title="Something went wrong"
-    description="We couldn't load this recipe. Try again."
-  />
-{/if}
+export function toHttpError(failure: unknown): never {
+	if (failure instanceof NotFoundError) error(404, failure.message);
+	if (failure instanceof ForbiddenError) error(403, failure.message);
+	if (failure instanceof ConflictError) error(409, failure.message);
+	throw failure;
+}
 ```
 
-Place `+error.svelte` at the route level that makes sense — a recipes error page doesn't need to be at the root. Use the global `src/routes/+error.svelte` as a last resort fallback only.
+```typescript
+export const renameRecipe = command(renameRecipeInput, async (input) => {
+	const { locals } = getRequestEvent();
+	return locals.app.recipes.rename(input.id, input.title).catch(toHttpError);
+});
+```
+
+Unknown failures rethrow, so SvelteKit's `handleError` logs them and the user sees a 500. A schema
+failure is a 400 from SvelteKit itself; 422-style field issues are for forms the user filled in.
 
 ---
 
-## Svelte error boundaries (client-side)
+## Route error boundaries — `+error.svelte`
 
-For client-side rendering errors within a component tree, use Svelte's `<svelte:boundary>`:
+Use `+error.svelte` for loader and navigation failures. Show the status and a way back. Keep it
+inside the layout so navigation still works.
 
-```svelte
-<!-- Wrap risky client-side components -->
-<svelte:boundary>
-  <ComplexVisualization {data} />
+## Component error boundaries — `<svelte:boundary>`
 
-  {#snippet failed(error, reset)}
-    <div class="error-fallback">
-      <p>Failed to render. <button onclick={reset}>Try again</button></p>
-    </div>
-  {/snippet}
-</svelte:boundary>
-```
-
-Use `<svelte:boundary>` for:
-- Components that process complex data client-side (risk of runtime errors)
-- Third-party component wrappers
-- Anything using `$derived` with complex transformations
-
-Do **not** use it as a substitute for proper error handling in loaders/actions.
+Wrap a subtree that awaits a remote query in `<svelte:boundary>` with a `pending` and a `failed`
+snippet. The `failed` snippet offers `reset` to retry. A failure in one panel must not blank the
+whole page.
 
 ---
 
-## Summary: which error mechanism to use
+## Summary: which mechanism to use
 
-| Situation | Mechanism |
-|---|---|
-| User not authenticated | `throw redirect(302, '/login')` in loader |
-| Resource not found | `throw error(404, 'message')` in loader |
-| Form validation failed | `return fail(400, { field: 'error' })` in action |
-| Unexpected server error | `throw error(500, 'message')` in loader/action |
-| Client-side render crash | `<svelte:boundary>` in component |
-| Route-level error display | `+error.svelte` co-located with route |
+| Situation                               | Mechanism                                 |
+| --------------------------------------- | ----------------------------------------- |
+| Rule violated inside a service          | Throw a `DomainError` subclass            |
+| Provider call failed                    | `ExternalServiceError` with `cause`       |
+| Remote function receives a domain error | `toHttpError` → SvelteKit `error()`       |
+| Form input invalid                      | Schema issues returned by `form`          |
+| Page cannot load                        | `+error.svelte`                           |
+| One panel's query failed                | `<svelte:boundary>` with `failed` + reset |
+| Anything else                           | Rethrow. Never swallow.                   |

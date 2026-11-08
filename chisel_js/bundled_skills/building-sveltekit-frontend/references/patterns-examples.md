@@ -1,250 +1,252 @@
-# SvelteKit Frontend Patterns & Examples
+# SvelteKit Full-Stack Patterns & Examples
+
+One feature, every layer: renaming a recipe and listing the signed-in user's recipes.
 
 ## Table of Contents
 
-- [hooks.server.ts — auth only](#hooksserverts--auth-only)
-- [+page.server.ts — load and actions](#pageserverts--load-and-actions)
-- [Service — interface + implementation](#service--interface--implementation)
-- [Controller — orchestration with DI](#controller--orchestration-with-di)
-- [Factory — concrete assembly](#factory--concrete-assembly)
-- [Store — client-side reactive singleton](#store--client-side-reactive-singleton)
-- [Models — shared interfaces](#models--shared-interfaces)
-
-## hooks.server.ts — auth only
-
-```typescript
-// src/hooks.server.ts
-import type { Handle } from "@sveltejs/kit";
-import { AppFactory } from "$lib/factories/AppFactory";
-
-export const handle: Handle = async ({ event, resolve }) => {
-  const sessionToken = event.cookies.get("session");
-
-  if (sessionToken) {
-    const authService = AppFactory.getAuthService();
-    const user = await authService.getUserFromToken(sessionToken);
-    event.locals.user = user ?? undefined;
-  }
-
-  return resolve(event);
-};
-```
-
-**Never:** redirect, fetch business data, or apply route guards here. Guards belong in the loader.
+- [Model](#model)
+- [Repository](#repository)
+- [Service](#service)
+- [Controller](#controller)
+- [Factory and composition root](#factory-and-composition-root)
+- [hooks.server.ts](#hooksserverts)
+- [Remote functions](#remote-functions)
+- [Store](#store)
+- [Component](#component)
 
 ---
 
-## +page.server.ts — load and actions
+## Model
 
 ```typescript
-// src/routes/recipes/+page.server.ts
-import type { PageServerLoad, Actions } from "./$types";
-import { error, redirect } from "@sveltejs/kit";
-import { AppFactory } from "$lib/factories/AppFactory";
+// src/lib/models/recipes/recipe.ts
+import { z } from 'zod';
 
-export const load: PageServerLoad = async ({ locals }) => {
-  if (!locals.user) throw redirect(302, "/login");
+export const recipeId = z.string().uuid().brand<'RecipeId'>();
+export type RecipeId = z.infer<typeof recipeId>;
 
-  const controller = AppFactory.getRecipeController();
+export const recipeTitle = z.string().trim().min(1).max(200);
+export type RecipeTitle = z.infer<typeof recipeTitle>;
 
-  return {
-    recipes: controller.getRecipesForUser(locals.user.id), // streamable promise
-  };
+export type Recipe = {
+	readonly id: RecipeId;
+	readonly owner: string;
+	readonly title: RecipeTitle;
+	readonly servings: number;
 };
 
-export const actions: Actions = {
-  create: async ({ request, locals }) => {
-    if (!locals.user) throw error(401, "Unauthorised");
-
-    const data = await request.formData();
-    const controller = AppFactory.getRecipeController();
-
-    // Validate input — use a zod schema or lib/validation.ts
-    const result = await controller.createRecipe(locals.user.id, {
-      title: String(data.get("title")),
-    });
-
-    return { success: true, recipe: result };
-  },
-};
+export const renameRecipeInput = z.object({ id: recipeId, title: recipeTitle });
 ```
 
-**Never:** put `if (name.length < 3)` or any domain logic here. Validate shape, delegate everything else.
-
----
-
-## Service — interface + implementation
+## Repository
 
 ```typescript
-// src/lib/server/services/recipes/catalog.ts
-import type { Recipe, CreateRecipeInput } from '$lib/models/recipes';
-import type { ApiClient } from '$lib/api/client';
-import { ServiceError } from '$lib/errors';
+// src/lib/server/repositories/recipes/recipe-repository.ts
+import { eq } from 'drizzle-orm';
+import type { Database } from '#lib/server/db';
+import { recipes } from '#lib/server/db/schema';
+import { recipeId, type Recipe, type RecipeId } from '#lib/models/recipes/recipe';
 
-/** The capability callers depend on, declared beside the class that offers it. */
-export interface RecipeCatalog {
-  getByUserId(userId: string): Promise<Recipe[]>;
-  create(input: CreateRecipeInput): Promise<Recipe>;
+export interface RecipeRepository {
+	findByOwner(owner: string): Promise<Recipe[]>;
+	findById(id: RecipeId): Promise<Recipe | undefined>;
+	save(recipe: Recipe): Promise<void>;
 }
 
-export class ApiRecipeCatalog implements RecipeCatalog {
-  constructor(private readonly client: ApiClient) {}
+export class DrizzleRecipeRepository implements RecipeRepository {
+	constructor(private readonly db: Database) {}
 
-  async getByUserId(userId: string): Promise<Recipe[]> {
-    const { data, error } = await this.client.GET('/recipes', {
-      params: { query: { userId } }
-    });
+	async findByOwner(owner: string): Promise<Recipe[]> {
+		const rows = await this.db.select().from(recipes).where(eq(recipes.owner, owner));
+		return rows.map(toRecipe);
+	}
 
-    if (error) throw new ServiceError('Failed to fetch recipes', error);
-    return data.recipes.map(mapToRecipe); // always map to domain model
-  }
+	async findById(id: RecipeId): Promise<Recipe | undefined> {
+		const [row] = await this.db.select().from(recipes).where(eq(recipes.id, id));
+		return row ? toRecipe(row) : undefined;
+	}
 
-  async create(input: CreateRecipeInput): Promise<Recipe> {
-    const { data, error } = await this.client.POST('/recipes', {
-      body: input
-    });
-
-    if (error) throw new ServiceError('Failed to create recipe', error);
-    return mapToRecipe(data);
-  }
+	async save(recipe: Recipe): Promise<void> {
+		await this.db
+			.insert(recipes)
+			.values(recipe)
+			.onConflictDoUpdate({ target: recipes.id, set: recipe });
+	}
 }
 
-// Keep mappers private to the service file
-function mapToRecipe(raw: components['schemas']['Recipe']): Recipe { ... }
+function toRecipe(row: typeof recipes.$inferSelect): Recipe {
+	return { id: recipeId.parse(row.id), owner: row.owner, title: row.title, servings: row.servings };
+}
 ```
 
----
+## Service
 
-## Controller — orchestration with DI
+```typescript
+// src/lib/server/services/recipes/recipe-service.ts
+import type { RecipeRepository } from '#lib/server/repositories/recipes/recipe-repository';
+import { ForbiddenError, NotFoundError } from '#lib/models/errors/domain-error';
+import type { Recipe, RecipeId, RecipeTitle } from '#lib/models/recipes/recipe';
+
+export interface RecipeReader {
+	listMine(): Promise<Recipe[]>;
+}
+
+export interface RecipeWriter {
+	rename(id: RecipeId, title: RecipeTitle): Promise<Recipe>;
+}
+
+export type RecipeServiceDependencies = {
+	readonly repository: RecipeRepository;
+	readonly actor: string;
+};
+
+export class RecipeService implements RecipeReader, RecipeWriter {
+	constructor(private readonly deps: RecipeServiceDependencies) {}
+
+	listMine(): Promise<Recipe[]> {
+		return this.deps.repository.findByOwner(this.deps.actor);
+	}
+
+	async rename(id: RecipeId, title: RecipeTitle): Promise<Recipe> {
+		const recipe = await this.deps.repository.findById(id);
+		if (!recipe) throw new NotFoundError('Recipe');
+		if (recipe.owner !== this.deps.actor) throw new ForbiddenError();
+		const renamed = { ...recipe, title };
+		await this.deps.repository.save(renamed);
+		return renamed;
+	}
+}
+```
+
+## Controller
 
 ```typescript
 // src/lib/server/controllers/recipes/controller.ts
-import type { RecipeCatalog } from "$lib/server/services/recipes/catalog";
-import type { PantryStock } from "$lib/server/services/pantry/stock";
-import type { Recipe } from "$lib/models";
+import type { RecipeReader, RecipeWriter } from '#lib/server/services/recipes/recipe-service';
+import type { Recipe, RecipeId, RecipeTitle } from '#lib/models/recipes/recipe';
 
-export class RecipeController {
-  constructor(
-    private readonly recipeService: RecipeCatalog,
-    private readonly pantryService: PantryStock,
-  ) {}
+export interface RecipesController {
+	list(): Promise<Recipe[]>;
+	rename(id: RecipeId, title: RecipeTitle): Promise<Recipe>;
+}
 
-  async getRecipesForUser(userId: string): Promise<Recipe[]> {
-    // Orchestrate: get recipes + filter by what's in the pantry
-    const [recipes, pantryItems] = await Promise.all([
-      this.recipeService.getByUserId(userId),
-      this.pantryService.getByUserId(userId),
-    ]);
+export class DefaultRecipesController implements RecipesController {
+	constructor(private readonly recipes: RecipeReader & RecipeWriter) {}
 
-    return recipes.filter((r) => isCompatible(r, pantryItems));
-  }
+	list(): Promise<Recipe[]> {
+		return this.recipes.listMine();
+	}
+
+	rename(id: RecipeId, title: RecipeTitle): Promise<Recipe> {
+		return this.recipes.rename(id, title);
+	}
 }
 ```
 
-Controller takes **interfaces**, not concrete classes. This is the only layer with DI.
+A controller earns its keep when an operation spans several services or needs a transaction. When
+it only forwards one call, keep it anyway: it is the stable seam the entry points depend on.
 
----
-
-## Factory — concrete assembly
+## Factory and composition root
 
 ```typescript
-// src/lib/factories/AppFactory.ts
-import { createApiClient } from "$lib/api/client";
-import { RecipeService } from "$lib/services/RecipeService";
-import { PantryService } from "$lib/services/PantryService";
-import { RecipeController } from "$lib/controllers/RecipeController";
-
-export class AppFactory {
-  static getRecipeController(): RecipeController {
-    const client = createApiClient();
-    return new RecipeController(
-      new RecipeService(client),
-      new PantryService(client),
-    );
-  }
-
-  static getAuthService() {
-    return new AuthService(createApiClient());
-  }
+// src/lib/server/factories/recipes-factory.ts
+export function recipesController(db: Database, actor: string): RecipesController {
+	const repository = new DrizzleRecipeRepository(db);
+	return new DefaultRecipesController(new RecipeService({ repository, actor }));
 }
 ```
-
-No interfaces here — concrete types only. No logic. Just assembly.
-
----
-
-## Store — client-side reactive singleton
 
 ```typescript
-// src/lib/stores/recipeStore.ts
-import type { Recipe } from "$lib/models";
+// src/lib/server/application.ts
+import { db } from '#lib/server/db';
 
-function createRecipeStore() {
-  let recipes = $state<Recipe[]>([]);
-  let selected = $state<Recipe | null>(null);
+export type Application = { readonly recipes: RecipesController };
 
-  return {
-    get recipes() {
-      return recipes;
-    },
-    get selected() {
-      return selected;
-    },
+export function forActor(actor: string): Application {
+	return {
+		get recipes() {
+			return recipesController(db, actor);
+		}
+	};
+}
+```
 
-    setRecipes(data: Recipe[]) {
-      recipes = data;
-    },
-    select(recipe: Recipe) {
-      selected = recipe;
-    },
-    clear() {
-      recipes = [];
-      selected = null;
-    },
-  };
+## hooks.server.ts
+
+```typescript
+// src/hooks.server.ts
+import type { Handle } from '@sveltejs/kit';
+import { forActor } from '#lib/server/application';
+
+export const handle: Handle = async ({ event, resolve }) => {
+	const user = await resolveSession(event.cookies);
+	if (user) event.locals.app = forActor(user.id);
+	return resolve(event);
+};
+```
+
+## Remote functions
+
+```typescript
+// src/lib/remote/recipes/recipes.remote.ts
+import { command, getRequestEvent, query } from '$app/server';
+import { error } from '@sveltejs/kit';
+import { renameRecipeInput } from '#lib/models/recipes/recipe';
+import { toHttpError } from '#lib/remote/errors';
+
+function app() {
+	const { locals } = getRequestEvent();
+	if (!locals.app) error(401, 'Sign in required');
+	return locals.app;
 }
 
-export const recipeStore = createRecipeStore();
+export const myRecipes = query(async () => app().recipes.list());
+
+export const renameRecipe = command(renameRecipeInput, async ({ id, title }) => {
+	const renamed = await app().recipes.rename(id, title).catch(toHttpError);
+	myRecipes().refresh();
+	return renamed;
+});
 ```
+
+## Store
+
+```typescript
+// src/lib/stores/recipes/filter.svelte.ts
+class RecipeFilter {
+	text = $state('');
+
+	clear() {
+		this.text = '';
+	}
+}
+
+export const recipeFilter = new RecipeFilter();
+```
+
+The store holds what the user typed. It never fetches recipes.
+
+## Component
 
 ```svelte
-<!-- +page.svelte -->
+<!-- src/lib/components/recipes/RecipeList.svelte -->
 <script lang="ts">
-	import { recipeStore } from '$lib/stores/recipeStore';
-	let { data } = $props();
+	import { myRecipes } from '#lib/remote/recipes/recipes.remote';
+	import { recipeFilter } from '#lib/stores/recipes/filter.svelte';
+	import { Input } from '#lib/components/ui/input';
+	import RecipeCard from './RecipeCard.svelte';
 
-	// Populate store from loader data
-	$effect(() => {
-		recipeStore.setRecipes(data.recipes);
-	});
+	const recipes = $derived(
+		(await myRecipes()).filter((recipe) =>
+			recipe.title.toLowerCase().includes(recipeFilter.text.toLowerCase())
+		)
+	);
 </script>
 
-{#each recipeStore.recipes as recipe}
+<Input bind:value={recipeFilter.text} placeholder="Filter recipes" />
+{#each recipes as recipe (recipe.id)}
 	<RecipeCard {recipe} />
 {/each}
 ```
 
-Stores are populated from loader data via `$effect`, never fetched directly.
-
----
-
-## Models — shared interfaces
-
-```typescript
-// src/lib/models/Recipe.ts
-export interface Recipe {
-  id: string;
-  title: string;
-  cuisine: string;
-  servings: number;
-  createdAt: Date;
-}
-
-export interface CreateRecipeInput {
-  title: string;
-  cuisine?: string;
-  servings?: number;
-}
-```
-
-Models are plain interfaces — no classes, no methods, no ORM decorators. If an OpenAPI type and a domain model differ, map at the service layer. Never leak `components['schemas']['X']` types past the service.
+Wrap the component in `<svelte:boundary>` with `pending` and `failed` snippets where it is used.

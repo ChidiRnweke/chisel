@@ -11,7 +11,7 @@ Plan features so an agent can build them unsupervised.
 
 ## What this skill produces
 
-A `<feature>-plan.md` file in the project root. This file is the complete instruction set for an
+A `docs/plans/<feature>-plan.md` file. This file is the complete instruction set for an
 executor agent. It contains everything the agent needs to understand the current state of the
 codebase, what needs to change, and how to verify each step is done correctly.
 
@@ -26,6 +26,7 @@ loop, doing one thing per iteration, with the plan as its fixed reference point.
 ## Planner Workflow Checklist
 
 Copy this checklist into your initial response scratchpad to track your progress while building the blueprint:
+
 - [ ] Phase 1: Interview the user to gather context, scope, and constraints.
 - [ ] Phase 2: Perform reconnaissance using tools to map codebase patterns.
 - [ ] Phase 3: (Optional) Propose interfaces and test cases for review.
@@ -65,12 +66,13 @@ contents of dozens of files.
 Instead, dispatch targeted exploration tasks:
 
 - Read the project's `CLAUDE.md`, `AGENTS.md` and `README.md` if they exist
-- Identify which layers will be touched (models, services, repositories, controllers, routes, components)
-- Use Tree to get a high-level view of the file structure in relevant areas (e.g., backend/services, frontend/components). Read as little as possible to get the lay of the land - just enough to figure out what subagents to dispatch.
+- Identify which layers will be touched (models, services, repositories, controllers, factories, remote functions, stores, components)
+- Get a high-level view of the file structure in relevant areas (e.g., `src/lib/server/services`, `src/lib/components`). Read as little as possible to get the lay of the land - just enough to figure out what subagents to dispatch.
 - Find existing patterns the new feature must follow
 - Identify adjacent code that the feature interacts with
 - Check for existing tests, migration patterns, and conventions
-- **IMPORTANT** manually check if the user has any domain-specific skills (e.g., `frontend-design`) that you can use to better inform your plan. If they do, read those skills and incorporate their patterns and constraints into your plan.
+- Read the ADRs in `docs/decisions/` whose titles may cover the area.
+- **IMPORTANT** manually check if the user has any domain-specific skills (e.g., `building-sveltekit-frontend`, `designing-svelte-ui`, `qa`) that you can use to better inform your plan. If they do, read those skills and incorporate their patterns and constraints into your plan.
 
 Summarise findings concisely. The goal is to build a mental map of:
 
@@ -84,8 +86,8 @@ Summarise findings concisely. The goal is to build a mental map of:
 
 If the feature involves backend logic, propose a TDD-first approach:
 
-1. Draft the Protocol/interface for the new service(s)
-2. Draft the domain models (dataclasses/interfaces) the feature introduces
+1. Draft the capability interface for the new service(s)
+2. Draft the domain models (types and schemas) the feature introduces
 3. Propose test cases that define the expected behaviour
 
 Present these to the user for review. The idea is red-green development: the executor agent
@@ -105,7 +107,7 @@ When the user engages with this phase:
 
 ## Phase 4: Write the Blueprint
 
-Produce a `<feature>-plan.md` with the following structure:
+Produce a `docs/plans/<feature>-plan.md` with the following structure:
 
 ```markdown
 # Blueprint: [Feature Name]
@@ -143,7 +145,7 @@ concern. Exact file paths, class names, method signatures, and patterns are spec
 the executor should not need to make any structural decisions.
 
 - [ ] **Step 1: [Title]**
-      **Files:** `path/to/file.py` (create), `path/to/other.py` (modify)
+      **Files:** `path/to/file.ts` (create), `path/to/other.ts` (modify)
       **What:** [Specific instructions — exact class name, method signatures, what it does,
       which existing file to follow as a model. Name everything.]
       **Verify:** [Exact command to run or specific behaviour to confirm before checking off.]
@@ -173,17 +175,17 @@ This is the most important calibration in the entire skill. Steps must be fine-g
 and prescriptive:
 
 - **One file or one coherent concern per step.** "Implement RecipeService" is too broad —
-  that's a domain model, a Protocol, an implementation class, and wired dependencies. Split
-  it: one step for the model, one for the Protocol, one for the implementation, one for wiring.
+  that's a domain model, an interface, an implementation class, and wired dependencies. Split
+  it: one step for the model, one for the interface, one for the implementation, one for wiring.
 
 - **Specify exact names.** The step must name the files to create or modify, the classes and
   methods to add, and the function signatures where they're non-obvious. The executor should
   not have to decide what to call anything.
 
 - **Reference the pattern explicitly.** Don't say "follow existing patterns." Say "follow the
-  same structure as `PantryService` in `backend/src/myapp/services/pantry_service.py` —
-  Protocol interface, dataclass implementation, repository injected via constructor,
-  module-level structlog logger."
+  same structure as `PantryService` in `src/lib/server/services/pantry/pantry-service.ts` —
+  capability interfaces beside the class, dependencies typed as interfaces and injected
+  through the constructor, actor bound at construction."
 
 - **Independently verifiable.** Each step has a clear "done" state — an exact test command,
   a UI element to confirm, a specific server response. The executor checks the box when it
@@ -203,8 +205,8 @@ When in doubt, split. A plan with 20 sharp steps is far better than one with 8 a
 For every step that creates new code, point to an existing file that demonstrates the pattern:
 
 > Create `RecipeService` following the same structure as `PantryService` in
-> `backend/src/myapp/services/pantry_service.py` — Protocol interface + dataclass
-> implementation, repository injected via constructor, module-level structlog logger.
+> `src/lib/server/services/pantry/pantry-service.ts` — capability interfaces beside the
+> class, repository injected through the constructor as an interface.
 
 This is how you prevent the agent from inventing its own patterns. It copies what works.
 
@@ -212,7 +214,7 @@ This is how you prevent the agent from inventing its own patterns. It copies wha
 
 ## Phase 5: Executor Instructions
 
-Add a section at the top of `BLUEPRINT.md` that the executor agent reads every loop:
+Add a section at the top of `docs/plans/<feature>-plan.md` that the executor agent reads every loop:
 
 ```markdown
 ## Executor Instructions
@@ -226,7 +228,8 @@ You are executing this blueprint. Follow these rules:
 4. **Do the next unchecked step.** Find the first `- [ ]` item. Do that. Only that.
 5. **Verify before checking off.** Run the verification described in the step.
    If it passes, change `- [ ]` to `- [x]` and commit.
-6. **Commit after each step.** `git add -A && git commit -m "blueprint: [step title]"`
+6. **Commit verified work.** Stage only task changes and use Conventional Commits.
+   Follow `AGENTS.md`: work in a linked worktree on a task branch and land through a PR.
 7. **Don't skip ahead.** Steps are ordered by dependency.
 8. **Follow existing patterns.** When the step references an existing file as an example,
    match its structure. Don't invent new patterns.
@@ -247,18 +250,19 @@ existing file to use as a pattern, how the pieces wire together. What they don't
 dictate is the internal logic — the executor can work out how to implement a method given
 a clear signature and a model to follow.
 
-Vague step (bad): "Implement RecipeService with get_by_id and create methods. Follow the
-same pattern as PantryService. Include the Protocol interface. Wire it into the factory."
+Vague step (bad): "Implement RecipeService with getById and create methods. Follow the
+same pattern as PantryService. Include the interface. Wire it into the factory."
 
-This leaves too much open: which file? what exact signatures? what does the Protocol look
-like? which part of the factory?
+This leaves too much open: which file? what exact signatures? what does the interface look
+like? which factory?
 
-Prescriptive step (good): "Create `backend/src/myapp/services/recipe_service.py`. Define
-`RecipeServiceProtocol` with `get_by_id(recipe_id: str) -> Recipe | None` and
-`create(data: RecipeCreate) -> Recipe`. Implement `RecipeService` as a dataclass following
-the same structure as `PantryService` in `pantry_service.py` — repository injected via
-constructor, module-level structlog logger. Register it in `factory.py` alongside
-`PantryService`. Verify: `pytest tests/services/test_recipe_service.py` passes."
+Prescriptive step (good): "Create `src/lib/server/services/recipes/recipe-service.ts`. Define
+`RecipeReader` with `getById(id: RecipeId): Promise<Recipe>` and `RecipeWriter` with
+`create(input: NewRecipe): Promise<Recipe>`. Implement `RecipeService implements RecipeReader,
+RecipeWriter` following the same structure as `PantryService` in `pantry-service.ts` —
+`RecipeRepository` injected through the constructor, actor bound at construction. Wire it in
+`src/lib/server/factories/recipes-factory.ts`. Verify: `pnpm test:unit --run
+src/lib/server/services/recipes` passes."
 
 ### Don't plan what you can't verify
 
@@ -269,7 +273,7 @@ the step is too vague or too abstract. Make it concrete.
 
 For frontend/UI work, TDD doesn't apply naturally. Instead:
 
-- Reference the design system (`DESIGN_SYSTEM.md`) for visual decisions
+- Reference the design system (`docs/design/design-system.md`) for visual decisions
 - Point to existing components as structural examples
 - Describe the user-visible behaviour, not the implementation
 - Verification is "the page renders with the correct data and matches the design system"
@@ -285,8 +289,9 @@ produced it, not the git history, the blueprint.
 
 ## Self-Validation Loop
 
-Before showing the final `<feature>-plan.md` to the user, you must validate your own work:
+Before showing the final `docs/plans/<feature>-plan.md` to the user, you must validate your own work:
+
 1. **Check step granularity:** Are the steps too broad? Do they specify exact file paths, class names, and method signatures?
 2. **Check verifiability:** Does every step have a clear, objective verification command or action?
 3. **Check pattern adherence:** Do steps that create new code explicitly point to existing files as structural examples?
-If the plan fails any of these checks, autonomously revise it to be more prescriptive and fine-grained before presenting it to the user.
+   If the plan fails any of these checks, autonomously revise it to be more prescriptive and fine-grained before presenting it to the user.

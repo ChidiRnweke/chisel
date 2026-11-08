@@ -32,8 +32,8 @@ Offer the user a constrained choice: **1 Primary style** (+ optional 1 Secondary
 
 **Style registry (with reference files):**
 
-| Style                                | What it looks like                                   | Best used for                         | Reference                                                    |
-| ------------------------------------ | ---------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------ |
+| Style                                | What it looks like                                   | Best used for                         | Reference                                                   |
+| ------------------------------------ | ---------------------------------------------------- | ------------------------------------- | ----------------------------------------------------------- |
 | Minimalism / Swiss                   | strict grid, whitespace, typographic hierarchy       | settings, dashboards, “quiet premium” | `references/style-minimalism-swiss.md`                      |
 | Editorial / Typography-led           | big type, rhythm, magazine-like layouts              | content-heavy products, warm brands   | `references/style-editorial-typography-led.md`              |
 | Flat design                          | solid fills, crisp borders, minimal depth            | clarity-first product UIs             | `references/style-flat-design.md`                           |
@@ -104,28 +104,30 @@ Style dictates how things look; **UX Patterns dictate how things work.** Before 
 
 Identify the **1 primary UX pattern** that best serves the user's feature request. Do not invent custom layouts from scratch if a proven pattern exists.
 
-| Pattern | Signature & Use Case | Reference |
-| --- | --- | --- |
-| **Canvas** | Freeform spatial workspace (Whiteboards, node editors) | `references/ux-canvas.md` |
-| **Conversational** | Persistent chronological thread (Chatbots, AI assistants) | `references/ux-conversational.md` |
-| **Dashboard** | High-density overview of metrics (Home screens, analytics) | `references/ux-dashboard.md` |
-| **Document** | Continuous linear text flow (Long-form content, wikis) | `references/ux-document.md` |
-| **Drill Down** | Strict hierarchy traversal (Deep settings, nested folders) | `references/ux-drill-down.md` |
-| **Feed** | Vertical stream of items (Timelines, activity logs) | `references/ux-feed.md` |
-| **Hub & Spoke** | Central dispatcher to isolated modes (Task-focused apps) | `references/ux-hub-spoke.md` |
-| **Kanban** | Columns representing state (Project mgmt, pipelines) | `references/ux-kanban.md` |
-| **Launcher** | Keyboard-first search overlay (Global search, cmd palettes) | `references/ux-launcher.md` |
-| **Master-Detail** | Bifurcated list + content view (Email clients, dense logs) | `references/ux-master-detail.md` |
-| **Matrix** | 2D data grid (Ledgers, bulk data entry) | `references/ux-matrix.md` |
-| **Prog. Disclosure**| Depth on demand (Complex settings, advanced forms) | `references/ux-progressive-disclosure.md`|
-| **Tabs** | Parallel contexts (Grouped peer settings) | `references/ux-tabs.md` |
-| **Timeline** | Spatial representation of time (Schedules, video editors) | `references/ux-timeline.md` |
-| **Wizard** | Linear sequential flow (Onboarding, complex forms) | `references/ux-wizard.md` |
-| **Workbench** | Omnipresent unscrollable UI (Expert devtools, IDEs) | `references/ux-workbench.md` |
+| Pattern              | Signature & Use Case                                        | Reference                                 |
+| -------------------- | ----------------------------------------------------------- | ----------------------------------------- |
+| **Canvas**           | Freeform spatial workspace (Whiteboards, node editors)      | `references/ux-canvas.md`                 |
+| **Conversational**   | Persistent chronological thread (Chatbots, AI assistants)   | `references/ux-conversational.md`         |
+| **Dashboard**        | High-density overview of metrics (Home screens, analytics)  | `references/ux-dashboard.md`              |
+| **Document**         | Continuous linear text flow (Long-form content, wikis)      | `references/ux-document.md`               |
+| **Drill Down**       | Strict hierarchy traversal (Deep settings, nested folders)  | `references/ux-drill-down.md`             |
+| **Feed**             | Vertical stream of items (Timelines, activity logs)         | `references/ux-feed.md`                   |
+| **Hub & Spoke**      | Central dispatcher to isolated modes (Task-focused apps)    | `references/ux-hub-spoke.md`              |
+| **Kanban**           | Columns representing state (Project mgmt, pipelines)        | `references/ux-kanban.md`                 |
+| **Launcher**         | Keyboard-first search overlay (Global search, cmd palettes) | `references/ux-launcher.md`               |
+| **Master-Detail**    | Bifurcated list + content view (Email clients, dense logs)  | `references/ux-master-detail.md`          |
+| **Matrix**           | 2D data grid (Ledgers, bulk data entry)                     | `references/ux-matrix.md`                 |
+| **Prog. Disclosure** | Depth on demand (Complex settings, advanced forms)          | `references/ux-progressive-disclosure.md` |
+| **Tabs**             | Parallel contexts (Grouped peer settings)                   | `references/ux-tabs.md`                   |
+| **Timeline**         | Spatial representation of time (Schedules, video editors)   | `references/ux-timeline.md`               |
+| **Wizard**           | Linear sequential flow (Onboarding, complex forms)          | `references/ux-wizard.md`                 |
+| **Workbench**        | Omnipresent unscrollable UI (Expert devtools, IDEs)         | `references/ux-workbench.md`              |
 
 ### 1.2 Mandatory Pattern Review
-Once a pattern is identified, you **MUST read its corresponding markdown reference file** before writing code. 
+
+Once a pattern is identified, you **MUST read its corresponding markdown reference file** before writing code.
 These files contain:
+
 - Recommended `shadcn-svelte` components to use.
 - Strict `Do / Don't` interaction rules.
 - A fully typed Svelte 5 Component Recipe.
@@ -136,7 +138,7 @@ These files contain:
 
 Once the Style & UX plans are confirmed, write to the following files to persist state across sessions:
 
-### 1) `DESIGN_SYSTEM.md` (project root)
+### 1) `docs/design/design-system.md`
 
 Must include:
 
@@ -152,7 +154,7 @@ Must include:
 Keep short — this file is loaded into every agent context, so don't pollute it with the full design system. It should only point to the right file:
 
 ```md
-For UI design decisions (tokens, style, components) and UX patterns, see @DESIGN_SYSTEM.md.
+For UI design decisions (tokens, style, components) and UX patterns, see @docs/design/design-system.md.
 ```
 
 ### 3) `CLAUDE.md` (project root)
@@ -161,11 +163,11 @@ Short project context + `@AGENTS.md`
 
 ### 4) Tokens file
 
-Put tokens at the top of `src/app.css` (or `src/lib/styles/tokens.css`), with a header:
+Put tokens at the top of the global stylesheet, `src/routes/layout.css` (the file `components.json` names under `tailwind.css`), with a header:
 
 ```css
 /* ============================================================
-   DESIGN SYSTEM TOKENS — see DESIGN_SYSTEM.md for rationale
+   DESIGN SYSTEM TOKENS — see docs/design/design-system.md for rationale
    ============================================================ */
 ```
 
@@ -174,9 +176,11 @@ Put tokens at the top of `src/app.css` (or `src/lib/styles/tokens.css`), with a 
 ## Phase 3 & 4: Tokens and Theming
 
 Once tokens are defined, you **MUST read the detailed reference guide**:
+
 - `references/tokens-theming.md`
 
 This guide covers:
+
 - The required **Phase 3: Tokens (Design System First)**
 - The required **Phase 4: Tailwind + shadcn-svelte Theming**
 
@@ -217,7 +221,7 @@ src/lib/components/
 - Never hand-roll spacing ad-hoc → use `Stack` / tokens
 - Never use Tailwind default palette as final colors → tokens only
 - **Never hand-roll complex structural layouts** (like resizable panes or virtualized feeds) without consulting the matching UX Pattern spec in `references/ux-`.
-- If a visual request conflicts with `DESIGN_SYSTEM.md`, **flag it** (don't silently change style).
+- If a visual request conflicts with `docs/design/design-system.md`, **flag it** (don't silently change style).
 
 ### 5.3 Style repository integration in primitives
 
@@ -279,7 +283,7 @@ When reviewing or improving UI, the agent must audit for:
 
 ### 8.2 Style & UX drift (new)
 
-Compare code against `DESIGN_SYSTEM.md`:
+Compare code against `docs/design/design-system.md`:
 
 - Is the Style Application Plan being followed?
 - Are modifiers leaking into banned zones?
@@ -297,7 +301,7 @@ When calling it out, be explicit:
 
 If the user asks to improve/review an existing codebase:
 
-- Read existing tokens, `app.css` `@theme` block, shadcn mapping, primitives
+- Read existing tokens, `layout.css` `@theme` block, shadcn mapping, primitives
 - Identify Violations (Visual AND Behavioral).
 - Propose a migration plan referencing specific `references/style-` and `references/ux-` files.
 - Only then change code incrementally
@@ -309,18 +313,20 @@ Use `references/audit.md` for the detailed workflow.
 ## Validation Loop
 
 Before concluding any UI implementation:
-1. Run the type-checker (`pnpm svelte-check`).
+
+1. Run the type-checker (`pnpm check`).
 2. Run the linter to catch accessibility and syntax issues.
 3. Review warnings in the terminal. If errors occur, autonomously fix them and repeat the loop until the checks pass.
 
 ## Checklist Before Shipping Any UI
 
 Copy this checklist into your initial response scratchpad to track your progress:
-- [ ] Style Application Plan exists in `DESIGN_SYSTEM.md` and matches implementation.
+
+- [ ] Style Application Plan exists in `docs/design/design-system.md` and matches implementation.
 - [ ] **Primary UX Pattern identified** for the feature and Reference file read.
 - [ ] UX Pattern Do/Don't rules strictly followed (e.g., proper scrolling, URL syncing, focus states).
 - [ ] Tokens are full `hsl()` (or OKLCH) values, not bare triples.
-- [ ] `@theme inline` block in `app.css` exposes all color/font/radius tokens to Tailwind utilities.
+- [ ] `@theme inline` block in `layout.css` exposes all color/font/radius tokens to Tailwind utilities.
 - [ ] Alpha variants use `bg-primary/50` syntax — no `<alpha-value>` strings anywhere.
 - [ ] All colors come from tokens (no Tailwind defaults as final).
 - [ ] shadcn variables remapped (no defaults).
@@ -331,74 +337,43 @@ Copy this checklist into your initial response scratchpad to track your progress
 - [ ] Empty states exist and follow the visual style rules (and ornament budget).
 - [ ] Focus/contrast/tap targets pass accessibility guardrails.
 
-## Enforced Rule IDs
+## Hard Rules
 
-`chisel-js` is the deterministic counterpart of this skill. Each rule below is owned by this skill — `chisel-js explain <rule-id>` prints fix guidance, and `chisel-js check .` flags violations. The paired SvelteKit skill (`building-sveltekit-frontend`) owns the structural/complexity/error-flow/import-boundary rules listed in its own SKILL.md.
+These rules apply to every UI change. A reviewer treats a violation as a defect. An exception needs
+a comment on the line above that names the reason.
 
-### Colour enforcement
-- `colour:arbitrary-value-banned` — Arbitrary Tailwind colour value syntax (`bg-[#...]`, `text-[#...]`, `border-[...]`, `ring-[...]`, `fill-[...]`, `stroke-[...]`, `shadow-[...]`, `outline-[...]`, `decoration-[...]`, `accent-[...]`, `caret-[...]`, `divide-[...]`, `placeholder-[...]`). Add the colour as a CSS custom property in `app.css` first, then reference it as a Tailwind token.
-- `colour:dynamic-class-banned` — Dynamic class construction (`class={\`bg-${variable}\`}`). Use a lookup object of pre-approved token names.
-- `colour:modifier-on-semantic` — Experimental modifier classes (`.glass`, `.neumorphic`, `.claymorph`) on semantic HTML (`<form>`, `<table>`, `<nav>`, `<fieldset>`). Restricted to Hero components and Overlay widgets only.
+### Colour, typography and spacing
 
-### Typography
-- `typography:arbitrary-value-banned` — Arbitrary Tailwind typography value syntax (`text-[10px]`, `tracking-[0.4em]`, `leading-[1.6]`). Define the size/leading/tracking as a CSS custom property in `app.css` (e.g. `--text-sm`) and reference it as a Tailwind token.
+- No arbitrary Tailwind values for colour (`bg-[#...]`, `text-[#...]`, `border-[...]`, `ring-[...]`, `shadow-[...]` and the like), typography (`text-[10px]`, `tracking-[0.4em]`, `leading-[1.6]`) or spacing and size (`w-[400px]`, `min-h-[80vh]`, `gap-[14px]`). Add a CSS custom property in `layout.css` first, then use it as a Tailwind token.
+- No dynamic class construction (`class={`bg-${variable}`}`). Use a lookup object of approved token names.
+- Experimental modifier classes (`.glass`, `.neumorphic`, `.claymorph`) stay off semantic HTML (`<form>`, `<table>`, `<nav>`, `<fieldset>`). Use them only on hero components and overlay widgets.
 
-### Spacing
-- `spacing:arbitrary-value-banned` — Arbitrary Tailwind spacing/sizing value syntax (`w-[400px]`, `min-h-[80vh]`, `gap-[14px]`). Define the size as a CSS custom property in `app.css` (e.g. `--space-4`) and reference it as a Tailwind token.
+### Components (shadcn-svelte first)
 
-### Component enforcement (shadcn mapping)
-- `component-enforcement:html-button-banned` — Raw `<button>` → Button / Toggle.
-- `component-enforcement:html-input-*-banned` — Raw `<input type="*">` → Input, InputOTP, Checkbox, Switch, Slider, RadioGroup.
-- `component-enforcement:html-textarea-banned` — Raw `<textarea>` → Textarea.
-- `component-enforcement:html-select-banned` — Raw `<select>` → Select / NativeSelect / Combobox.
-- `component-enforcement:html-label-banned` — Raw `<label>` → Label.
-- `component-enforcement:html-table-*-banned` — Raw `<table>`, `<thead>`, `<tbody>`, `<tr>`, `<th>`, `<td>` → Table / DataTable.
-- `component-enforcement:html-progress-banned` — Raw `<progress>` → Progress.
-- `component-enforcement:html-details-banned` / `html-summary-banned` — Raw `<details>`/`<summary>` → Accordion / Collapsible.
-- `component-enforcement:html-dialog-banned` — Raw `<dialog>` → Dialog / AlertDialog / Drawer / Sheet.
-- `component-enforcement:html-nav-banned` — Raw `<nav>` → NavigationMenu / Breadcrumb / Menubar / Sidebar / Pagination.
-- `component-enforcement:html-kbd-banned` — Raw `<kbd>` → Kbd.
-- `component-enforcement:html-hr-banned` — Raw `<hr>` → Separator.
-- `component-enforcement:html-form-banned` — Raw `<form>` → Formsnap.
-- `component-enforcement:html-fieldset-banned` — Raw `<fieldset>` → Field.
+Use the shadcn-svelte component instead of the raw element:
 
-### Colour
-- `colour:palette-class-banned` — a hardcoded Tailwind palette class (`text-red-500`, `bg-slate-800`, `from-blue-500`). Use a semantic token (`bg-background`, `text-muted-foreground`, `text-destructive`): a palette class pins one appearance and cannot follow the theme, so it looks wrong in whichever mode it was not written for.
-- `colour:arbitrary-value-banned` — an arbitrary colour value (`bg-[#123]`). Judged by the value, so `ring-[2px]` and `shadow-[0_1px_2px]` are geometry, not colour.
+| Raw element               | Component                                                    |
+| ------------------------- | ------------------------------------------------------------ |
+| `<button>`                | Button / Toggle                                              |
+| `<input>`                 | Input, InputOTP, Checkbox, Switch, Slider, RadioGroup        |
+| `<textarea>`              | Textarea                                                     |
+| `<select>`                | Select / NativeSelect / Combobox                             |
+| `<label>`                 | Label                                                        |
+| `<table>` and its parts   | Table / DataTable                                            |
+| `<progress>`              | Progress                                                     |
+| `<details>` / `<summary>` | Accordion / Collapsible                                      |
+| `<dialog>`                | Dialog / AlertDialog / Drawer / Sheet                        |
+| `<nav>`                   | NavigationMenu / Breadcrumb / Menubar / Sidebar / Pagination |
+| `<kbd>`                   | Kbd                                                          |
+| `<hr>`                    | Separator                                                    |
+| `<form>`                  | Formsnap                                                     |
+| `<fieldset>`              | Field                                                        |
 
-### Design system (bounded choices)
-The design system is a set of bounded choices. Each rule reports a value chosen outside it, in
-markup, class strings in TypeScript, `@apply` lists and stylesheets.
-
-- `design-system:token-contrast-aa` — a text token pair below WCAG AA 4.5:1 in either palette of
-  the token stylesheet (`designSystem.tokens`), or a missing shadcn pair.
-- `design-system:no-hex-rgb-color`, `design-system:no-pure-black`,
-  `design-system:no-runtime-color-derivation` — colour comes from tokens; a token wash toward
-  transparent is the one allowed `color-mix`.
-- `design-system:alpha-fixed-steps` — opacity steps outside /5–/90 in the sanctioned increments.
-- `design-system:no-raw-font-family`, `design-system:font-weight-bounds` (400–800),
-  `design-system:no-em-font-size`, `design-system:heading-needs-utility` (a size or a
-  `designSystem.headingUtilities` class on every heading).
-- `design-system:uppercase-needs-tracking`, `design-system:no-wide-tracking-on-display`,
-  `design-system:justify-needs-hyphens`, `design-system:text-shadow-glow-only`.
-- `design-system:no-ad-hoc-shadow`, `design-system:no-accent-bars` — surfaces are flat; mark
-  state with a wash or a hairline ring.
-- `design-system:icon-library` — icons come from the module in `designSystem.icons`.
+Primitives under `src/lib/components/ui/` are vendored and ours to edit; the raw elements are allowed there.
 
 ### Responsiveness
-No longer machine-checked. The old `responsiveness:*` rules demanded specific
-wrapper components (`<PageShell>`, `<Container>`) and blanket breakpoint
-classes, which produced far more false positives than real findings. Responsive
-layout is now a review concern — see `references/style-*.md` for the patterns.
 
-### Exempting generated and vendored components
-The native-HTML ban skips the folders listed in `designSystem.allowIn` in
-`chisel.config.json`, defaulting to `src/lib/components/ui/` and
-`src/lib/components/primitives/`. Add vendored trees there — a ban that
-drowns a vendored editor in violations is a ban people switch off entirely.
-
-### Suppression
-Inline `<!-- chisel-ignore rule-id -- <reason> -->` (Svelte) or
-`// chisel-ignore rule-id -- <reason>` (TypeScript). A suppression without a
-reason suppresses nothing: the violation stands and `suppression:missing-reason`
-is added.
+- No fixed pixel widths (`w-[400px]`, `w-96`) on the root element of a `+page.svelte`. Use fluid or responsive widths.
+- Absolute positioning and `whitespace-nowrap` on layout-level elements need a responsive breakpoint variant.
+- Every `+page.svelte` uses the approved page wrapper named in `docs/design/design-system.md`.
+- Layout and page components use responsive breakpoint classes. Leaf components (icons, badges, chips, avatars, skeletons, spinners, tooltips, pills) are exempt.

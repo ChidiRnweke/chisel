@@ -2,383 +2,129 @@
 
 ## Table of Contents
 
-- [hooks.server.ts](#hooksserverts)
-- [+layout.server.ts](#layoutserverts)
-- [+page.server.ts](#pageserverts)
-  - [Streaming](#streaming)
-  - [Form actions](#form-actions)
-- [Services](#services)
-  - [Interface first](#interface-first)
-  - [Implementation](#implementation)
+- [Models](#models)
+- [Shared services](#shared-services)
+- [Repositories](#repositories)
+- [Server services](#server-services)
 - [Controllers](#controllers)
-- [Factory](#factory)
+- [Factories and the composition root](#factories-and-the-composition-root)
+- [hooks.server.ts](#hooksserverts)
+- [Remote functions](#remote-functions)
+- [Routes and loaders](#routes-and-loaders)
 - [Stores](#stores)
-  - [Populating from loader](#populating-from-loader)
-  - [Optimistic updates with actions](#optimistic-updates-with-actions)
-- [+page.svelte](#pagesvelte)
-
-Deep dive on each layer's responsibilities, patterns, and anti-patterns.
+- [Browser controllers](#browser-controllers)
+- [Components](#components)
 
 ---
 
-## hooks.server.ts
+## Models
 
-**Job:** Attach `locals.user` from session token. Nothing else.
+`src/lib/models/<domain>/` holds values, types, schemas and value constructors. Schemas live next
+to the type they produce, so the type is `z.infer` of its schema or a branded value its constructor
+returns.
 
-```typescript
-import type { Handle } from '@sveltejs/kit';
-import { AppFactory } from '$lib/factories/AppFactory';
+- No behaviour beyond constructing and validating a value.
+- No imports from any other layer, and never from components.
+- Request shapes and resolved shapes are different types even when they look alike. A resolved type
+  carries no optional field for something already decided.
+- Two optional fields that are always absent together are one optional object. State-dependent
+  payloads are a discriminated union.
 
-export const handle: Handle = async ({ event, resolve }) => {
-  const token = event.cookies.get('session');
+## Shared services
 
-  if (token) {
-    const authService = AppFactory.getAuthService();
-    event.locals.user = await authService.getUserFromToken(token) ?? undefined;
-  }
+`src/lib/services/<domain>/` holds business rules that both the browser and the server need — a
+UI preview and a server write that must agree. They are pure functions or stateless classes with
+no I/O. One total rule per decision, used by every caller.
 
-  return resolve(event);
-};
-```
+## Repositories
 
-**Anti-patterns:**
-- ❌ Route guards (`if (url.pathname.startsWith('/admin'))`) — do this in layouts
-- ❌ Fetching any data beyond session validation
-- ❌ Setting any locals other than `locals.user`
+`src/lib/server/repositories/<domain>/` is persistence only.
 
----
+- Domain models in, domain models out. Drizzle row types never leave the repository.
+- Parse the rows they read (a stored JSON column is external data).
+- No business rules. No reading another domain's tables to make a decision.
+- One interface per repository; the service depends on the interface.
 
-## +layout.server.ts
+## Server services
 
-Use for data needed across the entire route tree — navigation state, user preferences, feature flags.
+`src/lib/server/services/<domain>/` holds one cohesive capability: its rules and the I/O it owns
+(its repositories, its external provider).
 
-```typescript
-export const load: LayoutServerLoad = async ({ locals }) => {
-  // Available to all child routes via $page.data or parent()
-  return {
-    user: locals.user ?? null,
-  };
-};
-```
-
-Child routes call `await parent()` to access layout data without re-fetching:
-
-```typescript
-// +page.server.ts
-export const load: PageServerLoad = async ({ locals, parent }) => {
-  const { user } = await parent();
-  if (!user) throw redirect(302, '/login');
-  // ...
-};
-```
-
----
-
-## +page.server.ts
-
-**Job:** Auth guard, delegate to controller/service, return plain serialisable data.
-
-### Streaming
-
-Return promises directly for slow data — SvelteKit streams them:
-
-```typescript
-export const load: PageServerLoad = async ({ locals }) => {
-  if (!locals.user) throw redirect(302, '/login');
-  const controller = AppFactory.getRecipeController();
-
-  return {
-    user: locals.user,                                    // resolved immediately
-    recipes: controller.getRecipesForUser(locals.user.id), // streamed
-  };
-};
-```
-
-In the component:
-
-```svelte
-{#await data.recipes}
-  <RecipeSkeleton />
-{:then recipes}
-  <RecipeList {recipes} />
-{:catch}
-  <ErrorState message="Failed to load recipes" />
-{/await}
-```
-
-### Form actions
-
-```typescript
-export const actions: Actions = {
-  // Named action — called via action="?/create"
-  create: async ({ request, locals }) => {
-    if (!locals.user) throw error(401);
-
-    const formData = await request.formData();
-
-    // Shape validation only — no domain logic
-    const title = formData.get('title');
-    if (!title || typeof title !== 'string') {
-      return fail(400, { title: 'Title is required' });
-    }
-
-    try {
-      const controller = AppFactory.getRecipeController();
-      const recipe = await controller.createRecipe(locals.user.id, { title });
-      return { success: true, id: recipe.id };
-    } catch (e) {
-      if (e instanceof ServiceError) return fail(400, { error: e.message });
-      throw error(500);
-    }
-  }
-};
-```
-
----
-
-## Services
-
-**Job:** One concern. Wraps the API client. Returns domain models.
-
-### Interface beside the implementation
-
-```typescript
-// recipes/catalog.ts — the capability callers need, declared beside the class
-export interface RecipeCatalog {
-  getByUserId(userId: string): Promise<Recipe[]>;
-  getById(id: string): Promise<Recipe>;
-  create(input: CreateRecipeInput): Promise<Recipe>;
-  delete(id: string): Promise<void>;
-}
-```
-
-Every public service class `implements` the interfaces its callers depend on,
-declared in the same file — a sibling `contracts.ts` would be a service-to-service
-import. A controller depends on the interface; a test hands it a typed fake.
-
-### Implementation
-
-```typescript
-// recipes/catalog.ts, continued
-export class ApiRecipeCatalog implements RecipeCatalog {
-  constructor(private readonly client: ApiClient) {}
-
-  async getByUserId(userId: string): Promise<Recipe[]> {
-    const { data, error } = await this.client.GET('/users/{userId}/recipes', {
-      params: { path: { userId } }
-    });
-    if (error) throw new ServiceError('Failed to fetch', { cause: error });
-    return data.items.map(mapToRecipe);
-  }
-
-  // etc.
-}
-
-// Private mapper — never exported
-function mapToRecipe(raw: components['schemas']['Recipe']): Recipe {
-  return {
-    id: raw.id,
-    title: raw.title,
-    createdAt: new Date(raw.created_at),
-  };
-}
-```
-
-**Anti-patterns:**
-- ❌ Calling multiple unrelated API endpoints in one service method
-- ❌ Exporting raw `components['schemas']` types
-- ❌ Catching errors and returning `null` silently — throw domain errors
-- ❌ Putting conditional business logic in the service (`if (user.isPremium)`) — that's controller territory
-
----
+- A stateless class that explicitly implements one or more narrow capability interfaces. Public
+  members belong to an implemented interface.
+- Capability interfaces and the constructor-dependency type sit beside the service. Data crossing
+  the boundary lives in `models/`.
+- Never import or receive another service, not even as a callback.
+- A service that owns an external provider maps its failures to one domain error with the original
+  as `cause`.
+- Cohesion test: same data, same consumers, same reason to change. Do not split for size.
 
 ## Controllers
 
-**Job:** Orchestrate multiple services. Return a shape ready for the loader.
+`src/lib/server/controllers/<domain>/controller.ts` holds complete operations.
 
-```typescript
-export class RecipeController {
-  constructor(
-    private readonly recipeService: RecipeCatalog,   // interface
-    private readonly pantryService: PantryStock,   // interface
-    private readonly tasteService: ITasteProfileService, // interface
-  ) {}
+- Sequence services and own transactions. A controller method is one thing a user or system does.
+- Depend on service interfaces only. Never import repositories — every write has rules around it.
+- Never call another controller.
+- Never parse. Inputs arrive as models from the entry point.
+- Keep them thin. An `if` over domain data belongs in a service.
 
-  async getRecipesForUser(userId: string): Promise<Recipe[]> {
-    const [recipes, pantry, profile] = await Promise.all([
-      this.recipeService.getByUserId(userId),
-      this.pantryService.getByUserId(userId),
-      this.tasteService.getProfileForUser(userId),
-    ]);
+## Factories and the composition root
 
-    return recipes
-      .filter(r => isCompatibleWithPantry(r, pantry))
-      .sort((a, b) => scoreByTasteProfile(a, profile) - scoreByTasteProfile(b, profile));
-  }
-}
-```
+`src/lib/server/factories/` constructs concrete classes and wires them through interfaces.
+`src/lib/server/application.ts` is the composition root: it builds the per-request application
+from factories and exposes controllers.
 
-**Only the controller** should call `Promise.all` across multiple services. If you're doing it in a loader, extract it to a controller.
+- No logic, no workflows, no branching on business state.
+- Build heavy immutable resources (database pool, provider clients, config) once per process; build
+  the per-request graph lazily.
+- No test knobs in production wiring. Tests fake whole services instead.
 
-**Anti-patterns:**
-- ❌ Direct API calls or `fetch()` in a controller
-- ❌ Importing `createApiClient()` in a controller
-- ❌ Single-service controllers with no orchestration — just use the service directly in the loader
+## hooks.server.ts
 
----
+Resolve the session, then bind the actor into the request's application (for example,
+`event.locals.app = application.forActor(user)`). Redirect unauthenticated requests where the
+route requires it. No business logic, no data fetching.
 
-## Factory
+## Remote functions
 
-**Job:** Wire concrete types. No logic.
+`src/lib/remote/<domain>/*.remote.ts` is the sole entry point from the UI to the server. Use
+`query` for reads, `command` for writes, `form` for progressive-enhancement forms.
 
-```typescript
-// AppFactory.ts
-import { createApiClient } from '$lib/api/client';
-import { RecipeService } from '$lib/services/RecipeService';
-import { PantryService } from '$lib/services/PantryService';
-import { TasteProfileService } from '$lib/services/TasteProfileService';
-import { RecipeController } from '$lib/controllers/RecipeController';
-import { AuthService } from '$lib/services/AuthService';
+- Every remote function takes a schema. The schema comes from `models/`.
+- Parse, call exactly one controller operation, shape the result. Nothing else.
+- Translate domain errors once, here, into SvelteKit `error()` (see `error-handling.md`).
+- Refresh affected queries after a command (`query.refresh()` or single-flight updates) rather than
+  hand-maintaining copies in stores.
 
-export class AppFactory {
-  static getRecipeController(): RecipeController {
-    const client = createApiClient();
-    return new RecipeController(
-      new RecipeService(client),
-      new PantryService(client),
-      new TasteProfileService(client),
-    );
-  }
+## Routes and loaders
 
-  static getAuthService(): AuthService {
-    return new AuthService(createApiClient());
-  }
-}
-```
-
-One factory file. Static methods. Concrete types only. If a controller doesn't exist yet, call the service directly from the factory and the loader — don't create a controller just to wrap a single service call.
-
----
+Prefer remote functions over `+page.server.ts` loaders and actions. Use a loader only where the data
+must exist for SSR before the page renders and a remote query cannot serve. `+server.ts` endpoints
+exist for public HTTP APIs and webhooks; they parse and delegate exactly like a remote function.
 
 ## Stores
 
-**Job:** Client-side reactive state. Populated from loader data. Never fetches.
+`src/lib/stores/<area>/*.svelte.ts` holds client `$state` singletons.
 
-```typescript
-// src/lib/stores/recipeStore.ts
-import type { Recipe } from '$lib/models';
+- Reactive state with controlled updates. Derive with `$derived`, never sync with `$effect`.
+- No fetching, no remote calls, no provider calls, no business decisions.
+- One writer per piece of state.
 
-function createRecipeStore() {
-  let items = $state<Recipe[]>([]);
-  let activeId = $state<string | null>(null);
+## Browser controllers
 
-  // Derived
-  let active = $derived(items.find(r => r.id === activeId) ?? null);
+`src/lib/controllers/<area>/` exists only where the browser itself sequences work: a local-first
+replica (cache, outbox, sync, conflict review), an upload pipeline, an export render, an editor
+session.
 
-  return {
-    // Getters
-    get items() { return items; },
-    get active() { return active; },
+- Never wrap a single remote function. Components call remote functions directly.
+- Never call another browser controller.
 
-    // Mutations
-    setItems(data: Recipe[]) { items = data; },
-    setActive(id: string | null) { activeId = id; },
-    remove(id: string) { items = items.filter(r => r.id !== id); },
+## Components
 
-    // Optimistic updates
-    add(recipe: Recipe) { items = [...items, recipe]; },
-  };
-}
+`src/lib/components/<feature>/` renders and handles interaction.
 
-export const recipeStore = createRecipeStore();
-```
-
-### Populating from loader
-
-```svelte
-<script lang="ts">
-  import { recipeStore } from '$lib/stores/recipeStore';
-  let { data } = $props();
-
-  // Sync server data into store on load
-  $effect(() => {
-    if (data.recipes) recipeStore.setItems(data.recipes);
-  });
-</script>
-```
-
-### Optimistic updates with actions
-
-```svelte
-<script lang="ts">
-  import { enhance } from '$app/forms';
-  import { recipeStore } from '$lib/stores/recipeStore';
-
-  function handleSubmit({ formData, cancel }) {
-    const title = String(formData.get('title'));
-
-    // Optimistic add
-    const temp = { id: crypto.randomUUID(), title, createdAt: new Date() };
-    recipeStore.add(temp);
-
-    return async ({ result, update }) => {
-      if (result.type === 'failure') {
-        // Roll back
-        recipeStore.remove(temp.id);
-      }
-      await update();
-    };
-  }
-</script>
-
-<form method="POST" action="?/create" use:enhance={handleSubmit}>
-  ...
-</form>
-```
-
-**Anti-patterns:**
-- ❌ `fetch()` inside a store
-- ❌ Importing services into a store
-- ❌ Complex derived logic that belongs in the controller
-- ❌ Using `writable()` from old Svelte 4 stores — use `$state` runes
-
----
-
-## +page.svelte
-
-**Job:** Render. Read `$props`. Write to stores. Use `enhance` for forms. That's it.
-
-```svelte
-<script lang="ts">
-  import { recipeStore } from '$lib/stores/recipeStore';
-  import { enhance } from '$app/forms';
-  import RecipeCard from '$lib/components/domain/RecipeCard.svelte';
-  import { Button } from '$lib/components/primitives/Button.svelte';
-
-  let { data } = $props();
-
-  // Populate store
-  $effect(() => { recipeStore.setItems(data.recipes ?? []); });
-</script>
-
-<!-- Stream pending state -->
-{#await data.recipes}
-  <RecipeSkeleton count={3} />
-{:then}
-  {#each recipeStore.items as recipe (recipe.id)}
-    <RecipeCard {recipe} />
-  {/each}
-{/await}
-
-<!-- Form stays simple -->
-<form method="POST" action="?/create" use:enhance>
-  <Input name="title" placeholder="Recipe name" />
-  <Button type="submit">Add Recipe</Button>
-</form>
-```
-
-**Anti-patterns:**
-- ❌ `import { RecipeService }` in a page component
-- ❌ `onMount(() => fetch('/api/...'))`
-- ❌ Complex conditional logic — move to a component or derived store field
-- ❌ Prop drilling more than 2 levels — use a store instead
+- Read stores, receive props, call remote functions or a browser controller.
+- Never import from `#lib/server/**`.
+- Never assemble a multi-step workflow; that is a controller (server or browser).
+- Use the shadcn-svelte primitives in `components/ui/`; see the `designing-svelte-ui` skill.

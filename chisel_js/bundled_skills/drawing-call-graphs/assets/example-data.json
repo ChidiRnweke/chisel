@@ -1,0 +1,189 @@
+{
+	"project": {
+		"name": "Example Shop",
+		"eyebrow": "Architecture reference · example data, replace it",
+		"intro": [
+			"<strong>Example Shop sells products online.</strong> A customer places an order; the shop charges the card and records the order.",
+			"Click any box in the map to open its details. A controller shows the steps of each operation; every underlined type is a model you can open."
+		],
+		"facts": [
+			{ "glyph": "cart", "html": "<b>Orders</b> are created only after the payment succeeds." },
+			{
+				"glyph": "card",
+				"html": "<b>Payments</b> go through an external gateway behind a provider interface."
+			}
+		]
+	},
+	"layers": [
+		{
+			"glyph": "i-controller",
+			"title": "Controller",
+			"what": "One method per thing a user or system does. It sequences services and owns the transaction.",
+			"may": "Services, through their interfaces.",
+			"never": "Repositories or other controllers.",
+			"where": "src/controllers/",
+			"see": "Architecture notes"
+		},
+		{
+			"glyph": "i-service",
+			"title": "Service",
+			"what": "One capability: its rules and the I/O it owns.",
+			"may": "Its own repositories and providers.",
+			"never": "Another service.",
+			"where": "src/services/",
+			"see": "Architecture notes"
+		}
+	],
+	"entries": [
+		{
+			"id": "api",
+			"name": "HTTP API",
+			"sub": "/api",
+			"glyph": "braces",
+			"where": ["src/routes/api/"],
+			"what": "JSON endpoints for the web shop. Each route parses its input and calls one controller operation.",
+			"calls": ["checkout"]
+		}
+	],
+	"controllers": [
+		{
+			"key": "checkout",
+			"name": "CheckoutController",
+			"contract": "CheckoutOperations",
+			"plan": "01",
+			"status": "built",
+			"glyph": "cart",
+			"what": "Turns a cart into a paid order.",
+			"why": [
+				"A customer expects one action that both charges the card and records the order. Neither the payment service nor the order service can own that sequence alone, because a service never calls another service.",
+				"This controller is the only place where payment and ordering meet. The HTTP API calls it; the order service never learns how payment works."
+			],
+			"reachedFrom": { "HTTP API": ["POST /api/checkout"] },
+			"lives": "src/controllers/checkout.ts",
+			"ops": [
+				{
+					"name": "checkout",
+					"what": "Charges the cart total once, then records the paid order in one transaction; a declined card creates no order.",
+					"params": [{ "name": "cart", "type": "Cart" }],
+					"returns": "Order",
+					"steps": [
+						{ "s": "payments", "m": "charge(cart.total)", "pass": "Cart → Money" },
+						{ "s": "orders", "m": "create(cart, receipt)", "pass": "Cart, Receipt", "tx": 1 }
+					]
+				}
+			]
+		}
+	],
+	"contracts": { "CheckoutOperations": ["checkout"] },
+	"services": {
+		"payments": {
+			"cls": "PaymentService",
+			"plan": "01",
+			"status": "built",
+			"glyph": "card",
+			"owns": ["gateway"],
+			"lives": "src/services/payments/",
+			"what": "Charges cards through the payment gateway and returns a receipt.",
+			"caps": {
+				"Charger": [
+					{
+						"name": "charge",
+						"params": [{ "name": "amount", "type": "Money" }],
+						"returns": "Receipt",
+						"what": "Charges the amount once; a declined card is a failure value, not a receipt."
+					}
+				]
+			}
+		},
+		"orders": {
+			"cls": "OrderService",
+			"plan": "01",
+			"status": "built",
+			"glyph": "cart",
+			"owns": ["orderRepo"],
+			"lives": "src/services/orders/",
+			"what": "Owns orders and their rules.",
+			"caps": {
+				"OrderWriter": [
+					{
+						"name": "create",
+						"params": [
+							{ "name": "cart", "type": "Cart" },
+							{ "name": "receipt", "type": "Receipt" }
+						],
+						"returns": "Order",
+						"what": "Records a paid order for the cart's lines."
+					}
+				]
+			}
+		}
+	},
+	"repos": [
+		{
+			"id": "orderRepo",
+			"name": "OrderRepository",
+			"kind": "repository",
+			"store": "db",
+			"lives": "src/repositories/orders.ts",
+			"methods": [
+				{ "name": "insert", "params": [{ "name": "order", "type": "Order" }], "returns": "void" }
+			]
+		},
+		{
+			"id": "gateway",
+			"name": "PaymentGateway",
+			"kind": "provider",
+			"store": "psp",
+			"note": "SDK client of the payment provider.",
+			"lives": "src/providers/gateway.ts",
+			"methods": [
+				{
+					"name": "charge",
+					"params": [{ "name": "amount", "type": "Money" }],
+					"returns": "Promise<Receipt>"
+				}
+			]
+		}
+	],
+	"stores": [
+		{ "id": "db", "name": "Database", "sub": "SQL", "what": "Every table of the shop." },
+		{
+			"id": "psp",
+			"name": "Payment provider",
+			"sub": "external API",
+			"glyph": "cloud",
+			"what": "Charges cards. Reached only through the PaymentGateway provider."
+		}
+	],
+	"models": [
+		{
+			"id": "cart",
+			"domain": "orders",
+			"title": "Cart",
+			"names": ["Cart"],
+			"what": "The lines a customer wants to buy and their total.",
+			"def": "type Cart = { lines: { sku: string; quantity: number }[]; total: Money };",
+			"lives": "src/models/orders/"
+		},
+		{
+			"id": "order",
+			"domain": "orders",
+			"title": "Order",
+			"names": ["Order"],
+			"what": "A paid cart.",
+			"def": "type Order = { id: string; cart: Cart; receipt: Receipt };",
+			"lives": "src/models/orders/"
+		},
+		{
+			"id": "money",
+			"domain": "payments",
+			"title": "Money · Receipt",
+			"names": ["Money", "Receipt"],
+			"what": "An amount in a currency, and the proof that it was charged.",
+			"def": "type Money = { cents: number; currency: string };\ntype Receipt = { id: string; amount: Money };",
+			"lives": "src/models/payments/"
+		}
+	],
+	"externals": [{ "name": "Promise", "what": "JavaScript promise" }],
+	"pure": []
+}
